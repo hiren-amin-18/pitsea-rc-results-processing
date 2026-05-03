@@ -1,6 +1,6 @@
-# Pitsea RC — Race Results Processing
+# Pitsea RC Race Result Processor
 
-An ASP.NET Core MVC web application for processing 5K running race results. Built for race organisers to upload entrant, finish, and timing data, then view, edit, and export the collated results.
+An ASP.NET Core MVC web application for processing race results. Built for race organisers to upload entrant, finish, and timing data, then view, edit, and export the collated results.
 
 ---
 
@@ -36,6 +36,8 @@ An ASP.NET Core MVC web application for processing 5K running race results. Buil
 | **Race stats** | Total males/females, U18 counts, unaffiliated adult counts by gender |
 | **Top 10 by category** | Top 10 finishers for Male, Female, Male U18, Female U18 |
 | **PDF export** | Download a formatted PDF of the full results and DNF list |
+| **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
+| **Theme-aware branding** | App logo switches by theme (light uses white logo, dark uses black logo) at a fixed size |
 | **Persistent storage** | All data saved to a SQLite database and survives app restarts |
 | **Structured logging** | Warnings on validation failures; errors on unhandled exceptions |
 
@@ -58,9 +60,18 @@ cd pitsea-rc-results-processing
 dotnet run --project .\RaceResults.Web\RaceResults.Web.csproj
 ```
 
-Open the URL printed to the console (e.g. `https://localhost:7xxx`).
+Open the URL printed to the console (typically `http://localhost:5200` when using the default launch profile).
 
 The SQLite database (`raceresults.db`) is created automatically on first run in the working directory.
+
+### Logo assets
+
+The shared layout expects the following logo files:
+
+- `RaceResults.Web/wwwroot/images/pitsea-logo-white.png`
+- `RaceResults.Web/wwwroot/images/pitsea-logo-black.png`
+
+If these files are missing, the navbar logo will not render.
 
 ---
 
