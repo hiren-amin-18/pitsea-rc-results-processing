@@ -1,4 +1,50 @@
-﻿// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-// for details on configuring this project to bundle and minify static web assets.
+﻿const THEME_KEY = "rr-theme";
 
-// Write your JavaScript code.
+function getPreferredTheme() {
+	const storedTheme = localStorage.getItem(THEME_KEY);
+	if (storedTheme === "dark" || storedTheme === "light") {
+		return storedTheme;
+	}
+
+	return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+	document.documentElement.setAttribute("data-theme", theme);
+
+	const isDark = theme === "dark";
+	const navToggle = document.getElementById("theme-toggle-nav");
+	if (navToggle) {
+		navToggle.textContent = isDark ? "Light mode" : "Dark mode";
+		navToggle.setAttribute("aria-pressed", String(isDark));
+	}
+
+	const settingsToggle = document.getElementById("dark-mode-toggle");
+	if (settingsToggle) {
+		settingsToggle.checked = isDark;
+	}
+}
+
+function setTheme(theme) {
+	localStorage.setItem(THEME_KEY, theme);
+	applyTheme(theme);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+	applyTheme(getPreferredTheme());
+
+	const navToggle = document.getElementById("theme-toggle-nav");
+	if (navToggle) {
+		navToggle.addEventListener("click", () => {
+			const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+			setTheme(current === "dark" ? "light" : "dark");
+		});
+	}
+
+	const settingsToggle = document.getElementById("dark-mode-toggle");
+	if (settingsToggle) {
+		settingsToggle.addEventListener("change", () => {
+			setTheme(settingsToggle.checked ? "dark" : "light");
+		});
+	}
+});

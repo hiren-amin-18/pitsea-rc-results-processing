@@ -399,7 +399,7 @@ public class RaceResultsService : IRaceResultsService
                 page.DefaultTextStyle(x => x.FontSize(10));
 
                 page.Header()
-                    .Text("5K Race Results")
+                    .Text("Pitsea RC Race Result Processor")
                     .SemiBold()
                     .FontSize(20)
                     .FontColor(Colors.Blue.Darken2);

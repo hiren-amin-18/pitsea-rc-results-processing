@@ -3,7 +3,17 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - 5K Race Results</title>
+    <title>@ViewData["Title"] - Pitsea RC Race Result Processor</title>
+    <script>
+        (function () {
+            var key = "rr-theme";
+            var stored = localStorage.getItem(key);
+            var theme = stored === "dark" || stored === "light"
+                ? stored
+                : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            document.documentElement.setAttribute("data-theme", theme);
+        })();
+    </script>
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -11,9 +21,13 @@
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">5K Race Results</a>
+                <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-controller="Home" asp-action="Index">
+                    <img class="app-logo app-logo-light" src="~/images/pitsea-logo-white.png" alt="Pitsea Running Club logo" />
+                    <img class="app-logo app-logo-dark" src="~/images/pitsea-logo-black.png" alt="Pitsea Running Club logo" />
+                    <span>Pitsea RC Race Result Processor</span>
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -35,7 +49,13 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Race" asp-action="Top10">Top 10</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Settings">Settings</a>
+                        </li>
                     </ul>
+                    <div class="d-flex align-items-center mt-2 mt-sm-0">
+                        <button id="theme-toggle-nav" class="btn btn-outline-secondary btn-sm" type="button" aria-label="Toggle dark mode">Dark mode</button>
+                    </div>
                 </div>
             </div>
         </nav>
@@ -48,7 +68,7 @@
 
     <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 2026 - 5K Race Results
+            &copy; 2026 - Pitsea RC Race Result Processor
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
