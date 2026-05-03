@@ -90,6 +90,36 @@ public class UploadEntrantsTests : RaceResultsServiceTestBase
     }
 
     [Fact]
+    public async Task NoAgeColumn_SucceedsWithNullAge()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            ["Bib", "Name", "Club", "Gender"],
+            ["1", "Alice Smith", "Club A", "Female"],
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, Service.GetStatusCounts().EntrantCount);
+    }
+
+    [Fact]
+    public async Task BlankAgeCell_SucceedsWithNullAge()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            EntrantHeader,
+            ["1", "Alice Smith", "Club A", "Female", ""],
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, Service.GetStatusCounts().EntrantCount);
+    }
+
+    [Fact]
     public async Task UploadingNewEntrants_ClearsExistingFinishBibAndTimingData()
     {
         // Arrange: seed all three tables via the full upload flow

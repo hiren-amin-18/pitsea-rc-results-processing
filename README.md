@@ -160,7 +160,7 @@ To use a custom database path, add a connection string to `appsettings.json`:
 | Bib number | ✅ | `Bib`, `BibNumber`, `BibNo`, `Number`, `Race Number` |
 | Name | ✅ | `Name`, `FullName`, `RunnerName` |
 | Gender | ✅ | `Gender`, `Sex`, `M/F` |
-| Age | ✅ | `Age` |
+| Age | ❌ | `Age` |
 | Club | ❌ | `Club`, `Team`, `Club Name` |
 
 - Multiple files can be uploaded at once (e.g. online pre-registration + on-the-day sign-ups)

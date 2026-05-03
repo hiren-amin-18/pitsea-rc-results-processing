@@ -7,8 +7,8 @@ public class Entrant
     public string Name { get; set; } = string.Empty;
     public string Club { get; set; } = string.Empty;
     public string Gender { get; set; } = string.Empty;
-    public int Age { get; set; }
+    public int? Age { get; set; }
 
-    public bool IsU18 => Age < 18;
+    public bool IsU18 => Age.HasValue && Age.Value < 18;
     public bool IsUnaffiliated => string.IsNullOrWhiteSpace(Club);
 }

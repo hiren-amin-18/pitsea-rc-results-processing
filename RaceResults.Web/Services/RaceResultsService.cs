@@ -503,8 +503,7 @@ public class RaceResultsService : IRaceResultsService
         {
             new[] { "bib", "bibnumber", "bibno", "number", "racenumber" },
             new[] { "name", "fullname", "runnername" },
-            new[] { "gender", "sex", "mf" },
-            new[] { "age" }
+            new[] { "gender", "sex", "mf" }
         };
 
         foreach (var requiredSet in required)
@@ -535,16 +534,21 @@ public class RaceResultsService : IRaceResultsService
             var gender = ReadCell(row, headerMap, new[] { "gender", "sex", "mf" });
             var ageRaw = ReadCell(row, headerMap, new[] { "age" });
 
-            if (string.IsNullOrWhiteSpace(bib) || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(gender) || string.IsNullOrWhiteSpace(ageRaw))
+            if (string.IsNullOrWhiteSpace(bib) || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(gender))
             {
-                errors.Add($"{fileName} row {rowNumber}: bib, name, gender, and age are required.");
+                errors.Add($"{fileName} row {rowNumber}: bib, name, and gender are required.");
                 continue;
             }
 
-            if (!int.TryParse(ageRaw, out var age))
+            int? age = null;
+            if (!string.IsNullOrWhiteSpace(ageRaw))
             {
-                errors.Add($"{fileName} row {rowNumber}: age is invalid ({ageRaw}).");
-                continue;
+                if (!int.TryParse(ageRaw, out var parsedAge))
+                {
+                    errors.Add($"{fileName} row {rowNumber}: age is invalid ({ageRaw}).");
+                    continue;
+                }
+                age = parsedAge;
             }
 
             entrants.Add(new Entrant
