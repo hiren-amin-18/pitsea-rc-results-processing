@@ -133,6 +133,61 @@ public class UploadEntrantsTests : RaceResultsServiceTestBase
         Assert.Equal(2, Service.GetStatusCounts().EntrantCount);
     }
 
+    [Fact]
+    public async Task RaceNumberHeader_AcceptedAsBibAlias()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            ["Race Number", "Name", "Club Name", "M/F", "Age"],
+            ["1", "Alice Smith", "Club A", "F", "30"],
+            ["2", "Bob Jones", "Club B", "M", "25"],
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, Service.GetStatusCounts().EntrantCount);
+    }
+
+    [Fact]
+    public async Task ClubNameHeader_AcceptedAsClubAlias()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            ["Bib", "Name", "Club Name", "Gender", "Age"],
+            ["1", "Alice Smith", "Pitsea RC", "Female", "30"],
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, Service.GetStatusCounts().EntrantCount);
+    }
+
+    [Theory]
+    [InlineData("M", "Male")]
+    [InlineData("F", "Female")]
+    [InlineData("m", "Male")]
+    [InlineData("f", "Female")]
+    [InlineData("Male", "Male")]
+    [InlineData("Female", "Female")]
+    public async Task GenderValues_NormalisedCorrectly(string inputGender, string expectedGender)
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            ["Bib", "Name", "Club", "M/F", "Age"],
+            ["1", "Runner One", "Club A", inputGender, "25"],
+        ]);
+
+        await Service.UploadEntrantsAsync([file]);
+
+        var stats = Service.GetRaceStats();
+        if (expectedGender == "Male")
+            Assert.Equal(1, stats.TotalMales);
+        else
+            Assert.Equal(1, stats.TotalFemales);
+    }
+
     private async Task SeedFullRace()
     {
         await Service.UploadEntrantsAsync([FormFileHelpers.CreateXlsx("e.xlsx",

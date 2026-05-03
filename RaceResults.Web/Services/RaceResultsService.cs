@@ -501,9 +501,9 @@ public class RaceResultsService : IRaceResultsService
         var headerMap = GetHeaderMap(sheet.Row(1));
         var required = new[]
         {
-            new[] { "bib", "bibnumber", "bibno", "number" },
+            new[] { "bib", "bibnumber", "bibno", "number", "racenumber" },
             new[] { "name", "fullname", "runnername" },
-            new[] { "gender", "sex" },
+            new[] { "gender", "sex", "mf" },
             new[] { "age" }
         };
 
@@ -529,10 +529,10 @@ public class RaceResultsService : IRaceResultsService
                 continue;
             }
 
-            var bib = ReadCell(row, headerMap, new[] { "bib", "bibnumber", "bibno", "number" });
+            var bib = ReadCell(row, headerMap, new[] { "bib", "bibnumber", "bibno", "number", "racenumber" });
             var name = ReadCell(row, headerMap, new[] { "name", "fullname", "runnername" });
-            var club = ReadCell(row, headerMap, new[] { "club", "team" });
-            var gender = ReadCell(row, headerMap, new[] { "gender", "sex" });
+            var club = ReadCell(row, headerMap, new[] { "club", "team", "clubname" });
+            var gender = ReadCell(row, headerMap, new[] { "gender", "sex", "mf" });
             var ageRaw = ReadCell(row, headerMap, new[] { "age" });
 
             if (string.IsNullOrWhiteSpace(bib) || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(gender) || string.IsNullOrWhiteSpace(ageRaw))
@@ -569,7 +569,7 @@ public class RaceResultsService : IRaceResultsService
             errors.Add($"{fileName}: missing required column (position).");
         }
 
-        if (FindColumnIndex(headerMap, new[] { "bib", "bibnumber", "bibno", "number" }) is null)
+        if (FindColumnIndex(headerMap, new[] { "bib", "bibnumber", "bibno", "number", "racenumber" }) is null)
         {
             errors.Add($"{fileName}: missing required column (bib).");
         }
@@ -589,7 +589,7 @@ public class RaceResultsService : IRaceResultsService
             }
 
             var positionRaw = ReadCell(row, headerMap, new[] { "position", "finishposition", "place" });
-            var bib = ReadCell(row, headerMap, new[] { "bib", "bibnumber", "bibno", "number" });
+            var bib = ReadCell(row, headerMap, new[] { "bib", "bibnumber", "bibno", "number", "racenumber" });
 
             if (!int.TryParse(positionRaw, out var position) || position < 1)
             {

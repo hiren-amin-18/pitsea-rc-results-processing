@@ -157,21 +157,22 @@ To use a custom database path, add a connection string to `appsettings.json`:
 
 | Column | Required | Accepted header names |
 |---|---|---|
-| Bib number | ✅ | `Bib`, `BibNumber`, `BibNo`, `Number` |
+| Bib number | ✅ | `Bib`, `BibNumber`, `BibNo`, `Number`, `Race Number` |
 | Name | ✅ | `Name`, `FullName`, `RunnerName` |
-| Gender | ✅ | `Gender`, `Sex` |
+| Gender | ✅ | `Gender`, `Sex`, `M/F` |
 | Age | ✅ | `Age` |
-| Club | ❌ | `Club`, `Team` |
+| Club | ❌ | `Club`, `Team`, `Club Name` |
 
 - Multiple files can be uploaded at once (e.g. online pre-registration + on-the-day sign-ups)
 - Duplicate bib numbers across files are rejected
+- Gender values are normalised: anything starting with `M` → `Male`, `F` → `Female`
 
 ### Finish bib file (`.xlsx`)
 
 | Column | Required | Accepted header names |
 |---|---|---|
 | Position | ✅ | `Position`, `FinishPosition`, `Place` |
-| Bib | ✅ | `Bib`, `BibNumber`, `BibNo`, `Number` |
+| Bib | ✅ | `Bib`, `BibNumber`, `BibNo`, `Number`, `Race Number` |
 
 ### Timing file (`.csv` or `.xlsx`)
 

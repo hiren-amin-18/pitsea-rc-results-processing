@@ -129,6 +129,23 @@ public class UploadFinishBibTests : RaceResultsServiceTestBase
         Assert.Equal(0, Service.GetStatusCounts().TimingCount);
     }
 
+    [Fact]
+    public async Task RaceNumberHeader_AcceptedAsBibAlias()
+    {
+        await SeedEntrants();
+        var file = FormFileHelpers.CreateXlsx("finish.xlsx",
+        [
+            ["Position", "Race Number"],
+            ["1", "1"],
+            ["2", "2"],
+        ]);
+
+        var result = await Service.UploadFinishBibAsync(file);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, Service.GetStatusCounts().FinishBibCount);
+    }
+
     private async Task SeedEntrants()
     {
         await Service.UploadEntrantsAsync([FormFileHelpers.CreateXlsx("e.xlsx",
