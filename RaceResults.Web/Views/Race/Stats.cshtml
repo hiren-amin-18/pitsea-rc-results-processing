@@ -74,13 +74,18 @@
             const minuteLabels = @Html.Raw(JsonSerializer.Serialize(Model.FinishersPerMinute.Select(x => x.Label)));
             const minuteValues = @Html.Raw(JsonSerializer.Serialize(Model.FinishersPerMinute.Select(x => x.Value)));
 
+            const vividPaletteLight = ["#0066ff", "#ff6a00", "#00c2ff", "#ff2ea6", "#7a33ff", "#24cc6b", "#ffbf00", "#ff3b30", "#00b894", "#6c5ce7"];
+            const vividPaletteDark = ["#4da3ff", "#ff9f43", "#45d6ff", "#ff66c4", "#b084ff", "#42e88f", "#ffd166", "#ff6b6b", "#33d9b2", "#a29bfe"];
+            const activePalette = isDark ? vividPaletteDark : vividPaletteLight;
+            const clubBarColors = clubLabels.map((_, index) => activePalette[index % activePalette.length]);
+
             new Chart(document.getElementById("genderChart"), {
                 type: "doughnut",
                 data: {
                     labels: ["Male", "Female"],
                     datasets: [{
                         data: genderValues,
-                        backgroundColor: isDark ? ["#7db3ff", "#ffb56d"] : ["#0d6efd", "#e67e22"]
+                        backgroundColor: [activePalette[0], activePalette[1]]
                     }]
                 },
                 options: {
@@ -100,7 +105,7 @@
                     datasets: [{
                         label: "Count",
                         data: categoryValues,
-                        backgroundColor: isDark ? ["#7db3ff", "#ffb56d", "#5ad4ff", "#f9d27b"] : ["#0d6efd", "#e67e22", "#0dcaf0", "#ffc107"]
+                        backgroundColor: [activePalette[0], activePalette[1], activePalette[2], activePalette[3]]
                     }]
                 },
                 options: {
@@ -120,7 +125,7 @@
                     datasets: [{
                         label: "Finishers",
                         data: clubValues,
-                        backgroundColor: isDark ? "#7db3ff" : "#0d6efd"
+                        backgroundColor: clubBarColors
                     }]
                 },
                 options: {
@@ -141,8 +146,8 @@
                     datasets: [{
                         label: "Finishers",
                         data: minuteValues,
-                        borderColor: isDark ? "#ffb56d" : "#e67e22",
-                        backgroundColor: isDark ? "rgba(255,181,109,0.25)" : "rgba(230,126,34,0.2)",
+                        borderColor: activePalette[4],
+                        backgroundColor: isDark ? "rgba(176,132,255,0.28)" : "rgba(122,51,255,0.20)",
                         fill: true,
                         tension: 0.25
                     }]
