@@ -9,7 +9,6 @@ An ASP.NET Core MVC web application for processing race results. Built for race 
 - [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
-- [App Screenshots](#app-screenshots)
 - [Project Structure](#project-structure)
 - [Data Persistence](#data-persistence)
 - [Upload File Formats](#upload-file-formats)
@@ -73,28 +72,6 @@ The shared layout expects the following logo files:
 - `RaceResults.Web/wwwroot/images/pitsea-logo-black.png`
 
 If these files are missing, the navbar logo will not render.
-
-## App Screenshots
-
-### Home
-
-![Home page](docs/screenshots/home.png)
-
-### Uploads
-
-![Uploads page](docs/screenshots/uploads.png)
-
-### Results
-
-![Results page](docs/screenshots/results.png)
-
-### Stats
-
-![Stats page](docs/screenshots/stats.png)
-
-### Dark Mode Example
-
-![Home page in dark mode](docs/screenshots/home-dark.png)
 
 ---
 
