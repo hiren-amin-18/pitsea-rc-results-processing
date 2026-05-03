@@ -41,6 +41,34 @@ public class ResultsControllerTests : IClassFixture<RaceResultsWebFactory>
     }
 
     [Fact]
+    public async Task Stats_Get_ContainsGraphCanvases()
+    {
+        var response = await _client.GetAsync("/Race/Stats");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("id=\"genderChart\"", html);
+        Assert.Contains("id=\"categoryChart\"", html);
+        Assert.Contains("id=\"clubChart\"", html);
+        Assert.Contains("id=\"minuteChart\"", html);
+    }
+
+    [Fact]
+    public async Task Stats_Get_WithSeededData_ContainsClubAndMinuteBreakdownData()
+    {
+        await SeedDatabaseDirectly();
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/Race/Stats");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Club A", html);
+        Assert.Contains("Club B", html);
+        Assert.Contains("\"20\"", html);
+        Assert.Contains("\"21\"", html);
+    }
+
+    [Fact]
     public async Task Top10_Get_ReturnsOk()
     {
         var response = await _client.GetAsync("/Race/Top10");

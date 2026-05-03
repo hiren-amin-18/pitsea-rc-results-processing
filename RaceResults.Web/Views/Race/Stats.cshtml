@@ -1,17 +1,163 @@
-@model RaceResults.Web.Models.RaceStats
+@using System.Text.Json
+@model RaceResults.Web.Models.RaceStatsDashboardViewModel
 @{
     ViewData["Title"] = "Race Stats";
+    var clubChartHeight = Math.Max(320, Model.ClubBreakdown.Count * 30);
 }
 
 <h1>Race Statistics</h1>
 
 <div class="row g-3 mt-1">
-    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Males</h5><p class="display-6">@Model.TotalMales</p></div></div></div>
-    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Females</h5><p class="display-6">@Model.TotalFemales</p></div></div></div>
-    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Males (U18)</h5><p class="display-6">@Model.TotalMalesU18</p></div></div></div>
-    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Females (U18)</h5><p class="display-6">@Model.TotalFemalesU18</p></div></div></div>
-    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Males Unaffiliated (Excl U18)</h5><p class="display-6">@Model.TotalMalesUnaffiliatedExcludingU18</p></div></div></div>
-    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Females Unaffiliated (Excl U18)</h5><p class="display-6">@Model.TotalFemalesUnaffiliatedExcludingU18</p></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Males</h5><p class="display-6">@Model.Stats.TotalMales</p></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Females</h5><p class="display-6">@Model.Stats.TotalFemales</p></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Males (U18)</h5><p class="display-6">@Model.Stats.TotalMalesU18</p></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Females (U18)</h5><p class="display-6">@Model.Stats.TotalFemalesU18</p></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Males Unaffiliated (Excl U18)</h5><p class="display-6">@Model.Stats.TotalMalesUnaffiliatedExcludingU18</p></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Females Unaffiliated (Excl U18)</h5><p class="display-6">@Model.Stats.TotalFemalesUnaffiliatedExcludingU18</p></div></div></div>
+</div>
+
+<div class="row g-3 mt-2">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Male / Female</h5>
+                <div style="height: 280px;"><canvas id="genderChart" aria-label="Male female breakdown"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Category Breakdown</h5>
+                <div style="height: 280px;"><canvas id="categoryChart" aria-label="Category breakdown"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Club Breakdown</h5>
+                <div style="height: @(clubChartHeight)px;"><canvas id="clubChart" aria-label="Club breakdown"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Time Per Minute vs Finishers</h5>
+                <div style="height: 320px;"><canvas id="minuteChart" aria-label="Finishers per minute"></canvas></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <p class="mt-3 text-muted">Unaffiliated means runners without a club.</p>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        (() => {
+            if (!window.Chart) {
+                return;
+            }
+
+            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+            const textColor = isDark ? "#eef4ff" : "#18212f";
+            const gridColor = isDark ? "#2f4359" : "#dbe2ec";
+
+            const genderValues = [@Model.Stats.TotalMales, @Model.Stats.TotalFemales];
+            const categoryValues = [@Model.Stats.TotalMales, @Model.Stats.TotalFemales, @Model.Stats.TotalMalesU18, @Model.Stats.TotalFemalesU18];
+
+            const clubLabels = @Html.Raw(JsonSerializer.Serialize(Model.ClubBreakdown.Select(x => x.Label)));
+            const clubValues = @Html.Raw(JsonSerializer.Serialize(Model.ClubBreakdown.Select(x => x.Value)));
+
+            const minuteLabels = @Html.Raw(JsonSerializer.Serialize(Model.FinishersPerMinute.Select(x => x.Label)));
+            const minuteValues = @Html.Raw(JsonSerializer.Serialize(Model.FinishersPerMinute.Select(x => x.Value)));
+
+            new Chart(document.getElementById("genderChart"), {
+                type: "doughnut",
+                data: {
+                    labels: ["Male", "Female"],
+                    datasets: [{
+                        data: genderValues,
+                        backgroundColor: isDark ? ["#7db3ff", "#ffb56d"] : ["#0d6efd", "#e67e22"]
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: textColor }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById("categoryChart"), {
+                type: "bar",
+                data: {
+                    labels: ["Male", "Female", "Male (U18)", "Female (U18)"],
+                    datasets: [{
+                        label: "Count",
+                        data: categoryValues,
+                        backgroundColor: isDark ? ["#7db3ff", "#ffb56d", "#5ad4ff", "#f9d27b"] : ["#0d6efd", "#e67e22", "#0dcaf0", "#ffc107"]
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+                        y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            new Chart(document.getElementById("clubChart"), {
+                type: "bar",
+                data: {
+                    labels: clubLabels,
+                    datasets: [{
+                        label: "Finishers",
+                        data: clubValues,
+                        backgroundColor: isDark ? "#7db3ff" : "#0d6efd"
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    indexAxis: "y",
+                    scales: {
+                        x: { beginAtZero: true, ticks: { color: textColor, precision: 0 }, grid: { color: gridColor } },
+                        y: { ticks: { color: textColor, autoSkip: false, font: { size: 11 } }, grid: { color: gridColor } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            new Chart(document.getElementById("minuteChart"), {
+                type: "line",
+                data: {
+                    labels: minuteLabels,
+                    datasets: [{
+                        label: "Finishers",
+                        data: minuteValues,
+                        borderColor: isDark ? "#ffb56d" : "#e67e22",
+                        backgroundColor: isDark ? "rgba(255,181,109,0.25)" : "rgba(230,126,34,0.2)",
+                        fill: true,
+                        tension: 0.25
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: "Minute", color: textColor }, ticks: { color: textColor }, grid: { color: gridColor } },
+                        y: { beginAtZero: true, title: { display: true, text: "Finishers", color: textColor }, ticks: { color: textColor }, grid: { color: gridColor } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: textColor } }
+                    }
+                }
+            });
+        })();
+    </script>
+}

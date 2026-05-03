@@ -102,7 +102,32 @@ public class RaceController : Controller
     [HttpGet]
     public IActionResult Stats()
     {
-        var model = _raceResultsService.GetRaceStats();
+        var stats = _raceResultsService.GetRaceStats();
+        var results = _raceResultsService.GetCollatedResults();
+
+        var clubBreakdown = results
+            .GroupBy(r => string.IsNullOrWhiteSpace(r.Club) ? "Unaffiliated" : r.Club, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new BreakdownItem { Label = g.Key, Value = g.Count() })
+            .OrderByDescending(x => x.Value)
+            .ThenBy(x => x.Label)
+            .ToList();
+
+        var finishersPerMinute = results
+            .Select(r => TimeSpan.TryParse(r.Time, out var parsed) ? parsed : (TimeSpan?)null)
+            .Where(t => t.HasValue)
+            .Select(t => (int)Math.Floor(t!.Value.TotalMinutes))
+            .GroupBy(minute => minute)
+            .Select(g => new BreakdownItem { Label = g.Key.ToString(), Value = g.Count() })
+            .OrderBy(x => int.Parse(x.Label))
+            .ToList();
+
+        var model = new RaceStatsDashboardViewModel
+        {
+            Stats = stats,
+            ClubBreakdown = clubBreakdown,
+            FinishersPerMinute = finishersPerMinute
+        };
+
         return View(model);
     }
 

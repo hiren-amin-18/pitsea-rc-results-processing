@@ -33,7 +33,7 @@ An ASP.NET Core MVC web application for processing race results. Built for race 
 | **Collated results view** | All results in finish order, with name, club, gender, age, and time |
 | **DNF indication** | Entrants without a finish row are listed separately |
 | **Edit results** | Correct any result row (position, bib, time) without re-uploading files |
-| **Race stats** | Total males/females, U18 counts, unaffiliated adult counts by gender |
+| **Race stats + graphs** | Totals plus chart breakdowns for Male/Female, category, club, and finishers per minute |
 | **Top 10 by category** | Top 10 finishers for Male, Female, Male U18, Female U18 |
 | **PDF export** | Download a formatted PDF of the full results and DNF list |
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
@@ -100,7 +100,8 @@ pitsea-rc-results-processing/
 │   │   ├── RaceStatusCounts.cs
 │   │   ├── UploadsViewModel.cs
 │   │   ├── ResultsPageViewModel.cs
-│   │   └── HomeDashboardViewModel.cs
+│   │   ├── HomeDashboardViewModel.cs
+│   │   └── RaceStatsDashboardViewModel.cs
 │   ├── Services/
 │   │   ├── IRaceResultsService.cs      # Service interface
 │   │   └── RaceResultsService.cs       # Implementation (file parsing, business logic)
@@ -127,7 +128,7 @@ pitsea-rc-results-processing/
 │   ├── EditResultTests.cs
 │   └── PdfGenerationTests.cs
 │
-├── RaceResults.IntegrationTests/       # xUnit integration tests (15 tests)
+├── RaceResults.IntegrationTests/       # xUnit integration tests (17 tests)
 │   ├── RaceResultsWebFactory.cs        # WebApplicationFactory with in-memory SQLite
 │   ├── MultipartHelpers.cs             # Multipart form builders for file uploads
 │   ├── HomeControllerTests.cs
@@ -217,7 +218,7 @@ The typical sequence for processing results after a race:
 3. Uploads page  →  Upload timing file (.csv or .xlsx)
 4. Results page  →  Review collated results and DNF list
 5. Results page  →  Edit any incorrect rows if needed
-6. Stats page    →  View gender/age/affiliation breakdowns
+6. Stats page    →  View numeric stats and chart breakdowns (gender, category, club, finishers/minute)
 7. Top 10 page   →  View category leaders
 8. Results page  →  Export PDF
 ```
@@ -269,8 +270,8 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 | Project | Tests | Approach |
 |---|---|---|
 | `RaceResults.UnitTests` | 42 | Tests `RaceResultsService` directly against an isolated in-memory SQLite DB per test |
-| `RaceResults.IntegrationTests` | 15 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **57** | |
+| `RaceResults.IntegrationTests` | 17 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
+| **Total** | **59** | |
 
 ---
 

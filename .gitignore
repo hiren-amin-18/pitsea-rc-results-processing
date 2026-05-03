@@ -55,3 +55,6 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+RaceResults.Web/raceresults.db-wal
+RaceResults.Web/raceresults.db-shm
+RaceResults.Web/raceresults.db
