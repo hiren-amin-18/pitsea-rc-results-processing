@@ -73,7 +73,7 @@ public class UploadFinishBibTests : RaceResultsServiceTestBase
         var result = await Service.UploadFinishBibAsync(file);
 
         Assert.False(result.Success);
-        Assert.Contains(result.Errors, e => e.Contains("Duplicate finish positions"));
+        Assert.Contains(result.Errors, e => e.Contains("row 3") && e.Contains("duplicate position"));
     }
 
     [Fact]
@@ -90,7 +90,23 @@ public class UploadFinishBibTests : RaceResultsServiceTestBase
         var result = await Service.UploadFinishBibAsync(file);
 
         Assert.False(result.Success);
-        Assert.Contains(result.Errors, e => e.Contains("Duplicate bib numbers"));
+        Assert.Contains(result.Errors, e => e.Contains("row 3") && e.Contains("duplicate bib"));
+    }
+
+    [Fact]
+    public async Task MissingRequiredColumn_ReturnsFailureWithLineNumber()
+    {
+        await SeedEntrants();
+        var file = FormFileHelpers.CreateXlsx("finish.xlsx",
+        [
+            ["Place"],
+            ["1"],
+        ]);
+
+        var result = await Service.UploadFinishBibAsync(file);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("row 1") && e.Contains("missing required column"));
     }
 
     [Fact]
@@ -136,6 +152,23 @@ public class UploadFinishBibTests : RaceResultsServiceTestBase
         var file = FormFileHelpers.CreateXlsx("finish.xlsx",
         [
             ["Position", "Race Number"],
+            ["1", "1"],
+            ["2", "2"],
+        ]);
+
+        var result = await Service.UploadFinishBibAsync(file);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, Service.GetStatusCounts().FinishBibCount);
+    }
+
+    [Fact]
+    public async Task RaceNoHeader_AcceptedAsBibAlias()
+    {
+        await SeedEntrants();
+        var file = FormFileHelpers.CreateXlsx("finish.xlsx",
+        [
+            ["Position", "Race No"],
             ["1", "1"],
             ["2", "2"],
         ]);

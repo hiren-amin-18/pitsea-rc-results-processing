@@ -157,7 +157,7 @@ To use a custom database path, add a connection string to `appsettings.json`:
 
 | Column | Required | Accepted header names |
 |---|---|---|
-| Bib number | ✅ | `Bib`, `BibNumber`, `BibNo`, `Number`, `Race Number` |
+| Bib number | ✅ | `Bib`, `BibNumber`, `BibNo`, `Bib Num`, `Number`, `Race Number`, `Race No`, `Runner Number` |
 | Name | ✅ | `Name`, `FullName`, `RunnerName` |
 | Gender | ✅ | `Gender`, `Sex`, `M/F` |
 | Age | ❌ | `Age` |
@@ -172,7 +172,7 @@ To use a custom database path, add a connection string to `appsettings.json`:
 | Column | Required | Accepted header names |
 |---|---|---|
 | Position | ✅ | `Position`, `FinishPosition`, `Place` |
-| Bib | ✅ | `Bib`, `BibNumber`, `BibNo`, `Number`, `Race Number` |
+| Bib | ✅ | `Bib`, `BibNumber`, `BibNo`, `Bib Num`, `Number`, `Race Number`, `Race No`, `Runner Number` |
 
 ### Timing file (`.csv` or `.xlsx`)
 

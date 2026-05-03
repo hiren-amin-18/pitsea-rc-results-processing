@@ -114,16 +114,6 @@ public class RaceResultsService : IRaceResultsService
         await using var stream = file.OpenReadStream();
         ParseFinishBibWorkbook(stream, file.FileName, rows, errors);
 
-        if (rows.GroupBy(r => r.Position).Any(g => g.Count() > 1))
-        {
-            errors.Add("Duplicate finish positions detected in finish bib file.");
-        }
-
-        if (rows.GroupBy(r => r.BibNumber, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
-        {
-            errors.Add("Duplicate bib numbers detected in finish bib file.");
-        }
-
         var entrantBibSet = await checkDb.Entrants.Select(e => e.BibNumber).ToHashSetAsync(StringComparer.OrdinalIgnoreCase);
         var unmatched = rows
             .Where(r => !entrantBibSet.Contains(r.BibNumber))
@@ -182,7 +172,7 @@ public class RaceResultsService : IRaceResultsService
         await using var stream = file.OpenReadStream();
         if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
         {
-            ParseTimingsCsv(stream, rows, errors);
+            ParseTimingsCsv(stream, file.FileName, rows, errors);
         }
         else if (file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
         {
@@ -198,13 +188,14 @@ public class RaceResultsService : IRaceResultsService
             return OperationResult.Fail(errors);
         }
 
-        if (rows.ContainsKey(0) && !rows.ContainsKey(1))
-        {
-            rows = rows.ToDictionary(kvp => kvp.Key + 1, kvp => kvp.Value);
-        }
-
         var finishPositions = await db.FinishBibRecords.Select(r => r.Position).OrderBy(x => x).ToListAsync();
         var timingPositions = rows.Keys.OrderBy(x => x).ToList();
+
+        if (ShouldShiftTimingPositions(finishPositions, timingPositions))
+        {
+            rows = rows.ToDictionary(kvp => kvp.Key + 1, kvp => kvp.Value);
+            timingPositions = rows.Keys.OrderBy(x => x).ToList();
+        }
 
         var missing = finishPositions.Except(timingPositions).ToList();
         var extra = timingPositions.Except(finishPositions).ToList();
@@ -231,6 +222,25 @@ public class RaceResultsService : IRaceResultsService
 
         _logger.LogInformation("Timings uploaded: {Count} rows.", rows.Count);
         return OperationResult.Ok($"Loaded {rows.Count} timing rows.");
+    }
+
+    private static bool ShouldShiftTimingPositions(IReadOnlyCollection<int> finishPositions, IReadOnlyCollection<int> timingPositions)
+    {
+        if (!timingPositions.Contains(0))
+        {
+            return false;
+        }
+
+        var finishSet = finishPositions.ToHashSet();
+        var timingSet = timingPositions.ToHashSet();
+
+        if (finishSet.SetEquals(timingSet))
+        {
+            return false;
+        }
+
+        var shiftedTimingSet = timingSet.Select(p => p + 1).ToHashSet();
+        return finishSet.SetEquals(shiftedTimingSet);
     }
 
     public IReadOnlyList<ResultRecord> GetCollatedResults()
@@ -501,7 +511,7 @@ public class RaceResultsService : IRaceResultsService
         var headerMap = GetHeaderMap(sheet.Row(1));
         var required = new[]
         {
-            new[] { "bib", "bibnumber", "bibno", "number", "racenumber" },
+            new[] { "bib", "bibnumber", "bibno", "bibnum", "number", "racenumber", "raceno", "runnernumber" },
             new[] { "name", "fullname", "runnername" },
             new[] { "gender", "sex", "mf" }
         };
@@ -510,7 +520,7 @@ public class RaceResultsService : IRaceResultsService
         {
             if (FindColumnIndex(headerMap, requiredSet) is null)
             {
-                errors.Add($"{fileName}: missing required column ({requiredSet[0]}).");
+                errors.Add($"{fileName} row 1: missing required column ({requiredSet[0]}).");
             }
         }
 
@@ -528,7 +538,7 @@ public class RaceResultsService : IRaceResultsService
                 continue;
             }
 
-            var bib = ReadCell(row, headerMap, new[] { "bib", "bibnumber", "bibno", "number", "racenumber" });
+            var bib = ReadCell(row, headerMap, new[] { "bib", "bibnumber", "bibno", "bibnum", "number", "racenumber", "raceno", "runnernumber" });
             var name = ReadCell(row, headerMap, new[] { "name", "fullname", "runnername" });
             var club = ReadCell(row, headerMap, new[] { "club", "team", "clubname" });
             var gender = ReadCell(row, headerMap, new[] { "gender", "sex", "mf" });
@@ -570,12 +580,12 @@ public class RaceResultsService : IRaceResultsService
 
         if (FindColumnIndex(headerMap, new[] { "position", "finishposition", "place" }) is null)
         {
-            errors.Add($"{fileName}: missing required column (position).");
+            errors.Add($"{fileName} row 1: missing required column (position).");
         }
 
-        if (FindColumnIndex(headerMap, new[] { "bib", "bibnumber", "bibno", "number", "racenumber" }) is null)
+        if (FindColumnIndex(headerMap, new[] { "bib", "bibnumber", "bibno", "bibnum", "number", "racenumber", "raceno", "runnernumber" }) is null)
         {
-            errors.Add($"{fileName}: missing required column (bib).");
+            errors.Add($"{fileName} row 1: missing required column (bib).");
         }
 
         if (errors.Count > 0)
@@ -583,6 +593,8 @@ public class RaceResultsService : IRaceResultsService
             return;
         }
 
+        var firstPositionRow = new Dictionary<int, int>();
+        var firstBibRow = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var lastRow = sheet.LastRowUsed()?.RowNumber() ?? 1;
         for (var rowNumber = 2; rowNumber <= lastRow; rowNumber++)
         {
@@ -593,7 +605,7 @@ public class RaceResultsService : IRaceResultsService
             }
 
             var positionRaw = ReadCell(row, headerMap, new[] { "position", "finishposition", "place" });
-            var bib = ReadCell(row, headerMap, new[] { "bib", "bibnumber", "bibno", "number", "racenumber" });
+            var bib = ReadCell(row, headerMap, new[] { "bib", "bibnumber", "bibno", "bibnum", "number", "racenumber", "raceno", "runnernumber" });
 
             if (!int.TryParse(positionRaw, out var position) || position < 1)
             {
@@ -607,10 +619,26 @@ public class RaceResultsService : IRaceResultsService
                 continue;
             }
 
+            if (firstPositionRow.TryGetValue(position, out var firstPositionSeenAt))
+            {
+                errors.Add($"{fileName} row {rowNumber}: duplicate position ({position}), first seen at row {firstPositionSeenAt}.");
+                continue;
+            }
+
+            var trimmedBib = bib.Trim();
+            if (firstBibRow.TryGetValue(trimmedBib, out var firstBibSeenAt))
+            {
+                errors.Add($"{fileName} row {rowNumber}: duplicate bib ({trimmedBib}), first seen at row {firstBibSeenAt}.");
+                continue;
+            }
+
+            firstPositionRow[position] = rowNumber;
+            firstBibRow[trimmedBib] = rowNumber;
+
             rows.Add(new FinishBibRecord
             {
                 Position = position,
-                BibNumber = bib.Trim()
+                BibNumber = trimmedBib
             });
         }
     }
@@ -623,12 +651,12 @@ public class RaceResultsService : IRaceResultsService
 
         if (FindColumnIndex(headerMap, new[] { "position", "finishposition", "place" }) is null)
         {
-            errors.Add($"{fileName}: missing required column (position).");
+            errors.Add($"{fileName} row 1: missing required column (position).");
         }
 
         if (FindColumnIndex(headerMap, new[] { "time", "timing", "finishtime" }) is null)
         {
-            errors.Add($"{fileName}: missing required column (time).");
+            errors.Add($"{fileName} row 1: missing required column (time).");
         }
 
         if (errors.Count > 0)
@@ -667,13 +695,15 @@ public class RaceResultsService : IRaceResultsService
         }
     }
 
-    private static void ParseTimingsCsv(Stream stream, Dictionary<int, string> rows, List<string> errors)
+    private static void ParseTimingsCsv(Stream stream, string fileName, Dictionary<int, string> rows, List<string> errors)
     {
         using var reader = new StreamReader(stream);
         using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
 
+        var rowNumber = 0;
         while (csv.Read())
         {
+            rowNumber++;
             var col0 = csv.GetField(0)?.Trim();
             if (string.IsNullOrWhiteSpace(col0))
             {
@@ -689,19 +719,19 @@ public class RaceResultsService : IRaceResultsService
 
             if (!int.TryParse(col0, out var position))
             {
-                errors.Add($"Invalid timing position in CSV: {col0}");
+                errors.Add($"{fileName} row {rowNumber}: invalid position ({col0}).");
                 continue;
             }
 
             if (string.IsNullOrWhiteSpace(time))
             {
-                errors.Add($"Missing timing value for position {position}");
+                errors.Add($"{fileName} row {rowNumber}: time is required.");
                 continue;
             }
 
             if (!rows.TryAdd(position, time))
             {
-                errors.Add($"Duplicate timing position in CSV: {position}");
+                errors.Add($"{fileName} row {rowNumber}: duplicate timing position ({position}).");
             }
         }
     }

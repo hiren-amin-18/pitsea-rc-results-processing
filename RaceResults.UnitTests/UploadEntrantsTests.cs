@@ -71,7 +71,7 @@ public class UploadEntrantsTests : RaceResultsServiceTestBase
         var result = await Service.UploadEntrantsAsync([file]);
 
         Assert.False(result.Success);
-        Assert.Contains(result.Errors, e => e.Contains("missing required column"));
+        Assert.Contains(result.Errors, e => e.Contains("row 1") && e.Contains("missing required column"));
     }
 
     [Fact]
@@ -171,6 +171,22 @@ public class UploadEntrantsTests : RaceResultsServiceTestBase
             ["Race Number", "Name", "Club Name", "M/F", "Age"],
             ["1", "Alice Smith", "Club A", "F", "30"],
             ["2", "Bob Jones", "Club B", "M", "25"],
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, Service.GetStatusCounts().EntrantCount);
+    }
+
+    [Fact]
+    public async Task RaceNoHeader_AcceptedAsBibAlias()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            ["Race No", "Name", "Club", "Gender"],
+            ["10", "Alice Smith", "Club A", "Female"],
+            ["11", "Bob Jones", "Club B", "Male"],
         ]);
 
         var result = await Service.UploadEntrantsAsync([file]);

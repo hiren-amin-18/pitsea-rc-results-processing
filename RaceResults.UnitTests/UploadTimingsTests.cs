@@ -78,6 +78,40 @@ public class UploadTimingsTests : RaceResultsServiceTestBase
     }
 
     [Fact]
+    public async Task CsvWithZeroBasedRangeIncludingOne_RemappedToOneBased()
+    {
+        await Service.UploadEntrantsAsync([FormFileHelpers.CreateXlsx("e.xlsx",
+        [
+            EntrantHeader,
+            ["1", "Alice", "Club A", "Female", "20"],
+            ["2", "Bob", "Club B", "Male", "22"],
+            ["3", "Cara", "Club C", "Female", "24"],
+        ])]);
+
+        await Service.UploadFinishBibAsync(FormFileHelpers.CreateXlsx("fb.xlsx",
+        [
+            FinishHeader,
+            ["1", "1"],
+            ["2", "2"],
+            ["3", "3"],
+        ]));
+
+        // CSV is zero-based and includes both 0 and 1 (0,1,2) so remapping must still occur.
+        var csv = "STARTOFEVENT,x,x\n0,x,00:20:00\n1,x,00:21:00\n2,x,00:22:00\n";
+        var file = FormFileHelpers.CreateCsv("timings.csv", csv);
+
+        var result = await Service.UploadTimingsAsync(file);
+
+        Assert.True(result.Success);
+        Assert.Equal(3, Service.GetStatusCounts().TimingCount);
+
+        var collated = Service.GetCollatedResults();
+        Assert.Equal("00:20:00", collated.Single(r => r.Position == 1).Time);
+        Assert.Equal("00:21:00", collated.Single(r => r.Position == 2).Time);
+        Assert.Equal("00:22:00", collated.Single(r => r.Position == 3).Time);
+    }
+
+    [Fact]
     public async Task ValidXlsx_LoadsTimings()
     {
         await SeedEntrantsAndFinishBib();
@@ -120,6 +154,34 @@ public class UploadTimingsTests : RaceResultsServiceTestBase
 
         Assert.False(result.Success);
         Assert.Contains(result.Errors, e => e.Contains("unexpected positions"));
+    }
+
+    [Fact]
+    public async Task CsvInvalidPosition_ReturnsFailureWithLineNumber()
+    {
+        await SeedEntrantsAndFinishBib();
+        var file = FormFileHelpers.CreateCsv("timings.csv", "STARTOFEVENT,x,x\nX,x,00:20:00\n");
+
+        var result = await Service.UploadTimingsAsync(file);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("row 2") && e.Contains("invalid position"));
+    }
+
+    [Fact]
+    public async Task XlsxMissingRequiredColumn_ReturnsFailureWithLineNumber()
+    {
+        await SeedEntrantsAndFinishBib();
+        var file = FormFileHelpers.CreateXlsx("timings.xlsx",
+        [
+            ["Position"],
+            ["1"],
+        ]);
+
+        var result = await Service.UploadTimingsAsync(file);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("row 1") && e.Contains("missing required column"));
     }
 
     private async Task SeedEntrantsAndFinishBib()
