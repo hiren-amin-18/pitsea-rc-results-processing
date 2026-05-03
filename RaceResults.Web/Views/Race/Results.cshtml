@@ -1,0 +1,71 @@
+@model RaceResults.Web.Models.ResultsPageViewModel
+@{
+    ViewData["Title"] = "Results";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Collated Results</h1>
+    <a class="btn btn-outline-primary" asp-action="ExportPdf">Export PDF</a>
+</div>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var feedbackType = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
+}
+
+@if (!Model.Results.Any())
+{
+    <div class="alert alert-info">No collated results yet. Upload files first.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Pos</th>
+                    <th>Time</th>
+                    <th>Bib</th>
+                    <th>Name</th>
+                    <th>Club</th>
+                    <th>Gender</th>
+                    <th>Age</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.Results)
+            {
+                <tr>
+                    <td>@row.Position</td>
+                    <td>@row.Time</td>
+                    <td>@row.BibNumber</td>
+                    <td>@row.Name</td>
+                    <td>@row.Club</td>
+                    <td>@row.Gender</td>
+                    <td>@(row.Age?.ToString() ?? "-")</td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="EditResult" asp-route-position="@row.Position">Edit</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h2 class="mt-4">DNF</h2>
+@if (!Model.DnfEntrants.Any())
+{
+    <p>None</p>
+}
+else
+{
+    <ul>
+    @foreach (var dnf in Model.DnfEntrants)
+    {
+        <li>@dnf.BibNumber - @dnf.Name (@(string.IsNullOrWhiteSpace(dnf.Club) ? "Unaffiliated" : dnf.Club))</li>
+    }
+    </ul>
+}

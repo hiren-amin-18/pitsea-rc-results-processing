@@ -1,0 +1,23 @@
+﻿@model RaceResults.Web.Models.HomeDashboardViewModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="p-4 mb-4 bg-light rounded-3">
+    <h1>5K Race Results Application</h1>
+    <p class="lead mb-0">Upload race files, validate data, collate results, edit rows, view stats, and export PDF.</p>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Entrants</h6><p class="display-6">@Model.Entrants</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Finish Rows</h6><p class="display-6">@Model.FinishBibRows</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Timing Rows</h6><p class="display-6">@Model.TimingRows</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Collated Results</h6><p class="display-6">@Model.ResultsRows</p></div></div></div>
+</div>
+
+<div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-primary" asp-controller="Race" asp-action="Uploads">Upload Files</a>
+    <a class="btn btn-outline-primary" asp-controller="Race" asp-action="Results">View Results</a>
+    <a class="btn btn-outline-primary" asp-controller="Race" asp-action="Stats">View Stats</a>
+    <a class="btn btn-outline-primary" asp-controller="Race" asp-action="Top10">View Top 10</a>
+</div>

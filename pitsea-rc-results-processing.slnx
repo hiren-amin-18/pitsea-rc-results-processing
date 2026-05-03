@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="RaceResults.IntegrationTests/RaceResults.IntegrationTests.csproj" />
+  <Project Path="RaceResults.UnitTests/RaceResults.UnitTests.csproj" />
+  <Project Path="RaceResults.Web/RaceResults.Web.csproj" />
+</Solution>

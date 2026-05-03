@@ -1,0 +1,17 @@
+@model RaceResults.Web.Models.RaceStats
+@{
+    ViewData["Title"] = "Race Stats";
+}
+
+<h1>Race Statistics</h1>
+
+<div class="row g-3 mt-1">
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Males</h5><p class="display-6">@Model.TotalMales</p></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Females</h5><p class="display-6">@Model.TotalFemales</p></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Males (U18)</h5><p class="display-6">@Model.TotalMalesU18</p></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Females (U18)</h5><p class="display-6">@Model.TotalFemalesU18</p></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Males Unaffiliated (Excl U18)</h5><p class="display-6">@Model.TotalMalesUnaffiliatedExcludingU18</p></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Females Unaffiliated (Excl U18)</h5><p class="display-6">@Model.TotalFemalesUnaffiliatedExcludingU18</p></div></div></div>
+</div>
+
+<p class="mt-3 text-muted">Unaffiliated means runners without a club.</p>

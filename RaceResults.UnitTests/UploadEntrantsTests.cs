@@ -1,0 +1,155 @@
+using RaceResults.UnitTests.Helpers;
+
+namespace RaceResults.UnitTests;
+
+public class UploadEntrantsTests : RaceResultsServiceTestBase
+{
+    private static readonly string[] EntrantHeader = ["Bib", "Name", "Club", "Gender", "Age"];
+
+    [Fact]
+    public async Task NoFiles_ReturnsFailure()
+    {
+        var result = await Service.UploadEntrantsAsync([]);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("Upload at least one"));
+    }
+
+    [Fact]
+    public async Task NonXlsxFile_ReturnsFailure()
+    {
+        var file = FormFileHelpers.CreateCsv("entrants.csv", "Bib,Name\n1,Alice");
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains(".xlsx"));
+    }
+
+    [Fact]
+    public async Task ValidFile_LoadsEntrants()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            EntrantHeader,
+            ["1", "Alice Smith", "Club A", "Female", "30"],
+            ["2", "Bob Jones", "Club B", "Male", "25"],
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.True(result.Success);
+        var counts = Service.GetStatusCounts();
+        Assert.Equal(2, counts.EntrantCount);
+    }
+
+    [Fact]
+    public async Task DuplicateBibsInFile_ReturnsFailure()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            EntrantHeader,
+            ["1", "Alice Smith", "Club A", "Female", "30"],
+            ["1", "Bob Jones", "Club B", "Male", "25"],
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("Duplicate bib"));
+    }
+
+    [Fact]
+    public async Task MissingRequiredColumn_ReturnsFailure()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            ["Name", "Club", "Gender", "Age"],  // missing Bib
+            ["Alice Smith", "Club A", "Female", "30"],
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("missing required column"));
+    }
+
+    [Fact]
+    public async Task InvalidAge_ReturnsFailure()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            EntrantHeader,
+            ["1", "Alice Smith", "Club A", "Female", "notanumber"],
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("age is invalid"));
+    }
+
+    [Fact]
+    public async Task UploadingNewEntrants_ClearsExistingFinishBibAndTimingData()
+    {
+        // Arrange: seed all three tables via the full upload flow
+        await SeedFullRace();
+        var beforeCounts = Service.GetStatusCounts();
+        Assert.True(beforeCounts.FinishBibCount > 0);
+        Assert.True(beforeCounts.TimingCount > 0);
+
+        // Act: re-upload entrants only
+        var newEntrants = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            EntrantHeader,
+            ["99", "New Runner", "Club Z", "Male", "40"],
+        ]);
+        await Service.UploadEntrantsAsync([newEntrants]);
+
+        // Assert finish bib and timing cleared
+        var afterCounts = Service.GetStatusCounts();
+        Assert.Equal(0, afterCounts.FinishBibCount);
+        Assert.Equal(0, afterCounts.TimingCount);
+        Assert.Equal(1, afterCounts.EntrantCount);
+    }
+
+    [Fact]
+    public async Task MultipleFiles_AllEntrantsLoaded()
+    {
+        var file1 = FormFileHelpers.CreateXlsx("file1.xlsx",
+        [
+            EntrantHeader,
+            ["1", "Alice", "Club A", "Female", "20"],
+        ]);
+        var file2 = FormFileHelpers.CreateXlsx("file2.xlsx",
+        [
+            EntrantHeader,
+            ["2", "Bob", "Club B", "Male", "22"],
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file1, file2]);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, Service.GetStatusCounts().EntrantCount);
+    }
+
+    private async Task SeedFullRace()
+    {
+        await Service.UploadEntrantsAsync([FormFileHelpers.CreateXlsx("e.xlsx",
+        [
+            EntrantHeader,
+            ["1", "Alice", "Club A", "Female", "20"],
+            ["2", "Bob", "Club B", "Male", "22"],
+        ])]);
+
+        await Service.UploadFinishBibAsync(FormFileHelpers.CreateXlsx("fb.xlsx",
+        [
+            ["Position", "Bib"],
+            ["1", "2"],
+            ["2", "1"],
+        ]));
+
+        await Service.UploadTimingsAsync(FormFileHelpers.CreateCsv("t.csv",
+            "STARTOFEVENT,x,x\n1,x,00:20:00\n2,x,00:21:00\n"));
+    }
+}

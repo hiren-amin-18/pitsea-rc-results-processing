@@ -1,0 +1,48 @@
+@model IReadOnlyList<RaceResults.Web.Models.TopTenCategory>
+@{
+    ViewData["Title"] = "Top 10 by Category";
+}
+
+<h1>Top 10 by Category</h1>
+
+@foreach (var category in Model)
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <h3 class="h5">@category.Name</h3>
+
+            @if (!category.Results.Any())
+            {
+                <p class="text-muted mb-0">No results available.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Time</th>
+                                <th>Bib</th>
+                                <th>Name</th>
+                                <th>Club</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var row in category.Results)
+                        {
+                            <tr>
+                                <td>@row.Position</td>
+                                <td>@row.Time</td>
+                                <td>@row.BibNumber</td>
+                                <td>@row.Name</td>
+                                <td>@row.Club</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}

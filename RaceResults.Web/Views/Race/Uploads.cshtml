@@ -1,0 +1,75 @@
+@model RaceResults.Web.Models.UploadsViewModel
+@{
+    ViewData["Title"] = "Uploads";
+}
+
+<h1>Race File Uploads</h1>
+<p class="text-muted">Upload entrant, finish bib, and timing files in sequence.</p>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var feedbackType = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><h5 class="card-title">Entrants</h5><p class="display-6">@Model.EntrantCount</p></div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><h5 class="card-title">Finish Rows</h5><p class="display-6">@Model.FinishBibCount</p></div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><h5 class="card-title">Timing Rows</h5><p class="display-6">@Model.TimingCount</p></div></div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">1) Upload Entrants (.xlsx)</h5>
+                <p class="small text-muted">Typical files: online-registration.xlsx, on-the-day-1.xlsx, on-the-day-2.xlsx</p>
+                <form method="post" asp-action="UploadEntrants" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <input class="form-control" type="file" name="files" multiple accept=".xlsx" />
+                    </div>
+                    <button class="btn btn-primary" type="submit">Upload Entrants</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">2) Upload Finish Position + Bib (.xlsx)</h5>
+                <p class="small text-muted">Typical file: bib-position.xlsx</p>
+                <form method="post" asp-action="UploadFinishBib" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <input class="form-control" type="file" name="file" accept=".xlsx" />
+                    </div>
+                    <button class="btn btn-primary" type="submit">Upload Finish Bib</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">3) Upload Timing (.csv or .xlsx)</h5>
+                <p class="small text-muted">Typical file: timings.csv</p>
+                <form method="post" asp-action="UploadTimings" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <input class="form-control" type="file" name="file" accept=".csv,.xlsx" />
+                    </div>
+                    <button class="btn btn-primary" type="submit">Upload Timings</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
