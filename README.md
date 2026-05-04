@@ -35,7 +35,7 @@ An ASP.NET Core MVC web application for processing race results. Built for race 
 | **Edit results** | Correct any result row (position, bib, time) without re-uploading files |
 | **Race stats + graphs** | Totals plus chart breakdowns for Male/Female, category, club, and finishers per minute |
 | **Top 10 by category** | Top 10 finishers for Male, Female, Male U18, Female U18 |
-| **PDF export** | Download a formatted PDF of the full results and DNF list |
+| **PDF export** | Download a branded, race-ready PDF: first page includes winners + course records, subsequent pages continue with results table |
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
 | **Theme-aware branding** | App logo switches by theme (light uses white logo, dark uses black logo) at a fixed size |
 | **Persistent storage** | All data saved to a SQLite database and survives app restarts |
@@ -249,6 +249,19 @@ Logging writes to the console by default. Validation failures are logged as `War
 
 ---
 
+## PDF Layout
+
+The generated PDF follows the race-day format used by Pitsea Running Club:
+
+- Header on all pages: left and right `pitsea-logo-white.png` logos, `PITSEA RUNNING CLUB`, and `CROWN TO CROWN RESULTS 3rd APRIL 2026`
+- Page 1: winners summary (`1st Male`, `1st Female`, `1st Male Youth`, `1st Female Youth`) plus course records line
+- All pages: results table with columns `Position`, `Time`, `Race No`, `Name`, `Gender`, `Club Name`
+- Table styling: black header row with white text and white borders; plain white body rows
+- Column alignment in PDF table: `Position`, `Time`, `Race No`, and `Gender` are centered
+- Continuation pages: same branded header and table styling as page 1, without repeating the winners block
+
+---
+
 ## Running the Tests
 
 ```powershell
@@ -269,9 +282,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 42 | Tests `RaceResultsService` directly against an isolated in-memory SQLite DB per test |
+| `RaceResults.UnitTests` | 61 | Tests `RaceResultsService` directly against an isolated in-memory SQLite DB per test |
 | `RaceResults.IntegrationTests` | 17 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **59** | |
+| **Total** | **78** | |
 
 ---
 

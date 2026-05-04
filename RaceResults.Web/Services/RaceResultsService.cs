@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using CsvHelper;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
@@ -438,7 +439,12 @@ public class RaceResultsService : IRaceResultsService
     public byte[] GenerateResultsPdf()
     {
         var collated = GetCollatedResults();
-        var dnfs = GetDnfEntrants();
+        var logoBytes = TryLoadPdfLogo();
+
+        var maleWinner = FindWinner(collated, e => IsMale(e.Gender) && !e.IsU18);
+        var femaleWinner = FindWinner(collated, e => IsFemale(e.Gender) && !e.IsU18);
+        var maleYouthWinner = FindWinner(collated, e => IsMale(e.Gender) && e.IsU18);
+        var femaleYouthWinner = FindWinner(collated, e => IsFemale(e.Gender) && e.IsU18);
 
         var document = Document.Create(container =>
         {
@@ -448,68 +454,54 @@ public class RaceResultsService : IRaceResultsService
                 page.Size(PageSizes.A4);
                 page.DefaultTextStyle(x => x.FontSize(10));
 
-                page.Header()
-                    .Text("Pitsea RC Race Result Processor")
-                    .SemiBold()
-                    .FontSize(20)
-                    .FontColor(Colors.Blue.Darken2);
+                page.Header().Element(x => BuildPdfHeader(x, logoBytes));
 
                 page.Content().Column(column =>
                 {
-                    column.Spacing(8);
+                    column.Spacing(6);
 
-                    column.Item().Text("Final Standings").SemiBold().FontSize(14);
+                    column.Item().ShowOnce().Element(x => BuildPdfWinnersBlock(
+                        x,
+                        maleWinner,
+                        femaleWinner,
+                        maleYouthWinner,
+                        femaleYouthWinner));
 
-                    column.Item().Table(table =>
+                    column.Item().Border(1).BorderColor(Colors.Black).Table(table =>
                     {
                         table.ColumnsDefinition(def =>
                         {
-                            def.ConstantColumn(30);
+                            def.ConstantColumn(55);
                             def.ConstantColumn(62);
                             def.ConstantColumn(45);
                             def.RelativeColumn(2);
-                            def.RelativeColumn(2);
                             def.ConstantColumn(50);
-                            def.ConstantColumn(35);
+                            def.RelativeColumn(2);
                         });
 
                         table.Header(header =>
                         {
-                            header.Cell().Element(HeaderCellStyle).Text("Pos").SemiBold();
-                            header.Cell().Element(HeaderCellStyle).Text("Time").SemiBold();
-                            header.Cell().Element(HeaderCellStyle).Text("Bib").SemiBold();
-                            header.Cell().Element(HeaderCellStyle).Text("Name").SemiBold();
-                            header.Cell().Element(HeaderCellStyle).Text("Club").SemiBold();
-                            header.Cell().Element(HeaderCellStyle).Text("Gender").SemiBold();
-                            header.Cell().Element(HeaderCellStyle).Text("Age").SemiBold();
+                            header.Cell().Element(HeaderCellStyle).AlignCenter().Text("Position").SemiBold().FontColor(Colors.White);
+                            header.Cell().Element(HeaderCellStyle).AlignCenter().Text("Time").SemiBold().FontColor(Colors.White);
+                            header.Cell().Element(HeaderCellStyle).AlignCenter().Text("Race No").SemiBold().FontColor(Colors.White);
+                            header.Cell().Element(HeaderCellStyle).Text("Name").SemiBold().FontColor(Colors.White);
+                            header.Cell().Element(HeaderCellStyle).AlignCenter().Text("Gender").SemiBold().FontColor(Colors.White);
+                            header.Cell().Element(HeaderCellStyle).Text("Club Name").SemiBold().FontColor(Colors.White);
                         });
 
-                        foreach (var row in collated)
+                        for (var i = 0; i < collated.Count; i++)
                         {
-                            table.Cell().Element(BodyCellStyle).Text(row.Position.ToString(CultureInfo.InvariantCulture));
-                            table.Cell().Element(BodyCellStyle).Text(row.Time);
-                            table.Cell().Element(BodyCellStyle).Text(row.BibNumber);
-                            table.Cell().Element(BodyCellStyle).Text(row.Name);
-                            table.Cell().Element(BodyCellStyle).Text(row.Club);
-                            table.Cell().Element(BodyCellStyle).Text(row.Gender);
-                            table.Cell().Element(BodyCellStyle).Text(row.Age?.ToString(CultureInfo.InvariantCulture) ?? "-");
+                            var row = collated[i];
+                            Func<IContainer, IContainer> bodyStyle = BodyCellStyle;
+
+                            table.Cell().Element(bodyStyle).AlignCenter().Text(row.Position.ToString(CultureInfo.InvariantCulture));
+                            table.Cell().Element(bodyStyle).AlignCenter().Text(row.Time);
+                            table.Cell().Element(bodyStyle).AlignCenter().Text(row.BibNumber);
+                            table.Cell().Element(bodyStyle).Text(ToPdfCellText(row.Name));
+                            table.Cell().Element(bodyStyle).AlignCenter().Text(ToPdfCellText(row.Gender));
+                            table.Cell().Element(bodyStyle).Text(ToPdfCellText(row.Club));
                         }
                     });
-
-                    column.Item().PaddingTop(8).Text("DNF Runners").SemiBold().FontSize(14);
-
-                    if (dnfs.Count == 0)
-                    {
-                        column.Item().Text("None");
-                    }
-                    else
-                    {
-                        foreach (var dnf in dnfs)
-                        {
-                            var clubSuffix = string.IsNullOrWhiteSpace(dnf.Club) ? string.Empty : $" ({dnf.Club})";
-                            column.Item().Text($"- {dnf.BibNumber}: {dnf.Name}{clubSuffix}");
-                        }
-                    }
                 });
             });
         });
@@ -517,20 +509,124 @@ public class RaceResultsService : IRaceResultsService
         return document.GeneratePdf();
     }
 
+    private static ResultRecord? FindWinner(IEnumerable<ResultRecord> results, Func<Entrant, bool> predicate)
+    {
+        return results.FirstOrDefault(r => r.Entrant is not null && predicate(r.Entrant));
+    }
+
+    private static string WinnerText(ResultRecord? winner)
+    {
+        return winner?.Name ?? "-";
+    }
+
+    private static string ToPdfCellText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "\u00A0" : value;
+    }
+
+    private static byte[]? TryLoadPdfLogo()
+    {
+        var candidatePaths = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "wwwroot", "images", "pitsea-logo-white.png"),
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "RaceResults.Web", "wwwroot", "images", "pitsea-logo-white.png")
+        };
+
+        foreach (var candidatePath in candidatePaths)
+        {
+            var fullPath = Path.GetFullPath(candidatePath);
+            if (File.Exists(fullPath))
+            {
+                return File.ReadAllBytes(fullPath);
+            }
+        }
+
+        return null;
+    }
+
+    private static void BuildPdfHeader(IContainer container, byte[]? logoBytes)
+    {
+        container.PaddingBottom(10).Column(column =>
+        {
+            column.Item().Row(row =>
+            {
+                row.ConstantItem(80).AlignLeft().Element(x => RenderPdfLogo(x, logoBytes));
+
+                row.RelativeItem().AlignCenter().Column(center =>
+                {
+                    center.Item().AlignCenter().Text("PITSEA RUNNING CLUB")
+                        .SemiBold()
+                        .FontSize(18);
+
+                    center.Item().AlignCenter().Text("CROWN TO CROWN RESULTS 3rd APRIL 2026")
+                        .FontSize(14);
+                });
+
+                row.ConstantItem(80).AlignRight().Element(x => RenderPdfLogo(x, logoBytes));
+            });
+        });
+    }
+
+    private static void RenderPdfLogo(IContainer container, byte[]? logoBytes)
+    {
+        if (logoBytes is null)
+        {
+            container.Height(56);
+            return;
+        }
+
+        container.Height(56).Width(56).Image(logoBytes).FitArea();
+    }
+
+    private static void BuildPdfWinnersBlock(
+        IContainer container,
+        ResultRecord? maleWinner,
+        ResultRecord? femaleWinner,
+        ResultRecord? maleYouthWinner,
+        ResultRecord? femaleYouthWinner)
+    {
+        container.PaddingTop(8).PaddingBottom(8).Column(column =>
+        {
+            column.Spacing(3);
+
+            column.Item().Row(row =>
+            {
+                row.RelativeItem().Text($"1st Male = {WinnerText(maleWinner)}").FontSize(11);
+                row.RelativeItem().AlignRight().Text($"1st Male Youth = {WinnerText(maleYouthWinner)}").FontSize(11);
+            });
+
+            column.Item().Row(row =>
+            {
+                row.RelativeItem().Text($"1st Female = {WinnerText(femaleWinner)}").FontSize(11);
+                row.RelativeItem().AlignRight().Text($"1st Female Youth = {WinnerText(femaleYouthWinner)}").FontSize(11);
+            });
+
+            column.Item().PaddingTop(3).Text("Course records - 15:25 Adam Hickey (August 2013) 18:01 Jessica Judd (December 2015)")
+                .SemiBold()
+                .FontSize(11);
+        });
+    }
+
     private static IContainer HeaderCellStyle(IContainer container)
     {
         return container
-            .Background(Colors.Grey.Lighten2)
-            .Padding(4);
+            .Background(Colors.Black)
+            .Border(1)
+            .BorderColor(Colors.White)
+            .PaddingVertical(4)
+            .PaddingHorizontal(6);
     }
 
     private static IContainer BodyCellStyle(IContainer container)
     {
         return container
-            .BorderBottom(1)
-            .BorderColor(Colors.Grey.Lighten2)
-            .Padding(4);
+            .Border(1)
+            .BorderColor(Colors.Black)
+            .Background(Colors.White)
+            .PaddingVertical(2)
+            .PaddingHorizontal(6);
     }
+
 
     private static TopTenCategory BuildTopTen(string name, IReadOnlyList<ResultRecord> collated, Func<Entrant, bool> predicate)
     {
