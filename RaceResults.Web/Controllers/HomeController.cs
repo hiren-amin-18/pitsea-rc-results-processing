@@ -17,8 +17,11 @@ public class HomeController : Controller
     public IActionResult Index()
     {
         var counts = _raceResultsService.GetStatusCounts();
+        var currentEvent = _raceResultsService.GetCurrentEvent();
         var model = new HomeDashboardViewModel
         {
+            CurrentEventName = currentEvent.EventName,
+            CurrentEventDate = currentEvent.EventDate,
             Entrants = counts.EntrantCount,
             FinishBibRows = counts.FinishBibCount,
             TimingRows = counts.TimingCount,

@@ -22,13 +22,129 @@ public class RaceResultsService : IRaceResultsService
         _logger = logger;
     }
 
+    public RaceEvent GetCurrentEvent()
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        return EnsureCurrentEvent(db);
+    }
+
+    public IReadOnlyList<RaceEvent> GetEvents()
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        return db.Events
+            .OrderByDescending(e => e.EventDate)
+            .ThenBy(e => e.EventName)
+            .ToList();
+    }
+
+    public OperationResult CreateEvent(CreateEventInput input)
+    {
+        var name = input.EventName.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return OperationResult.Fail(new[] { "Event name is required." });
+        }
+
+        using var db = _dbContextFactory.CreateDbContext();
+        var existingCurrent = EnsureCurrentEvent(db);
+        existingCurrent.IsCurrent = false;
+
+        var entity = new RaceEvent
+        {
+            EventName = name,
+            EventDate = input.EventDate.Date,
+            EventType = input.EventType,
+            IsCurrent = true
+        };
+
+        db.Events.Add(entity);
+        db.SaveChanges();
+
+        return OperationResult.Ok($"Created event '{entity.EventName}' and set as current.");
+    }
+
+    public OperationResult UpdateEvent(EditEventInput input)
+    {
+        var name = input.EventName.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return OperationResult.Fail(new[] { "Event name is required." });
+        }
+
+        using var db = _dbContextFactory.CreateDbContext();
+        var entity = db.Events.FirstOrDefault(e => e.Id == input.Id);
+        if (entity is null)
+        {
+            return OperationResult.Fail(new[] { "Event not found." });
+        }
+
+        entity.EventName = name;
+        entity.EventDate = input.EventDate.Date;
+        entity.EventType = input.EventType;
+        db.SaveChanges();
+
+        return OperationResult.Ok("Event updated.");
+    }
+
+    public OperationResult SetCurrentEvent(int eventId)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        var target = db.Events.FirstOrDefault(e => e.Id == eventId);
+        if (target is null)
+        {
+            return OperationResult.Fail(new[] { "Event not found." });
+        }
+
+        foreach (var raceEvent in db.Events.Where(e => e.IsCurrent && e.Id != eventId))
+        {
+            raceEvent.IsCurrent = false;
+        }
+
+        target.IsCurrent = true;
+        db.SaveChanges();
+        return OperationResult.Ok($"Current event set to '{target.EventName}'.");
+    }
+
+    public OperationResult DeleteEvent(int eventId)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        var target = db.Events.FirstOrDefault(e => e.Id == eventId);
+        if (target is null)
+        {
+            return OperationResult.Fail(new[] { "Event not found." });
+        }
+
+        db.Entrants.Where(e => e.EventId == eventId).ExecuteDelete();
+        db.FinishBibRecords.Where(r => r.EventId == eventId).ExecuteDelete();
+        db.TimingRows.Where(t => t.EventId == eventId).ExecuteDelete();
+        db.Events.Remove(target);
+        db.SaveChanges();
+
+        if (!db.Events.Any(e => e.IsCurrent))
+        {
+            var next = db.Events.OrderByDescending(e => e.EventDate).FirstOrDefault();
+            if (next is null)
+            {
+                EnsureCurrentEvent(db);
+            }
+            else
+            {
+                next.IsCurrent = true;
+                db.SaveChanges();
+            }
+        }
+
+        return OperationResult.Ok("Event deleted and data reset for that event.");
+    }
+
     public RaceStatusCounts GetStatusCounts()
     {
         using var db = _dbContextFactory.CreateDbContext();
+        var currentEventId = EnsureCurrentEvent(db).Id;
         return new RaceStatusCounts(
-            db.Entrants.Count(),
-            db.FinishBibRecords.Count(),
-            db.TimingRows.Count()
+            db.Entrants.Count(e => e.EventId == currentEventId),
+            db.FinishBibRecords.Count(r => r.EventId == currentEventId),
+            db.TimingRows.Count(t => t.EventId == currentEventId)
         );
     }
 
@@ -80,9 +196,16 @@ public class RaceResultsService : IRaceResultsService
             .ToList();
 
         await using var db = _dbContextFactory.CreateDbContext();
-        await db.TimingRows.ExecuteDeleteAsync();
-        await db.FinishBibRecords.ExecuteDeleteAsync();
-        await db.Entrants.ExecuteDeleteAsync();
+        var currentEvent = await EnsureCurrentEventAsync(db);
+        await db.TimingRows.Where(t => t.EventId == currentEvent.Id).ExecuteDeleteAsync();
+        await db.FinishBibRecords.Where(r => r.EventId == currentEvent.Id).ExecuteDeleteAsync();
+        await db.Entrants.Where(e => e.EventId == currentEvent.Id).ExecuteDeleteAsync();
+
+        foreach (var entrant in deduped)
+        {
+            entrant.EventId = currentEvent.Id;
+        }
+
         db.Entrants.AddRange(deduped);
         await db.SaveChangesAsync();
 
@@ -103,7 +226,8 @@ public class RaceResultsService : IRaceResultsService
         }
 
         await using var checkDb = _dbContextFactory.CreateDbContext();
-        if (!await checkDb.Entrants.AnyAsync())
+        var currentEvent = await EnsureCurrentEventAsync(checkDb);
+        if (!await checkDb.Entrants.AnyAsync(e => e.EventId == currentEvent.Id))
         {
             return OperationResult.Fail(new[] { "Upload entrants before uploading finish positions." });
         }
@@ -115,7 +239,10 @@ public class RaceResultsService : IRaceResultsService
         await using var stream = file.OpenReadStream();
         ParseFinishBibWorkbook(stream, file.FileName, rows, errors);
 
-        var entrantBibSet = await checkDb.Entrants.Select(e => e.BibNumber).ToHashSetAsync(StringComparer.OrdinalIgnoreCase);
+        var entrantBibSet = await checkDb.Entrants
+            .Where(e => e.EventId == currentEvent.Id)
+            .Select(e => e.BibNumber)
+            .ToHashSetAsync(StringComparer.OrdinalIgnoreCase);
         var unmatched = rows
             .Where(r => !entrantBibSet.Contains(r.BibNumber))
             .Select(r => r.BibNumber)
@@ -134,9 +261,13 @@ public class RaceResultsService : IRaceResultsService
             return OperationResult.Fail(errors);
         }
 
-        await checkDb.TimingRows.ExecuteDeleteAsync();
-        await checkDb.FinishBibRecords.ExecuteDeleteAsync();
+        await checkDb.TimingRows.Where(t => t.EventId == currentEvent.Id).ExecuteDeleteAsync();
+        await checkDb.FinishBibRecords.Where(r => r.EventId == currentEvent.Id).ExecuteDeleteAsync();
         var ordered = rows.OrderBy(r => r.Position).ToList();
+        foreach (var finishRow in ordered)
+        {
+            finishRow.EventId = currentEvent.Id;
+        }
         checkDb.FinishBibRecords.AddRange(ordered);
         await checkDb.SaveChangesAsync();
 
@@ -162,7 +293,8 @@ public class RaceResultsService : IRaceResultsService
         }
 
         await using var db = _dbContextFactory.CreateDbContext();
-        if (!await db.FinishBibRecords.AnyAsync())
+        var currentEvent = await EnsureCurrentEventAsync(db);
+        if (!await db.FinishBibRecords.AnyAsync(r => r.EventId == currentEvent.Id))
         {
             return OperationResult.Fail(new[] { "Upload finish position and bib data before timings." });
         }
@@ -189,7 +321,11 @@ public class RaceResultsService : IRaceResultsService
             return OperationResult.Fail(errors);
         }
 
-        var finishPositions = await db.FinishBibRecords.Select(r => r.Position).OrderBy(x => x).ToListAsync();
+        var finishPositions = await db.FinishBibRecords
+            .Where(r => r.EventId == currentEvent.Id)
+            .Select(r => r.Position)
+            .OrderBy(x => x)
+            .ToListAsync();
         var timingPositions = rows.Keys.OrderBy(x => x).ToList();
 
         if (ShouldShiftTimingPositions(finishPositions, timingPositions))
@@ -217,8 +353,13 @@ public class RaceResultsService : IRaceResultsService
             return OperationResult.Fail(errors);
         }
 
-        await db.TimingRows.ExecuteDeleteAsync();
-        db.TimingRows.AddRange(rows.Select(kvp => new TimingRow { Position = kvp.Key, Time = kvp.Value }));
+        await db.TimingRows.Where(t => t.EventId == currentEvent.Id).ExecuteDeleteAsync();
+        db.TimingRows.AddRange(rows.Select(kvp => new TimingRow
+        {
+            EventId = currentEvent.Id,
+            Position = kvp.Key,
+            Time = kvp.Value
+        }));
         await db.SaveChangesAsync();
 
         _logger.LogInformation("Timings uploaded: {Count} rows.", rows.Count);
@@ -247,10 +388,16 @@ public class RaceResultsService : IRaceResultsService
     public IReadOnlyList<ResultRecord> GetCollatedResults()
     {
         using var db = _dbContextFactory.CreateDbContext();
-        var entrantByBib = db.Entrants.ToDictionary(e => e.BibNumber, StringComparer.OrdinalIgnoreCase);
-        var timings = db.TimingRows.ToDictionary(t => t.Position, t => t.Time);
+        var currentEventId = EnsureCurrentEvent(db).Id;
+        var entrantByBib = db.Entrants
+            .Where(e => e.EventId == currentEventId)
+            .ToDictionary(e => e.BibNumber, StringComparer.OrdinalIgnoreCase);
+        var timings = db.TimingRows
+            .Where(t => t.EventId == currentEventId)
+            .ToDictionary(t => t.Position, t => t.Time);
 
         return db.FinishBibRecords
+            .Where(r => r.EventId == currentEventId)
             .OrderBy(r => r.Position)
             .ToList()
             .Select(r => new ResultRecord
@@ -266,8 +413,12 @@ public class RaceResultsService : IRaceResultsService
     public IReadOnlyList<Entrant> GetDnfEntrants()
     {
         using var db = _dbContextFactory.CreateDbContext();
-        var finishedBibs = db.FinishBibRecords.Select(x => x.BibNumber);
+        var currentEventId = EnsureCurrentEvent(db).Id;
+        var finishedBibs = db.FinishBibRecords
+            .Where(x => x.EventId == currentEventId)
+            .Select(x => x.BibNumber);
         return db.Entrants
+            .Where(e => e.EventId == currentEventId)
             .Where(e => !finishedBibs.Contains(e.BibNumber))
             .OrderBy(e => e.BibNumber)
             .ToList();
@@ -276,7 +427,8 @@ public class RaceResultsService : IRaceResultsService
     public RaceStats GetRaceStats()
     {
         using var db = _dbContextFactory.CreateDbContext();
-        var entrants = db.Entrants.ToList();
+        var currentEventId = EnsureCurrentEvent(db).Id;
+        var entrants = db.Entrants.Where(e => e.EventId == currentEventId).ToList();
         var males = entrants.Where(e => IsMale(e.Gender)).ToList();
         var females = entrants.Where(e => IsFemale(e.Gender)).ToList();
 
@@ -307,15 +459,16 @@ public class RaceResultsService : IRaceResultsService
     public bool TryGetEditableResult(int position, out EditResultInput editInput)
     {
         using var db = _dbContextFactory.CreateDbContext();
-        var row = db.FinishBibRecords.FirstOrDefault(r => r.Position == position);
+        var currentEventId = EnsureCurrentEvent(db).Id;
+        var row = db.FinishBibRecords.FirstOrDefault(r => r.EventId == currentEventId && r.Position == position);
         if (row is null)
         {
             editInput = new EditResultInput();
             return false;
         }
 
-        var timing = db.TimingRows.Find(position);
-        var entrant = db.Entrants.FirstOrDefault(e => e.BibNumber.ToLower() == row.BibNumber.ToLower());
+        var timing = db.TimingRows.FirstOrDefault(t => t.EventId == currentEventId && t.Position == position);
+        var entrant = db.Entrants.FirstOrDefault(e => e.EventId == currentEventId && e.BibNumber.ToLower() == row.BibNumber.ToLower());
         editInput = new EditResultInput
         {
             OriginalPosition = row.Position,
@@ -356,19 +509,20 @@ public class RaceResultsService : IRaceResultsService
         }
 
         using var db = _dbContextFactory.CreateDbContext();
-        var row = db.FinishBibRecords.FirstOrDefault(r => r.Position == editInput.OriginalPosition);
+        var currentEventId = EnsureCurrentEvent(db).Id;
+        var row = db.FinishBibRecords.FirstOrDefault(r => r.EventId == currentEventId && r.Position == editInput.OriginalPosition);
         if (row is null)
         {
             errors.Add("Result row not found.");
             return OperationResult.Fail(errors);
         }
 
-        if (db.FinishBibRecords.Any(r => r.Position == editInput.NewPosition && r.Position != editInput.OriginalPosition))
+        if (db.FinishBibRecords.Any(r => r.EventId == currentEventId && r.Position == editInput.NewPosition && r.Position != editInput.OriginalPosition))
         {
             errors.Add("The new position is already used by another row.");
         }
 
-        if (db.FinishBibRecords.Any(r => r.Position != editInput.OriginalPosition && r.BibNumber.ToLower() == trimmedBib.ToLower()))
+        if (db.FinishBibRecords.Any(r => r.EventId == currentEventId && r.Position != editInput.OriginalPosition && r.BibNumber.ToLower() == trimmedBib.ToLower()))
         {
             errors.Add("Bib number is already used by another result row.");
         }
@@ -377,8 +531,8 @@ public class RaceResultsService : IRaceResultsService
         var oldBibLower = oldBib.ToLower();
         var trimmedBibLower = trimmedBib.ToLower();
 
-        var entrantByOldBib = db.Entrants.FirstOrDefault(e => e.BibNumber.ToLower() == oldBibLower);
-        var entrantByNewBib = db.Entrants.FirstOrDefault(e => e.BibNumber.ToLower() == trimmedBibLower);
+        var entrantByOldBib = db.Entrants.FirstOrDefault(e => e.EventId == currentEventId && e.BibNumber.ToLower() == oldBibLower);
+        var entrantByNewBib = db.Entrants.FirstOrDefault(e => e.EventId == currentEventId && e.BibNumber.ToLower() == trimmedBibLower);
 
         if (entrantByOldBib is not null && entrantByNewBib is not null && entrantByOldBib.Id != entrantByNewBib.Id)
         {
@@ -399,6 +553,7 @@ public class RaceResultsService : IRaceResultsService
         if (entrantToUpdate is null)
         {
             entrantToUpdate = new Entrant();
+            entrantToUpdate.EventId = currentEventId;
             db.Entrants.Add(entrantToUpdate);
         }
 
@@ -408,7 +563,7 @@ public class RaceResultsService : IRaceResultsService
         entrantToUpdate.Gender = trimmedGender;
         entrantToUpdate.Age = editInput.Age;
 
-        var oldTiming = db.TimingRows.Find(oldPosition);
+        var oldTiming = db.TimingRows.FirstOrDefault(t => t.EventId == currentEventId && t.Position == oldPosition);
 
         if (!string.IsNullOrWhiteSpace(editInput.Time))
         {
@@ -416,10 +571,10 @@ public class RaceResultsService : IRaceResultsService
             {
                 db.TimingRows.Remove(oldTiming);
             }
-            var newTiming = db.TimingRows.Find(editInput.NewPosition);
+            var newTiming = db.TimingRows.FirstOrDefault(t => t.EventId == currentEventId && t.Position == editInput.NewPosition);
             if (newTiming is null)
             {
-                db.TimingRows.Add(new TimingRow { Position = editInput.NewPosition, Time = editInput.Time.Trim() });
+                db.TimingRows.Add(new TimingRow { EventId = currentEventId, Position = editInput.NewPosition, Time = editInput.Time.Trim() });
             }
             else
             {
@@ -429,7 +584,7 @@ public class RaceResultsService : IRaceResultsService
         else if (oldTiming is not null && oldPosition != editInput.NewPosition)
         {
             db.TimingRows.Remove(oldTiming);
-            db.TimingRows.Add(new TimingRow { Position = editInput.NewPosition, Time = oldTiming.Time });
+            db.TimingRows.Add(new TimingRow { EventId = currentEventId, Position = editInput.NewPosition, Time = oldTiming.Time });
         }
 
         db.SaveChanges();
@@ -439,6 +594,7 @@ public class RaceResultsService : IRaceResultsService
     public byte[] GenerateResultsPdf()
     {
         var collated = GetCollatedResults();
+        var currentEvent = GetCurrentEvent();
         var logoBytes = TryLoadPdfLogo();
 
         var maleWinner = FindWinner(collated, e => IsMale(e.Gender) && !e.IsU18);
@@ -454,7 +610,7 @@ public class RaceResultsService : IRaceResultsService
                 page.Size(PageSizes.A4);
                 page.DefaultTextStyle(x => x.FontSize(10));
 
-                page.Header().Element(x => BuildPdfHeader(x, logoBytes));
+                page.Header().Element(x => BuildPdfHeader(x, logoBytes, currentEvent));
 
                 page.Content().Column(column =>
                 {
@@ -544,7 +700,7 @@ public class RaceResultsService : IRaceResultsService
         return null;
     }
 
-    private static void BuildPdfHeader(IContainer container, byte[]? logoBytes)
+    private static void BuildPdfHeader(IContainer container, byte[]? logoBytes, RaceEvent raceEvent)
     {
         container.PaddingBottom(10).Column(column =>
         {
@@ -558,7 +714,7 @@ public class RaceResultsService : IRaceResultsService
                         .SemiBold()
                         .FontSize(18);
 
-                    center.Item().AlignCenter().Text("CROWN TO CROWN RESULTS 3rd APRIL 2026")
+                    center.Item().AlignCenter().Text(BuildPdfEventTitle(raceEvent))
                         .FontSize(14);
                 });
 
@@ -576,6 +732,30 @@ public class RaceResultsService : IRaceResultsService
         }
 
         container.Height(56).Width(56).Image(logoBytes).FitArea();
+    }
+
+    private static string BuildPdfEventTitle(RaceEvent raceEvent)
+    {
+        var date = raceEvent.EventDate;
+        var formattedDate = $"{date.Day}{GetDaySuffix(date.Day)} {date:MMMM yyyy}".ToUpper();
+
+        return $"{raceEvent.EventName.ToUpper()} RESULTS {formattedDate}";
+    }
+
+    private static string GetDaySuffix(int day)
+    {
+        if (day % 100 is >= 11 and <= 13)
+        {
+            return "th";
+        }
+
+        return (day % 10) switch
+        {
+            1 => "st",
+            2 => "nd",
+            3 => "rd",
+            _ => "th"
+        };
     }
 
     private static void BuildPdfWinnersBlock(
@@ -625,6 +805,64 @@ public class RaceResultsService : IRaceResultsService
             .Background(Colors.White)
             .PaddingVertical(2)
             .PaddingHorizontal(6);
+    }
+
+    private static async Task<RaceEvent> EnsureCurrentEventAsync(RaceResultsDbContext db)
+    {
+        var current = await db.Events.FirstOrDefaultAsync(e => e.IsCurrent);
+        if (current is not null)
+        {
+            return current;
+        }
+
+        var existing = await db.Events.OrderByDescending(e => e.EventDate).FirstOrDefaultAsync();
+        if (existing is not null)
+        {
+            existing.IsCurrent = true;
+            await db.SaveChangesAsync();
+            return existing;
+        }
+
+        var created = new RaceEvent
+        {
+            EventName = "Crown to Crown",
+            EventDate = new DateTime(2026, 4, 3),
+            EventType = EventType.CrownToCrown,
+            IsCurrent = true
+        };
+
+        db.Events.Add(created);
+        await db.SaveChangesAsync();
+        return created;
+    }
+
+    private static RaceEvent EnsureCurrentEvent(RaceResultsDbContext db)
+    {
+        var current = db.Events.FirstOrDefault(e => e.IsCurrent);
+        if (current is not null)
+        {
+            return current;
+        }
+
+        var existing = db.Events.OrderByDescending(e => e.EventDate).FirstOrDefault();
+        if (existing is not null)
+        {
+            existing.IsCurrent = true;
+            db.SaveChanges();
+            return existing;
+        }
+
+        var created = new RaceEvent
+        {
+            EventName = "Crown to Crown",
+            EventDate = new DateTime(2026, 4, 3),
+            EventType = EventType.CrownToCrown,
+            IsCurrent = true
+        };
+
+        db.Events.Add(created);
+        db.SaveChanges();
+        return created;
     }
 
 

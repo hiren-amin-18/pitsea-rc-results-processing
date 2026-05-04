@@ -28,6 +28,6 @@ public class HomeControllerTests : IClassFixture<RaceResultsWebFactory>
         var response = await _client.GetAsync("/");
         var html = await response.Content.ReadAsStringAsync();
 
-        Assert.Contains("Race Results", html);
+        Assert.Contains("Pitsea RC Race Result Processor", html);
     }
 }

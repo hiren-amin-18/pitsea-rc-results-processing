@@ -36,6 +36,7 @@ An ASP.NET Core MVC web application for processing race results. Built for race 
 | **Race stats + graphs** | Totals plus chart breakdowns for Male/Female, category, club, and finishers per minute |
 | **Top 10 by category** | Top 10 finishers for Male, Female, Male U18, Female U18 |
 | **PDF export** | Download a branded, race-ready PDF: first page includes winners + course records, subsequent pages continue with results table |
+| **Event management** | Create, edit, select current, and delete events (`Crown to Crown` / `Bluebell 5`) with event-scoped results |
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
 | **Theme-aware branding** | App logo switches by theme (light uses white logo, dark uses black logo) at a fixed size |
 | **Persistent storage** | All data saved to a SQLite database and survives app restarts |
@@ -84,11 +85,17 @@ pitsea-rc-results-processing/
 ├── RaceResults.Web/                    # Main web application
 │   ├── Controllers/
 │   │   ├── HomeController.cs           # Dashboard (/)
-│   │   └── RaceController.cs           # All race operations (/Race/*)
+│   │   ├── RaceController.cs           # All race operations (/Race/*)
+│   │   └── EventsController.cs         # Event management (/Events/*)
 │   ├── Data/
 │   │   └── RaceResultsDbContext.cs     # EF Core DbContext (SQLite)
 │   ├── Migrations/                     # EF Core migration files
 │   ├── Models/                         # Domain and view models
+│   │   ├── RaceEvent.cs
+│   │   ├── EventType.cs
+│   │   ├── CreateEventInput.cs
+│   │   ├── EditEventInput.cs
+│   │   ├── EventsPageViewModel.cs
 │   │   ├── Entrant.cs
 │   │   ├── FinishBibRecord.cs
 │   │   ├── TimingRow.cs
@@ -107,6 +114,10 @@ pitsea-rc-results-processing/
 │   │   └── RaceResultsService.cs       # Implementation (file parsing, business logic)
 │   ├── Views/
 │   │   ├── Home/Index.cshtml           # Dashboard
+│   │   ├── Events/
+│   │   │   ├── Index.cshtml            # Event list and actions
+│   │   │   ├── Create.cshtml           # Event creation form
+│   │   │   └── Edit.cshtml             # Event edit form
 │   │   └── Race/
 │   │       ├── Uploads.cshtml          # Upload forms with status counts
 │   │       ├── Results.cshtml          # Collated results table + DNF list
@@ -115,11 +126,12 @@ pitsea-rc-results-processing/
 │   │       └── Top10.cshtml            # Top 10 by category
 │   └── Program.cs                      # App bootstrap, DI, middleware
 │
-├── RaceResults.UnitTests/              # xUnit unit tests (42 tests)
+├── RaceResults.UnitTests/              # xUnit unit tests (66 tests)
 │   ├── Helpers/
 │   │   ├── DbContextHelpers.cs         # In-memory SQLite factory
 │   │   └── FormFileHelpers.cs          # IFormFile test doubles (XLSX + CSV)
 │   ├── RaceResultsServiceTestBase.cs   # Base class with isolated DB per test
+│   ├── EventManagementTests.cs
 │   ├── UploadEntrantsTests.cs
 │   ├── UploadFinishBibTests.cs
 │   ├── UploadTimingsTests.cs
@@ -128,15 +140,16 @@ pitsea-rc-results-processing/
 │   ├── EditResultTests.cs
 │   └── PdfGenerationTests.cs
 │
-├── RaceResults.IntegrationTests/       # xUnit integration tests (17 tests)
+├── RaceResults.IntegrationTests/       # xUnit integration tests (21 tests)
 │   ├── RaceResultsWebFactory.cs        # WebApplicationFactory with in-memory SQLite
 │   ├── MultipartHelpers.cs             # Multipart form builders for file uploads
 │   ├── HomeControllerTests.cs
+│   ├── EventsControllerTests.cs
 │   ├── UploadControllerTests.cs
 │   └── ResultsControllerTests.cs
 │
 └── user-stories/
-    ├── US01-US12 *.md                  # Individual user story files
+    ├── US01-US13 *.md                  # Individual user story files
     └── example-files/
         └── timings.csv                 # Example timing CSV
 ```
@@ -225,6 +238,8 @@ The typical sequence for processing results after a race:
 
 All pages show a live count of loaded entrants, finish rows, and timing rows at the top so you can see the current data state at a glance.
 
+All operational race data is scoped to the current selected event.
+
 ---
 
 ## Configuration
@@ -253,7 +268,8 @@ Logging writes to the console by default. Validation failures are logged as `War
 
 The generated PDF follows the race-day format used by Pitsea Running Club:
 
-- Header on all pages: left and right `pitsea-logo-white.png` logos, `PITSEA RUNNING CLUB`, and `CROWN TO CROWN RESULTS 3rd APRIL 2026`
+- Header on all pages: left and right `pitsea-logo-white.png` logos, `PITSEA RUNNING CLUB`, and current event title in the format `[Event Name] RESULTS [Event Date]`
+- Event date in PDF title uses ordinal day + uppercase month/year (for example: `3RD APRIL 2026`)
 - Page 1: winners summary (`1st Male`, `1st Female`, `1st Male Youth`, `1st Female Youth`) plus course records line
 - All pages: results table with columns `Position`, `Time`, `Race No`, `Name`, `Gender`, `Club Name`
 - Table styling: black header row with white text and white borders; plain white body rows
@@ -282,9 +298,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 61 | Tests `RaceResultsService` directly against an isolated in-memory SQLite DB per test |
-| `RaceResults.IntegrationTests` | 17 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **78** | |
+| `RaceResults.UnitTests` | 66 | Tests `RaceResultsService` directly against an isolated in-memory SQLite DB per test |
+| `RaceResults.IntegrationTests` | 21 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
+| **Total** | **87** | |
 
 ---
 
@@ -304,7 +320,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-All 12 user stories are implemented. Individual story files are in [`user-stories/`](user-stories/):
+All 13 user stories are implemented. Individual story files are in [`user-stories/`](user-stories/):
 
 | Story | Title |
 |---|---|
@@ -320,4 +336,5 @@ All 12 user stories are implemented. Individual story files are in [`user-storie
 | [US10](user-stories/US10-edit-results-without-reupload.md) | Edit Results Without Re-upload |
 | [US11](user-stories/US11-display-race-stats.md) | Display Race Statistics |
 | [US12](user-stories/US12-top-10-by-category.md) | Top 10 by Category |
+| [US13](user-stories/US13-event-management.md) | Event Management and Event-Scoped Results |
 

@@ -1,0 +1,55 @@
+@model RaceResults.Web.Models.EventsPageViewModel
+@using RaceResults.Web.Models
+@{
+    ViewData["Title"] = "Events";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Events</h1>
+    <a class="btn btn-primary" asp-action="Create">Create Event</a>
+</div>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var feedbackType = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
+}
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Current</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var raceEvent in Model.Events)
+    {
+        <tr>
+            <td>@raceEvent.EventName</td>
+            <td>@raceEvent.EventDate.ToString("dd MMM yyyy")</td>
+            <td>@(raceEvent.EventType == EventType.CrownToCrown ? "Crown to Crown" : "Bluebell 5")</td>
+            <td>@(raceEvent.Id == Model.CurrentEventId ? "Yes" : "No")</td>
+            <td class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@raceEvent.Id">Edit</a>
+
+                @if (raceEvent.Id != Model.CurrentEventId)
+                {
+                    <form method="post" asp-action="SetCurrent" asp-route-id="@raceEvent.Id">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Set Current</button>
+                    </form>
+                }
+
+                <form method="post" asp-action="Delete" asp-route-id="@raceEvent.Id" onsubmit="return confirm('Delete this event and all associated results?');">
+                    @Html.AntiForgeryToken()
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

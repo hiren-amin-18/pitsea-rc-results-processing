@@ -5,6 +5,13 @@ namespace RaceResults.Web.Services;
 
 public interface IRaceResultsService
 {
+    RaceEvent GetCurrentEvent();
+    IReadOnlyList<RaceEvent> GetEvents();
+    OperationResult CreateEvent(CreateEventInput input);
+    OperationResult UpdateEvent(EditEventInput input);
+    OperationResult SetCurrentEvent(int eventId);
+    OperationResult DeleteEvent(int eventId);
+
     RaceStatusCounts GetStatusCounts();
 
     Task<OperationResult> UploadEntrantsAsync(IEnumerable<IFormFile> files);

@@ -1,4 +1,9 @@
-﻿<!DOCTYPE html>
+﻿@inject RaceResults.Web.Services.IRaceResultsService RaceResultsService
+@{
+    var currentEvent = RaceResultsService.GetCurrentEvent();
+}
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -50,10 +55,14 @@
                             <a class="nav-link text-dark" asp-area="" asp-controller="Race" asp-action="Top10">Top 10</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Events" asp-action="Index">Events</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Settings">Settings</a>
                         </li>
                     </ul>
-                    <div class="d-flex align-items-center mt-2 mt-sm-0">
+                    <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
+                        <span class="small text-muted">Current: @currentEvent.EventName (@currentEvent.EventDate.ToString("dd MMM yyyy"))</span>
                         <button id="theme-toggle-nav" class="btn btn-outline-secondary btn-sm" type="button" aria-label="Toggle dark mode">Dark mode</button>
                     </div>
                 </div>
