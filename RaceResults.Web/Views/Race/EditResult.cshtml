@@ -23,6 +23,30 @@
     </div>
 
     <div class="col-md-4">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Club" class="form-label"></label>
+        <input asp-for="Club" class="form-control" />
+        <span asp-validation-for="Club" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Gender" class="form-label"></label>
+        <input asp-for="Gender" class="form-control" />
+        <span asp-validation-for="Gender" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Age" class="form-label"></label>
+        <input asp-for="Age" class="form-control" />
+        <span asp-validation-for="Age" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
         <label asp-for="Time" class="form-label"></label>
         <input asp-for="Time" class="form-control" placeholder="00:25:10" />
         <span asp-validation-for="Time" class="text-danger"></span>

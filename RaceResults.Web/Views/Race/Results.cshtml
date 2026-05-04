@@ -65,7 +65,8 @@ else
     <ul>
     @foreach (var dnf in Model.DnfEntrants)
     {
-        <li>@dnf.BibNumber - @dnf.Name (@(string.IsNullOrWhiteSpace(dnf.Club) ? "Unaffiliated" : dnf.Club))</li>
+        var clubSuffix = string.IsNullOrWhiteSpace(dnf.Club) ? string.Empty : $" ({dnf.Club})";
+        <li>@dnf.BibNumber - @dnf.Name@clubSuffix</li>
     }
     </ul>
 }

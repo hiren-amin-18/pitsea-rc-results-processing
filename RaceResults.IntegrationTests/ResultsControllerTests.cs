@@ -123,6 +123,8 @@ public class ResultsControllerTests : IClassFixture<RaceResultsWebFactory>
             new KeyValuePair<string, string>("OriginalPosition", "1"),
             new KeyValuePair<string, string>("NewPosition", "0"),  // invalid — below minimum
             new KeyValuePair<string, string>("BibNumber", ""),       // required
+            new KeyValuePair<string, string>("Name", ""),            // required
+            new KeyValuePair<string, string>("Gender", ""),          // required
         });
 
         var response = await client.PostAsync("/Race/EditResult", content);
@@ -148,6 +150,10 @@ public class ResultsControllerTests : IClassFixture<RaceResultsWebFactory>
             new KeyValuePair<string, string>("OriginalPosition", "1"),
             new KeyValuePair<string, string>("NewPosition", "1"),
             new KeyValuePair<string, string>("BibNumber", "1"),
+            new KeyValuePair<string, string>("Name", "Alice"),
+            new KeyValuePair<string, string>("Club", "Club A"),
+            new KeyValuePair<string, string>("Gender", "Female"),
+            new KeyValuePair<string, string>("Age", "20"),
             new KeyValuePair<string, string>("Time", "00:20:00"),
         });
 

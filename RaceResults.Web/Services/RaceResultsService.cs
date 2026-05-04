@@ -314,11 +314,16 @@ public class RaceResultsService : IRaceResultsService
         }
 
         var timing = db.TimingRows.Find(position);
+        var entrant = db.Entrants.FirstOrDefault(e => e.BibNumber.ToLower() == row.BibNumber.ToLower());
         editInput = new EditResultInput
         {
             OriginalPosition = row.Position,
             NewPosition = row.Position,
             BibNumber = row.BibNumber,
+            Name = entrant?.Name ?? string.Empty,
+            Club = entrant?.Club,
+            Gender = entrant?.Gender ?? string.Empty,
+            Age = entrant?.Age,
             Time = timing?.Time ?? string.Empty
         };
 
@@ -328,6 +333,26 @@ public class RaceResultsService : IRaceResultsService
     public OperationResult UpdateResult(EditResultInput editInput)
     {
         var errors = new List<string>();
+
+        var trimmedBib = editInput.BibNumber.Trim();
+        var trimmedName = editInput.Name.Trim();
+        var trimmedGender = editInput.Gender.Trim();
+        var trimmedClub = editInput.Club?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(trimmedBib))
+        {
+            errors.Add("Bib number is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(trimmedName))
+        {
+            errors.Add("Name is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(trimmedGender))
+        {
+            errors.Add("Gender is required.");
+        }
 
         using var db = _dbContextFactory.CreateDbContext();
         var row = db.FinishBibRecords.FirstOrDefault(r => r.Position == editInput.OriginalPosition);
@@ -342,9 +367,21 @@ public class RaceResultsService : IRaceResultsService
             errors.Add("The new position is already used by another row.");
         }
 
-        if (!db.Entrants.Any(e => e.BibNumber.ToLower() == editInput.BibNumber.ToLower()))
+        if (db.FinishBibRecords.Any(r => r.Position != editInput.OriginalPosition && r.BibNumber.ToLower() == trimmedBib.ToLower()))
         {
-            errors.Add("Bib number does not match a registered entrant.");
+            errors.Add("Bib number is already used by another result row.");
+        }
+
+        var oldBib = row.BibNumber.Trim();
+        var oldBibLower = oldBib.ToLower();
+        var trimmedBibLower = trimmedBib.ToLower();
+
+        var entrantByOldBib = db.Entrants.FirstOrDefault(e => e.BibNumber.ToLower() == oldBibLower);
+        var entrantByNewBib = db.Entrants.FirstOrDefault(e => e.BibNumber.ToLower() == trimmedBibLower);
+
+        if (entrantByOldBib is not null && entrantByNewBib is not null && entrantByOldBib.Id != entrantByNewBib.Id)
+        {
+            errors.Add("Bib number is already used by another entrant.");
         }
 
         if (errors.Count > 0)
@@ -355,7 +392,20 @@ public class RaceResultsService : IRaceResultsService
 
         var oldPosition = row.Position;
         row.Position = editInput.NewPosition;
-        row.BibNumber = editInput.BibNumber.Trim();
+        row.BibNumber = trimmedBib;
+
+        var entrantToUpdate = entrantByOldBib ?? entrantByNewBib;
+        if (entrantToUpdate is null)
+        {
+            entrantToUpdate = new Entrant();
+            db.Entrants.Add(entrantToUpdate);
+        }
+
+        entrantToUpdate.BibNumber = trimmedBib;
+        entrantToUpdate.Name = trimmedName;
+        entrantToUpdate.Club = trimmedClub;
+        entrantToUpdate.Gender = trimmedGender;
+        entrantToUpdate.Age = editInput.Age;
 
         var oldTiming = db.TimingRows.Find(oldPosition);
 
@@ -456,7 +506,8 @@ public class RaceResultsService : IRaceResultsService
                     {
                         foreach (var dnf in dnfs)
                         {
-                            column.Item().Text($"- {dnf.BibNumber}: {dnf.Name} ({(string.IsNullOrWhiteSpace(dnf.Club) ? "Unaffiliated" : dnf.Club)})");
+                            var clubSuffix = string.IsNullOrWhiteSpace(dnf.Club) ? string.Empty : $" ({dnf.Club})";
+                            column.Item().Text($"- {dnf.BibNumber}: {dnf.Name}{clubSuffix}");
                         }
                     }
                 });
