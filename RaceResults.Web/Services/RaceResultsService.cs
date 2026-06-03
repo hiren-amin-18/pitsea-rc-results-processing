@@ -449,8 +449,8 @@ public class RaceResultsService : IRaceResultsService
 
         return new List<TopTenCategory>
         {
-            BuildTopTen("Male", collated, e => IsMale(e.Gender)),
-            BuildTopTen("Female", collated, e => IsFemale(e.Gender)),
+            BuildTopTen("Male", collated, e => IsMale(e.Gender) && !e.IsU18),
+            BuildTopTen("Female", collated, e => IsFemale(e.Gender) && !e.IsU18),
             BuildTopTen("Male U18", collated, e => IsMale(e.Gender) && e.IsU18),
             BuildTopTen("Female U18", collated, e => IsFemale(e.Gender) && e.IsU18)
         };

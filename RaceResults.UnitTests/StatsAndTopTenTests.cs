@@ -53,6 +53,7 @@ public class StatsAndTopTenTests : RaceResultsServiceTestBase
         var males = categories.First(c => c.Name == "Male");
 
         Assert.All(males.Results, r => Assert.Equal("Male", r.Gender));
+        Assert.All(males.Results, r => Assert.False(r.IsU18, "Male category should exclude U18 runners"));
     }
 
     [Fact]
