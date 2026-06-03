@@ -11,6 +11,8 @@ public class RaceResultsDbContext : DbContext
     public DbSet<Entrant> Entrants => Set<Entrant>();
     public DbSet<FinishBibRecord> FinishBibRecords => Set<FinishBibRecord>();
     public DbSet<TimingRow> TimingRows => Set<TimingRow>();
+    public DbSet<ChampionOfChampionsScore> ChampionScores => Set<ChampionOfChampionsScore>();
+    public DbSet<PointsAuditLog> PointsAuditLogs => Set<PointsAuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,6 +57,31 @@ public class RaceResultsDbContext : DbContext
             e.HasIndex(x => new { x.EventId, x.Position }).IsUnique();
             e.Property(x => x.EventId).HasDefaultValue(1);
             e.Property(x => x.Time).IsRequired();
+        });
+
+        modelBuilder.Entity<ChampionOfChampionsScore>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.SeasonYear, x.EntrantId, x.Category }).IsUnique();
+            e.Property(x => x.SeasonYear).IsRequired();
+            e.Property(x => x.Category).IsRequired();
+            e.Property(x => x.TotalPoints).IsRequired();
+            e.Property(x => x.RaceCount).IsRequired();
+            e.Property(x => x.LastUpdated).IsRequired();
+            e.HasOne(x => x.Entrant).WithMany().HasForeignKey(x => x.EntrantId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PointsAuditLog>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.SeasonYear, x.EntrantId, x.EventId }).IsUnique(false);
+            e.Property(x => x.SeasonYear).IsRequired();
+            e.Property(x => x.Category).IsRequired();
+            e.Property(x => x.PointsAwarded).IsRequired();
+            e.Property(x => x.Action).IsRequired();
+            e.Property(x => x.AuditTimestamp).IsRequired();
+            e.HasOne(x => x.Event).WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Entrant).WithMany().HasForeignKey(x => x.EntrantId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

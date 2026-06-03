@@ -13,6 +13,7 @@ builder.Services.AddDbContextFactory<RaceResultsDbContext>(options =>
         ?? "Data Source=raceresults.db"));
 
 builder.Services.AddSingleton<IRaceResultsService, RaceResultsService>();
+builder.Services.AddScoped<IChampionsOfChampionsService, ChampionsOfChampionsService>();
 
 QuestPDF.Settings.License = LicenseType.Community;
 
