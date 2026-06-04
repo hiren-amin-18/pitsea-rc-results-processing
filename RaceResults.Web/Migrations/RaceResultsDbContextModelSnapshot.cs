@@ -17,6 +17,41 @@ namespace RaceResults.Web.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.7");
 
+            modelBuilder.Entity("RaceResults.Web.Models.ChampionOfChampionsScore", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EntrantId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RaceCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SeasonYear")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TotalPoints")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntrantId");
+
+                    b.HasIndex("SeasonYear", "EntrantId", "Category")
+                        .IsUnique();
+
+                    b.ToTable("ChampionOfChampionsScores");
+                });
+
             modelBuilder.Entity("RaceResults.Web.Models.Entrant", b =>
                 {
                     b.Property<int>("Id")
@@ -84,6 +119,48 @@ namespace RaceResults.Web.Migrations
                     b.ToTable("FinishBibRecords");
                 });
 
+            modelBuilder.Entity("RaceResults.Web.Models.PointsAuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AuditTimestamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EntrantId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("EventId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PointsAwarded")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SeasonYear")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntrantId");
+
+                    b.HasIndex("EventId");
+
+                    b.HasIndex("SeasonYear", "EntrantId", "EventId");
+
+                    b.ToTable("PointsAuditLogs");
+                });
+
             modelBuilder.Entity("RaceResults.Web.Models.RaceEvent", b =>
                 {
                     b.Property<int>("Id")
@@ -142,6 +219,36 @@ namespace RaceResults.Web.Migrations
                         .IsUnique();
 
                     b.ToTable("TimingRows");
+                });
+
+            modelBuilder.Entity("RaceResults.Web.Models.ChampionOfChampionsScore", b =>
+                {
+                    b.HasOne("RaceResults.Web.Models.Entrant", "Entrant")
+                        .WithMany()
+                        .HasForeignKey("EntrantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Entrant");
+                });
+
+            modelBuilder.Entity("RaceResults.Web.Models.PointsAuditLog", b =>
+                {
+                    b.HasOne("RaceResults.Web.Models.Entrant", "Entrant")
+                        .WithMany()
+                        .HasForeignKey("EntrantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RaceResults.Web.Models.RaceEvent", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Entrant");
+
+                    b.Navigation("Event");
                 });
 #pragma warning restore 612, 618
         }

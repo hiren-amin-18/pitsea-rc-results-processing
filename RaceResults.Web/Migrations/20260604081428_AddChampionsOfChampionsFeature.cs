@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -67,10 +68,25 @@ namespace RaceResults.Web.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_ChampionOfChampionsScores_EntrantId",
+                table: "ChampionOfChampionsScores",
+                column: "EntrantId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ChampionOfChampionsScores_SeasonYear_EntrantId_Category",
                 table: "ChampionOfChampionsScores",
                 columns: new[] { "SeasonYear", "EntrantId", "Category" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PointsAuditLogs_EntrantId",
+                table: "PointsAuditLogs",
+                column: "EntrantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PointsAuditLogs_EventId",
+                table: "PointsAuditLogs",
+                column: "EventId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PointsAuditLogs_SeasonYear_EntrantId_EventId",

@@ -7,10 +7,12 @@ namespace RaceResults.Web.Controllers;
 public class RaceController : Controller
 {
     private readonly IRaceResultsService _raceResultsService;
+    private readonly IChampionsOfChampionsService _championsService;
 
-    public RaceController(IRaceResultsService raceResultsService)
+    public RaceController(IRaceResultsService raceResultsService, IChampionsOfChampionsService championsService)
     {
         _raceResultsService = raceResultsService;
+        _championsService = championsService;
     }
 
     [HttpGet]
@@ -51,6 +53,24 @@ public class RaceController : Controller
     {
         var result = await _raceResultsService.UploadTimingsAsync(file);
         StoreFeedback(result);
+
+        // Auto-calculate Champions of Champions points if this is a Crown to Crown event
+        if (result.Success)
+        {
+            var currentEvent = _raceResultsService.GetCurrentEvent();
+            if (currentEvent.EventType == EventType.CrownToCrown)
+            {
+                try
+                {
+                    await _championsService.CalculateAndSaveEventPointsAsync(currentEvent.Id);
+                }
+                catch (InvalidOperationException)
+                {
+                    // Non-critical: log but don't block the upload response
+                }
+            }
+        }
+
         return RedirectToAction(nameof(Uploads));
     }
 
@@ -81,7 +101,7 @@ public class RaceController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult EditResult(EditResultInput model)
+    public async Task<IActionResult> EditResult(EditResultInput model)
     {
         if (!ModelState.IsValid)
         {
@@ -94,6 +114,20 @@ public class RaceController : Controller
         if (!result.Success)
         {
             return View(model);
+        }
+
+        // Recalculate Champions of Champions if this is a Crown to Crown event
+        var currentEvent = _raceResultsService.GetCurrentEvent();
+        if (currentEvent.EventType == EventType.CrownToCrown)
+        {
+            try
+            {
+                await _championsService.RecalculateSeasonPointsAsync(currentEvent.EventDate.Year);
+            }
+            catch (InvalidOperationException)
+            {
+                // Non-critical
+            }
         }
 
         return RedirectToAction(nameof(Results));

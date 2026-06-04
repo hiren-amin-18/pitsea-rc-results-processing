@@ -389,15 +389,26 @@ public class RaceResultsService : IRaceResultsService
     {
         using var db = _dbContextFactory.CreateDbContext();
         var currentEventId = EnsureCurrentEvent(db).Id;
+        return GetCollatedResultsForEvent(db, currentEventId);
+    }
+
+    public IReadOnlyList<ResultRecord> GetCollatedResults(int eventId)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        return GetCollatedResultsForEvent(db, eventId);
+    }
+
+    private static IReadOnlyList<ResultRecord> GetCollatedResultsForEvent(RaceResultsDbContext db, int eventId)
+    {
         var entrantByBib = db.Entrants
-            .Where(e => e.EventId == currentEventId)
+            .Where(e => e.EventId == eventId)
             .ToDictionary(e => e.BibNumber, StringComparer.OrdinalIgnoreCase);
         var timings = db.TimingRows
-            .Where(t => t.EventId == currentEventId)
+            .Where(t => t.EventId == eventId)
             .ToDictionary(t => t.Position, t => t.Time);
 
         return db.FinishBibRecords
-            .Where(r => r.EventId == currentEventId)
+            .Where(r => r.EventId == eventId)
             .OrderBy(r => r.Position)
             .ToList()
             .Select(r => new ResultRecord
@@ -446,7 +457,17 @@ public class RaceResultsService : IRaceResultsService
     public IReadOnlyList<TopTenCategory> GetTopTenByCategory()
     {
         var collated = GetCollatedResults();
+        return BuildTopTenFromCollated(collated);
+    }
 
+    public IReadOnlyList<TopTenCategory> GetTopTenByCategory(int eventId)
+    {
+        var collated = GetCollatedResults(eventId);
+        return BuildTopTenFromCollated(collated);
+    }
+
+    private static IReadOnlyList<TopTenCategory> BuildTopTenFromCollated(IReadOnlyList<ResultRecord> collated)
+    {
         return new List<TopTenCategory>
         {
             BuildTopTen("Male", collated, e => IsMale(e.Gender) && !e.IsU18),

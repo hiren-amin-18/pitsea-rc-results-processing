@@ -19,9 +19,11 @@ public interface IRaceResultsService
     Task<OperationResult> UploadTimingsAsync(IFormFile? file);
 
     IReadOnlyList<ResultRecord> GetCollatedResults();
+    IReadOnlyList<ResultRecord> GetCollatedResults(int eventId);
     IReadOnlyList<Entrant> GetDnfEntrants();
     RaceStats GetRaceStats();
     IReadOnlyList<TopTenCategory> GetTopTenByCategory();
+    IReadOnlyList<TopTenCategory> GetTopTenByCategory(int eventId);
 
     bool TryGetEditableResult(int position, out EditResultInput editInput);
     OperationResult UpdateResult(EditResultInput editInput);

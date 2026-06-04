@@ -27,13 +27,12 @@ public class ChampionsOfChampionsService : IChampionsOfChampionsService
 
         var seasonYear = raceEvent.EventDate.Year;
 
-        // Get top 10 finishers per category for this event
-        var collatedResults = _raceResultsService.GetCollatedResults();
-        var topTenByCategory = _raceResultsService.GetTopTenByCategory();
+        // Get top 10 finishers per category for this specific event
+        var topTenByCategory = _raceResultsService.GetTopTenByCategory(eventId);
 
         // Clear any existing audit logs for this event (in case of recalculation)
         var existingAudits = await db.PointsAuditLogs
-            .Where(a => a.EventId == eventId && a.SeasonYear == seasonYear && a.Action == AuditAction.Initial)
+            .Where(a => a.EventId == eventId && a.SeasonYear == seasonYear)
             .ToListAsync();
         db.PointsAuditLogs.RemoveRange(existingAudits);
 
@@ -82,25 +81,50 @@ public class ChampionsOfChampionsService : IChampionsOfChampionsService
             .OrderBy(e => e.EventDate)
             .ToListAsync();
 
-        // Mark existing points as recalculated
+        // Clear all existing audit logs and scores for the season
         var existingAudits = await db.PointsAuditLogs
-            .Where(a => a.SeasonYear == seasonYear && a.Action == AuditAction.Initial)
+            .Where(a => a.SeasonYear == seasonYear)
             .ToListAsync();
+        db.PointsAuditLogs.RemoveRange(existingAudits);
 
-        foreach (var audit in existingAudits)
+        var existingScores = await db.ChampionOfChampionsScores
+            .Where(s => s.SeasonYear == seasonYear)
+            .ToListAsync();
+        db.ChampionOfChampionsScores.RemoveRange(existingScores);
+
+        await db.SaveChangesAsync();
+
+        // Re-score each event in the season
+        foreach (var raceEvent in seasonEvents)
         {
-            var recalcLog = new PointsAuditLog
+            var topTenByCategory = _raceResultsService.GetTopTenByCategory(raceEvent.Id);
+
+            foreach (var categoryGroup in topTenByCategory)
             {
-                SeasonYear = seasonYear,
-                EventId = audit.EventId,
-                EntrantId = audit.EntrantId,
-                Category = audit.Category,
-                PointsAwarded = 0,
-                Action = AuditAction.Recalculated,
-                AuditTimestamp = DateTime.UtcNow,
-                Reason = $"Recalculated due to result edit for event {audit.EventId}"
-            };
-            db.PointsAuditLogs.Add(recalcLog);
+                var categoryName = categoryGroup.Name;
+                var categoryResults = categoryGroup.Results;
+
+                for (int position = 0; position < categoryResults.Count && position < 10; position++)
+                {
+                    var result = categoryResults[position];
+                    if (result.Entrant == null) continue;
+
+                    int pointsAwarded = 10 - position;
+
+                    var auditLog = new PointsAuditLog
+                    {
+                        SeasonYear = seasonYear,
+                        EventId = raceEvent.Id,
+                        EntrantId = result.Entrant.Id,
+                        Category = categoryName,
+                        PointsAwarded = pointsAwarded,
+                        Action = AuditAction.Recalculated,
+                        AuditTimestamp = DateTime.UtcNow,
+                        Reason = $"Recalculated: Position {result.Position} in {categoryName}"
+                    };
+                    db.PointsAuditLogs.Add(auditLog);
+                }
+            }
         }
 
         await db.SaveChangesAsync();
@@ -113,44 +137,52 @@ public class ChampionsOfChampionsService : IChampionsOfChampionsService
     {
         using var db = _dbContextFactory.CreateDbContext();
 
-        // Get scores as of this event (or all if not specified)
-        IQueryable<ChampionOfChampionsScore> scoreQuery = db.ChampionScores
-            .Where(s => s.SeasonYear == seasonYear)
-            .Include(s => s.Entrant);
-
         if (asOfEventId.HasValue)
         {
-            // Get the event date to filter scores recorded before/on that date
+            // Get the target event date to filter audit logs
             var targetEvent = await db.Events.FirstOrDefaultAsync(e => e.Id == asOfEventId);
             if (targetEvent != null)
             {
-                var auditScores = await db.PointsAuditLogs
-                    .Where(a => a.SeasonYear == seasonYear && a.AuditTimestamp <= DateTime.UtcNow)
+                // Get all event IDs up to and including this event (by date)
+                var eligibleEventIds = await db.Events
+                    .Where(e => e.EventType == EventType.CrownToCrown
+                             && e.EventDate.Year == seasonYear
+                             && e.EventDate <= targetEvent.EventDate)
+                    .Select(e => e.Id)
+                    .ToListAsync();
+
+                // Aggregate from audit logs for only those events
+                var auditAggregates = await db.PointsAuditLogs
+                    .Where(a => a.SeasonYear == seasonYear
+                             && eligibleEventIds.Contains(a.EventId)
+                             && a.Action != AuditAction.Voided)
                     .GroupBy(a => new { a.EntrantId, a.Category })
                     .Select(g => new
                     {
                         g.Key.EntrantId,
                         g.Key.Category,
-                        Points = g.Where(x => x.Action != AuditAction.Voided).Sum(x => x.PointsAwarded),
+                        TotalPoints = g.Sum(x => x.PointsAwarded),
                         RaceCount = g.Select(x => x.EventId).Distinct().Count()
                     })
                     .ToListAsync();
 
-                var scores = await scoreQuery
-                    .AsNoTracking()
-                    .ToListAsync();
+                // Load entrants for display
+                var entrantIds = auditAggregates.Select(a => a.EntrantId).Distinct().ToList();
+                var entrants = await db.Entrants
+                    .Where(e => entrantIds.Contains(e.Id))
+                    .ToDictionaryAsync(e => e.Id);
 
                 var entries = new List<ChampionsLeaderboardEntry>();
-                foreach (var score in scores)
+                foreach (var agg in auditAggregates)
                 {
-                    if (score.Entrant == null) continue;
+                    if (!entrants.TryGetValue(agg.EntrantId, out var entrant)) continue;
 
                     entries.Add(new ChampionsLeaderboardEntry
                     {
-                        Entrant = score.Entrant,
-                        Category = score.Category,
-                        TotalPoints = score.TotalPoints,
-                        RaceCount = score.RaceCount
+                        Entrant = entrant,
+                        Category = agg.Category,
+                        TotalPoints = agg.TotalPoints,
+                        RaceCount = agg.RaceCount
                     });
                 }
 
@@ -158,7 +190,10 @@ public class ChampionsOfChampionsService : IChampionsOfChampionsService
             }
         }
 
-        var allScores = await scoreQuery
+        // Default: return from the aggregate scores table
+        var allScores = await db.ChampionOfChampionsScores
+            .Where(s => s.SeasonYear == seasonYear)
+            .Include(s => s.Entrant)
             .AsNoTracking()
             .ToListAsync();
 
@@ -233,10 +268,10 @@ public class ChampionsOfChampionsService : IChampionsOfChampionsService
     private async Task AggregateLeaderboardAsync(RaceResultsDbContext db, int seasonYear)
     {
         // Clear existing scores for this season
-        var existingScores = await db.ChampionScores
+        var existingScores = await db.ChampionOfChampionsScores
             .Where(s => s.SeasonYear == seasonYear)
             .ToListAsync();
-        db.ChampionScores.RemoveRange(existingScores);
+        db.ChampionOfChampionsScores.RemoveRange(existingScores);
 
         // Aggregate points from audit log
         var aggregated = await db.PointsAuditLogs
@@ -262,7 +297,7 @@ public class ChampionsOfChampionsService : IChampionsOfChampionsService
                 RaceCount = agg.RaceCount,
                 LastUpdated = DateTime.UtcNow
             };
-            db.ChampionScores.Add(score);
+            db.ChampionOfChampionsScores.Add(score);
         }
 
         await db.SaveChangesAsync();

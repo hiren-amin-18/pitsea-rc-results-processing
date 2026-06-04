@@ -11,7 +11,7 @@ public class RaceResultsDbContext : DbContext
     public DbSet<Entrant> Entrants => Set<Entrant>();
     public DbSet<FinishBibRecord> FinishBibRecords => Set<FinishBibRecord>();
     public DbSet<TimingRow> TimingRows => Set<TimingRow>();
-    public DbSet<ChampionOfChampionsScore> ChampionScores => Set<ChampionOfChampionsScore>();
+    public DbSet<ChampionOfChampionsScore> ChampionOfChampionsScores => Set<ChampionOfChampionsScore>();
     public DbSet<PointsAuditLog> PointsAuditLogs => Set<PointsAuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
