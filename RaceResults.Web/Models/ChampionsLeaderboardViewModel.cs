@@ -1,3 +1,5 @@
+using RaceResults.Web.Services;
+
 namespace RaceResults.Web.Models;
 
 public class ChampionsLeaderboardViewModel

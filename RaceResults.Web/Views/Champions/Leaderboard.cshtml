@@ -18,7 +18,7 @@
                 <select id="yearSelector" class="form-select form-select-sm" style="display: inline-block; width: auto;">
                     @for (int y = DateTime.Now.Year; y >= 2024; y--)
                     {
-                        <option value="@y" @(y == Model.SeasonYear ? "selected" : "")>@y</option>
+                            <option value="@y" selected="@(y == Model.SeasonYear)">@y</option>
                     }
                 </select>
             </div>
