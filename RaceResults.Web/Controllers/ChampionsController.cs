@@ -23,8 +23,8 @@ public class ChampionsController : Controller
     [HttpGet]
     public async Task<IActionResult> Leaderboard(int? eventId, int? year)
     {
-        int seasonYear = year ?? DateTime.Now.Year;
         var currentEvent = _raceResultsService.GetCurrentEvent();
+        int seasonYear = year ?? currentEvent.EventDate.Year;
         var leaderboard = await _championsService.GetLeaderboardAsync(seasonYear, eventId);
 
         var model = new ChampionsLeaderboardViewModel
@@ -58,8 +58,8 @@ public class ChampionsController : Controller
     [HttpGet]
     public async Task<IActionResult> ExportPdf(int? eventId, int? year)
     {
-        int seasonYear = year ?? DateTime.Now.Year;
         var currentEvent = _raceResultsService.GetCurrentEvent();
+        int seasonYear = year ?? currentEvent.EventDate.Year;
         var leaderboard = await _championsService.GetLeaderboardAsync(seasonYear, eventId);
 
         // Generate PDF with leaderboard

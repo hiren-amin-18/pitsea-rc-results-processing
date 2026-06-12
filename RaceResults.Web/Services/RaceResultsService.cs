@@ -195,6 +195,16 @@ public class RaceResultsService : IRaceResultsService
             .OrderBy(e => e.BibNumber)
             .ToList();
 
+        // Duplicate names are not necessarily an error (two people can share a name), but they are
+        // a common data-entry mistake, so surface them as a warning for the organizer to review.
+        var duplicateNames = deduped
+            .Where(e => !string.IsNullOrWhiteSpace(e.Name))
+            .GroupBy(e => e.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .OrderBy(x => x)
+            .ToList();
+
         await using var db = _dbContextFactory.CreateDbContext();
         var currentEvent = await EnsureCurrentEventAsync(db);
         await db.TimingRows.Where(t => t.EventId == currentEvent.Id).ExecuteDeleteAsync();
@@ -210,7 +220,12 @@ public class RaceResultsService : IRaceResultsService
         await db.SaveChangesAsync();
 
         _logger.LogInformation("Entrants uploaded: {Count} entrants from {FileCount} file(s).", deduped.Count, uploaded.Count);
-        return OperationResult.Ok($"Loaded {deduped.Count} entrants from {uploaded.Count} file(s).", "Finish bib and timing data were reset.");
+        var result = OperationResult.Ok($"Loaded {deduped.Count} entrants from {uploaded.Count} file(s).", "Finish bib and timing data were reset.");
+        if (duplicateNames.Count > 0)
+        {
+            result.Warnings.Add($"Duplicate entrant names detected (please verify): {string.Join(", ", duplicateNames)}");
+        }
+        return result;
     }
 
     public async Task<OperationResult> UploadFinishBibAsync(IFormFile? file)
@@ -642,7 +657,8 @@ public class RaceResultsService : IRaceResultsService
                         maleWinner,
                         femaleWinner,
                         maleYouthWinner,
-                        femaleYouthWinner));
+                        femaleYouthWinner,
+                        currentEvent.EventType == EventType.CrownToCrown));
 
                     column.Item().Border(1).BorderColor(Colors.Black).Table(table =>
                     {
@@ -784,7 +800,8 @@ public class RaceResultsService : IRaceResultsService
         ResultRecord? maleWinner,
         ResultRecord? femaleWinner,
         ResultRecord? maleYouthWinner,
-        ResultRecord? femaleYouthWinner)
+        ResultRecord? femaleYouthWinner,
+        bool showCourseRecords)
     {
         container.PaddingTop(8).PaddingBottom(8).Column(column =>
         {
@@ -802,9 +819,13 @@ public class RaceResultsService : IRaceResultsService
                 row.RelativeItem().AlignRight().Text($"1st Female Youth = {WinnerText(femaleYouthWinner)}").FontSize(11);
             });
 
-            column.Item().PaddingTop(3).Text("Course records - 15:25 Adam Hickey (August 2013) 18:01 Jessica Judd (December 2015)")
-                .SemiBold()
-                .FontSize(11);
+            // Course records are specific to the Crown to Crown course; omit them for other events.
+            if (showCourseRecords)
+            {
+                column.Item().PaddingTop(3).Text("Course records - 15:25 Adam Hickey (August 2013) 18:01 Jessica Judd (December 2015)")
+                    .SemiBold()
+                    .FontSize(11);
+            }
         });
     }
 
@@ -847,7 +868,7 @@ public class RaceResultsService : IRaceResultsService
         var created = new RaceEvent
         {
             EventName = "Crown to Crown",
-            EventDate = new DateTime(2026, 4, 3),
+            EventDate = new DateTime(2026, 5, 1),
             EventType = EventType.CrownToCrown,
             IsCurrent = true
         };
@@ -876,7 +897,7 @@ public class RaceResultsService : IRaceResultsService
         var created = new RaceEvent
         {
             EventName = "Crown to Crown",
-            EventDate = new DateTime(2026, 4, 3),
+            EventDate = new DateTime(2026, 5, 1),
             EventType = EventType.CrownToCrown,
             IsCurrent = true
         };

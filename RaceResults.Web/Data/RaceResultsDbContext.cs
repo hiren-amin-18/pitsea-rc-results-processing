@@ -26,7 +26,7 @@ public class RaceResultsDbContext : DbContext
             {
                 Id = 1,
                 EventName = "Crown to Crown",
-                EventDate = new DateTime(2026, 4, 3),
+                EventDate = new DateTime(2026, 5, 1),
                 EventType = EventType.CrownToCrown,
                 IsCurrent = true
             });

@@ -20,6 +20,13 @@
 }
 else
 {
+    var unmatchedCount = Model.Results.Count(r => r.IsUnmatched);
+    if (unmatchedCount > 0)
+    {
+        <div class="alert alert-warning" role="alert">
+            @unmatchedCount finish @(unmatchedCount == 1 ? "position has" : "positions have") a bib number with no registered entrant. Review the highlighted rows and correct them via Edit.
+        </div>
+    }
     <div class="table-responsive">
         <table class="table table-striped align-middle">
             <thead>
@@ -37,11 +44,17 @@ else
             <tbody>
             @foreach (var row in Model.Results)
             {
-                <tr>
+                <tr class="@(row.IsUnmatched ? "table-warning" : null)">
                     <td class="text-center">@row.Position</td>
                     <td class="text-center">@row.Time</td>
                     <td class="text-center">@row.BibNumber</td>
-                    <td>@row.Name</td>
+                    <td>
+                        @row.Name
+                        @if (row.IsUnmatched)
+                        {
+                            <span class="badge bg-warning text-dark ms-1">Unmatched</span>
+                        }
+                    </td>
                     <td>@row.Club</td>
                     <td class="text-center">@row.Gender</td>
                     <td>@(row.Age?.ToString() ?? "-")</td>
