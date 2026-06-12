@@ -1,5 +1,7 @@
 # US14 - Champions of Champions Leaderboard
 
+**Status:** ✅ Complete
+
 As a race organizer, I want to display a yearly Champions of Champions leaderboard across all Crown to Crown races (May to September), so that I can highlight consistent top performers and generate cumulative rankings.
 
 ## Overview

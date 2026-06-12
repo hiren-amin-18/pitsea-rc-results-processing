@@ -478,7 +478,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-All 14 user stories are implemented. Individual story files are in [`user-stories/`](user-stories/):
+US01–US14 are implemented; US15–US22 are planned. Individual story files are in [`user-stories/`](user-stories/):
+
+### Implemented
 
 | Story | Title |
 |---|---|
@@ -496,4 +498,17 @@ All 14 user stories are implemented. Individual story files are in [`user-storie
 | [US12](user-stories/US12-top-10-by-category.md) | Top 10 by Category |
 | [US13](user-stories/US13-event-management.md) | Event Management and Event-Scoped Results |
 | [US14](user-stories/US14-champions-of-champions-leaderboard.md) | Champions of Champions Leaderboard |
+
+### Planned
+
+| Story | Title |
+|---|---|
+| [US15](user-stories/US15-runner-registry.md) | Runner Registry |
+| [US16](user-stories/US16-finish-status-dns-dnf-dsq.md) | Finish Status (DNS / DNF / DSQ) |
+| [US17](user-stories/US17-time-validation-and-analytics.md) | Time Validation and Race Analytics |
+| [US18](user-stories/US18-export-results-csv.md) | Export Results to CSV |
+| [US19](user-stories/US19-database-backup-restore.md) | Database Backup and Restore |
+| [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
+| [US21](user-stories/US21-public-results-page.md) | Public Results Page |
+| [US22](user-stories/US22-course-records-management.md) | Course Records Management |
 

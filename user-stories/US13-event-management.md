@@ -1,5 +1,7 @@
 # US13 - Event Management and Event-Scoped Results
 
+**Status:** ✅ Complete
+
 ## As a
 Race organiser
 

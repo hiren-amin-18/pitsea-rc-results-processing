@@ -1,5 +1,7 @@
 # US11 - Display Race Statistics
 
+**Status:** ✅ Complete
+
 As a race organizer, I want the system to display race statistics, so that I can quickly review participation breakdowns.
 
 The statistics should include:
