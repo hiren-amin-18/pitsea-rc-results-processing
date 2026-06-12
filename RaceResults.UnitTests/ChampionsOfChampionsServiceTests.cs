@@ -1,5 +1,8 @@
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
+using RaceResults.Web.Data;
 using RaceResults.Web.Services;
 using RaceResults.UnitTests.Helpers;
 using RaceResults.Web.Models;
@@ -8,6 +11,7 @@ namespace RaceResults.UnitTests;
 
 public class ChampionsOfChampionsServiceTests : IDisposable
 {
+    private readonly IDbContextFactory<RaceResultsDbContext> _factory;
     private readonly RaceResultsService _raceResultsService;
     private readonly ChampionsOfChampionsService _championsService;
     private readonly SqliteConnection _connection;
@@ -17,8 +21,9 @@ public class ChampionsOfChampionsServiceTests : IDisposable
     public ChampionsOfChampionsServiceTests()
     {
         var (factory, connection) = DbContextHelpers.CreateFactory();
+        _factory = factory;
         _connection = connection;
-        _raceResultsService = new RaceResultsService(factory, null!);
+        _raceResultsService = new RaceResultsService(factory, NullLogger<RaceResultsService>.Instance);
         _championsService = new ChampionsOfChampionsService(factory, _raceResultsService);
     }
 
@@ -70,18 +75,34 @@ public class ChampionsOfChampionsServiceTests : IDisposable
     [Fact]
     public async Task CalculateEventPoints_CumulatesAcrossMultipleEvents()
     {
-        // Arrange: Create two events
-        // Event 1: Runner1 finishes 1st, Runner2 finishes 2nd
-        // Event 2: Runner1 finishes 2nd, Runner2 finishes 1st
-        // Expected: Runner1 has 10+9=19 points, Runner2 has 9+10=19 points (tied)
+        // Arrange: Create two events. Runners are the same people across events, but bib numbers
+        // differ per race (as they do in real Crown to Crown races), so the leaderboard must
+        // accumulate points by runner identity, not by per-event entrant rows.
+        // Event 1: Runner1 finishes 1st (10), Runner2 finishes 2nd (9)
+        // Event 2: Runner1 finishes 2nd (9), Runner2 finishes 1st (10)
+        // Expected: both runners on 19 points, each with a race count of 2.
 
-        // First event
-        await SeedEventWithResults(1, eventName: "Event 1");
+        // First event (the default seeded current event, Id 1)
+        var rows1 = new List<string[]> { EntrantHeader };
+        rows1.Add(["1", "Runner1", "Club", "Male", "25"]);
+        rows1.Add(["2", "Runner2", "Club", "Male", "25"]);
+        await _raceResultsService.UploadEntrantsAsync([FormFileHelpers.CreateXlsx("e1.xlsx", rows1)]);
+
+        var finishRows1 = new List<string[]> { new[] { "Position", "Bib" }, new[] { "1", "1" }, new[] { "2", "2" } };
+        await _raceResultsService.UploadFinishBibAsync(FormFileHelpers.CreateXlsx("fb1.xlsx", finishRows1));
+
+        await _raceResultsService.UploadTimingsAsync(
+            FormFileHelpers.CreateCsv("t1.csv", "STARTOFEVENT,x,x\n1,x,00:20:00\n2,x,00:21:00\n"));
+
         await _championsService.CalculateAndSaveEventPointsAsync(1);
 
-        // Create second event
-        using (var db = DbContextHelpers.CreateFactory().Item1.CreateDbContext())
+        // Create second event in the SAME database and make it current.
+        int event2Id;
+        using (var db = _factory.CreateDbContext())
         {
+            var event1 = await db.Events.FindAsync(1);
+            if (event1 != null) event1.IsCurrent = false;
+
             var newEvent = new RaceEvent
             {
                 EventName = "Event 2",
@@ -91,42 +112,33 @@ public class ChampionsOfChampionsServiceTests : IDisposable
             };
             db.Events.Add(newEvent);
             await db.SaveChangesAsync();
+            event2Id = newEvent.Id;
         }
 
-        // Second event with reversed positions
+        // Second event: same runners, different bibs, reversed finishing order.
         var rows2 = new List<string[]> { EntrantHeader };
-        rows2.Add(["1", "Runner2", "Club", "Male", "25"]);
-        rows2.Add(["2", "Runner1", "Club", "Male", "25"]);
-        
+        rows2.Add(["10", "Runner1", "Club", "Male", "25"]);
+        rows2.Add(["20", "Runner2", "Club", "Male", "25"]);
         await _raceResultsService.UploadEntrantsAsync([FormFileHelpers.CreateXlsx("e2.xlsx", rows2)]);
 
-        var finishRows2 = new List<string[]> { new[] { "Position", "Bib" } };
-        finishRows2.Add(["1", "1"]);
-        finishRows2.Add(["2", "2"]);
+        var finishRows2 = new List<string[]> { new[] { "Position", "Bib" }, new[] { "1", "20" }, new[] { "2", "10" } };
         await _raceResultsService.UploadFinishBibAsync(FormFileHelpers.CreateXlsx("fb2.xlsx", finishRows2));
 
-        var csvLines2 = "STARTOFEVENT,x,x\n1,x,00:21:00\n2,x,00:22:00\n";
-        await _raceResultsService.UploadTimingsAsync(FormFileHelpers.CreateCsv("t2.csv", csvLines2));
-
-        // Update current event
-        using (var db = DbContextHelpers.CreateFactory().Item1.CreateDbContext())
-        {
-            var event1 = await db.Events.FindAsync(1);
-            if (event1 != null) event1.IsCurrent = false;
-            await db.SaveChangesAsync();
-        }
+        await _raceResultsService.UploadTimingsAsync(
+            FormFileHelpers.CreateCsv("t2.csv", "STARTOFEVENT,x,x\n1,x,00:21:00\n2,x,00:22:00\n"));
 
         // Act
-        await _championsService.CalculateAndSaveEventPointsAsync(2);
+        await _championsService.CalculateAndSaveEventPointsAsync(event2Id);
 
         // Assert
         var leaderboard = await _championsService.GetCurrentSeasonLeaderboardAsync();
         var males = leaderboard.Where(e => e.Category == "Male").ToList();
 
+        // Two distinct runners, not four per-event rows.
         Assert.Equal(2, males.Count);
-        // Both should have 19 points
+        // Both should have cumulative 19 points across the two races.
         Assert.All(males, m => Assert.Equal(19, m.TotalPoints));
-        // But rank by race count (both participated in 2)
+        // Race count accumulates across events.
         Assert.All(males, m => Assert.Equal(2, m.RaceCount));
     }
 
@@ -162,10 +174,10 @@ public class ChampionsOfChampionsServiceTests : IDisposable
         Assert.Equal(4, leaderboard.Count);
 
         // Each category should appear once
-        Assert.Single(leaderboard.Where(e => e.Category == "Male"));
-        Assert.Single(leaderboard.Where(e => e.Category == "Female"));
-        Assert.Single(leaderboard.Where(e => e.Category == "Male U18"));
-        Assert.Single(leaderboard.Where(e => e.Category == "Female U18"));
+        Assert.Single(leaderboard, e => e.Category == "Male");
+        Assert.Single(leaderboard, e => e.Category == "Female");
+        Assert.Single(leaderboard, e => e.Category == "Male U18");
+        Assert.Single(leaderboard, e => e.Category == "Female U18");
 
         // Check rankings within categories
         var maleEntry = leaderboard.Single(e => e.Category == "Male");
@@ -183,7 +195,7 @@ public class ChampionsOfChampionsServiceTests : IDisposable
         await _championsService.CalculateAndSaveEventPointsAsync(1);
 
         // Assert - Check audit logs were created
-        using (var db = DbContextHelpers.CreateFactory().Item1.CreateDbContext())
+        using (var db = _factory.CreateDbContext())
         {
             var auditLogs = db.PointsAuditLogs.ToList();
             Assert.NotEmpty(auditLogs);
