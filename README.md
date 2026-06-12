@@ -511,4 +511,5 @@ US01–US14 are implemented; US15–US22 are planned. Individual story files are
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |
 | [US22](user-stories/US22-course-records-management.md) | Course Records Management |
+| [US23](user-stories/US23-enhanced-race-statistics.md) | Enhanced Race Statistics |
 
