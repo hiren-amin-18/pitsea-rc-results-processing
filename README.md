@@ -183,7 +183,7 @@ pitsea-rc-results-processing/
 │   └── ResultsControllerTests.cs
 │
 └── user-stories/
-    ├── US01-US24 *.md                  # One file per user story, each with a Status line
+    ├── US01-US29 *.md                  # One file per user story, each with a Status line
     └── example-files/                  # Real-format sample upload files
         ├── online-registration.xlsx    # Pre-registration entrants
         ├── on-the-day-1.xlsx           # On-the-day entrants (file 1)
@@ -530,7 +530,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US14 are implemented; US15–US24 are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US14 are implemented; US15–US29 are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -565,6 +565,11 @@ US01–US14 are implemented; US15–US24 are planned. Each story file carries a 
 | [US22](user-stories/US22-course-records-management.md) | Course Records Management |
 | [US23](user-stories/US23-enhanced-race-statistics.md) | Enhanced Race Statistics |
 | [US24](user-stories/US24-season-statistics.md) | Season Statistics and Runner Season Profiles |
+| [US25](user-stories/US25-app-installer.md) | Application Installer |
+| [US26](user-stories/US26-cloud-hosting.md) | Cloud Hosting |
+| [US27](user-stories/US27-example-file-links.md) | Example Upload File Links |
+| [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |
+| [US29](user-stories/US29-volunteer-stats.md) | Volunteer Statistics |
 
 ### Roadmap dependencies
 
@@ -574,6 +579,8 @@ Most planned stories are independent, with these exceptions:
 - **US24 (Season Statistics)** depends on **US15 (Runner Registry)** for all cross-event aggregation; its attendance-based stats need only US15, its time-based stats also need US17
 - **US16 (DSQ)** consumes the existing-but-unused `Voided` audit action in Champions scoring
 - **US21 (Public Results)** pairs naturally with **US20 (Archiving)** so published pages never change underneath readers
+- **US26 (Cloud Hosting)** requires authentication to be added first, and makes US21 (public links) genuinely useful; US25 (installer) is the alternative local deployment path
+- **US29 (Volunteer Stats)** depends on **US28 (Volunteer Roster)**; the combined run+volunteer recognition stat also benefits from US15
 
-Suggested order for the independent quick wins: US18 (CSV export) → US19 (backup/restore) → US23 (enhanced stats), then the US17 → US16 → US15 chain.
+Suggested order for the independent quick wins: US18 (CSV export) → US19 (backup/restore) → US27 (example file links) → US23 (enhanced stats), then the US17 → US16 → US15 chain.
 
