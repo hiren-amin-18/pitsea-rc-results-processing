@@ -1,6 +1,6 @@
 # Pitsea RC Race Result Processor
 
-An ASP.NET Core MVC web application for processing race results. Built for race organisers to upload entrant, finish, and timing data, then view, edit, and export the collated results.
+An ASP.NET Core MVC web application for processing race results, built for Pitsea Running Club. Race organisers upload entrant, finish, and timing data, then view, edit, and export the collated results. The app also maintains the club's yearly **Champions of Champions** leaderboard across the Crown to Crown race series.
 
 ---
 
@@ -9,12 +9,15 @@ An ASP.NET Core MVC web application for processing race results. Built for race 
 - [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
+- [Domain Conventions](#domain-conventions)
 - [Project Structure](#project-structure)
+- [Architecture Notes](#architecture-notes)
 - [Data Persistence](#data-persistence)
 - [Upload File Formats](#upload-file-formats)
 - [Workflow](#workflow)
 - [Champions of Champions](#champions-of-champions)
 - [Configuration](#configuration)
+- [PDF Layout](#pdf-layout)
 - [Running the Tests](#running-the-tests)
 - [Technology Stack](#technology-stack)
 - [User Stories](#user-stories)
@@ -26,18 +29,19 @@ An ASP.NET Core MVC web application for processing race results. Built for race 
 | Feature | Description |
 |---|---|
 | **Entrant upload** | Upload one or more `.xlsx` files (e.g. online registration + on-the-day) |
-| **Entrant validation** | Required fields checked; duplicate bib numbers rejected |
-| **Finish bib upload** | Upload a finish-position-to-bib `.xlsx` file |
-| **Unmatched bib flagging** | Bibs in the finish file that don't match any entrant are warned |
-| **Timing upload** | Upload a timing file as `.csv` or `.xlsx`; zero-based positions auto-remapped |
-| **Timing consistency check** | Timing positions must exactly match finish bib positions |
+| **Entrant validation** | Required fields checked; duplicate bib numbers rejected; duplicate names reported as a warning for review |
+| **Finish bib upload** | Upload a finish-position-to-bib `.xlsx` file; duplicate positions and bibs rejected |
+| **Unmatched bib flagging** | Bibs in the finish file with no matching entrant are warned at upload and highlighted on the Results page with a badge and warning banner |
+| **Timing upload** | Upload a timing file as `.csv` or `.xlsx`; zero-based positions auto-remapped; `STARTOFEVENT`/`ENDOFEVENT` device rows ignored |
+| **Timing consistency check** | Timing positions must exactly match finish bib positions; missing and unexpected positions are itemised |
 | **Collated results view** | All results in finish order, with name, club, gender, age, and time |
 | **DNF indication** | Entrants without a finish row are listed separately |
-| **Edit results** | Correct any result row (position, bib, time) without re-uploading files |
+| **Edit results** | Correct any result row (position, bib, time, runner details) without re-uploading files; edits to Crown to Crown events trigger a Champions season recalculation |
 | **Race stats + graphs** | Totals plus chart breakdowns for Male/Female, category, club, and finishers per minute |
 | **Top 10 by category** | Top 10 finishers for Male, Female, Male U18, Female U18 |
-| **Champions leaderboard** | Yearly cumulative scoring across all Crown to Crown races (May-September); top 10 per category earn points (10→1); automatic tie-breaking by event participation; multi-year navigation |
-| **PDF export** | Download a branded, race-ready PDF: first page includes winners + course records, subsequent pages continue with results table |
+| **Champions leaderboard** | Yearly cumulative scoring across Crown to Crown races in the May–September season window; top 10 per category earn points (10→1); runners identified across events by name + club; tie-breaking by event participation; multi-year navigation |
+| **Champions audit trail** | Append-only points audit log distinguishing initial awards from recalculations; full scoring history retained |
+| **PDF export** | Download a branded, race-ready PDF: first page includes winners + course records (Crown to Crown events only), subsequent pages continue with results table |
 | **Champions PDF export** | Export Champions leaderboard to PDF with tie-breaking indicators (†) and gold/silver/bronze highlighting for top 3 |
 | **Event management** | Create, edit, select current, and delete events (`Crown to Crown` / `Bluebell 5`) with event-scoped results |
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
@@ -76,6 +80,23 @@ The shared layout expects the following logo files:
 - `RaceResults.Web/wwwroot/images/pitsea-logo-black.png`
 
 If these files are missing, the navbar logo will not render.
+
+---
+
+## Domain Conventions
+
+Club-specific conventions that the code relies on. These are deliberate, not bugs:
+
+| Convention | Detail |
+|---|---|
+| **Ages are only recorded for under-18s** | The entry form does not capture ages for adults. A blank `Age` means "adult" by convention, so `IsU18` requires a recorded age under 18. Age-based statistics for adults (histograms, veteran categories, age-grading) are not possible from current data. |
+| **Categories** | Four categories throughout: Male (18+), Female (18+), Male U18, Female U18. A runner is U18 only when their recorded age is under 18. |
+| **Unaffiliated** | A runner with no club value. Unaffiliated counts in race stats exclude U18 runners. |
+| **Gender normalisation** | Upload values starting with `M` → `Male`, `F` → `Female` (case-insensitive); anything else is kept as typed. Category logic matches on the first letter. |
+| **Bib numbers are per-event** | The same person gets a different bib at each race. Nothing cross-event may key on bib number. |
+| **Runner identity (cross-event)** | Until a runner registry exists (US15), the Champions leaderboard identifies the same person across events by **normalised name + club** (case- and punctuation-insensitive). A mid-season club change therefore splits a runner's points; same-name runners in the same club merge. |
+| **Champions season window** | Crown to Crown races dated May–September inclusive, keyed to the event's calendar year. Out-of-season or non-C2C events are never scored. |
+| **Event types** | `Crown to Crown` and `Bluebell 5`. Course records on the results PDF render only for Crown to Crown. |
 
 ---
 
@@ -162,10 +183,28 @@ pitsea-rc-results-processing/
 │   └── ResultsControllerTests.cs
 │
 └── user-stories/
-    ├── US01-US13 *.md                  # Individual user story files
-    └── example-files/
-        └── timings.csv                 # Example timing CSV
+    ├── US01-US24 *.md                  # One file per user story, each with a Status line
+    └── example-files/                  # Real-format sample upload files
+        ├── online-registration.xlsx    # Pre-registration entrants
+        ├── on-the-day-1.xlsx           # On-the-day entrants (file 1)
+        ├── on-the-day-2.xlsx           # On-the-day entrants (file 2)
+        ├── bib-position.xlsx           # Finish position + bib
+        ├── timings.csv                 # Timing device CSV
+        └── example-output.pdf          # Reference PDF layout
 ```
+
+---
+
+## Architecture Notes
+
+- **Service layer owns all business logic.** Controllers are thin: they call `IRaceResultsService` / `IChampionsOfChampionsService`, store feedback in `TempData`, and redirect. File parsing, validation, collation, scoring, and PDF generation all live in services.
+- **DbContext factory pattern.** Services receive `IDbContextFactory<RaceResultsDbContext>` and create a short-lived context per operation, which is why `RaceResultsService` can be registered as a singleton.
+- **DI registrations** (`Program.cs`): `IRaceResultsService` → singleton; `IChampionsOfChampionsService` → scoped.
+- **Migrations apply automatically at startup** (`db.Database.Migrate()`), skipped when the environment is `Testing` so integration tests can use `EnsureCreated` against in-memory SQLite.
+- **Current event fallback.** Exactly one event is "current" at a time. If none is current, the most recent event by date is promoted; if no events exist at all, a default `Crown to Crown` event dated 1 May 2026 is created (in-season for Champions scoring).
+- **Operation results, not exceptions.** Upload and edit flows return an `OperationResult` carrying `Messages`, `Warnings`, and `Errors`; controllers render all three. Warnings (e.g. unmatched bibs, duplicate names) do not block the operation.
+- **Destructive upload semantics** are intentional and ordered: see [Data Persistence](#data-persistence).
+- **Champions scoring is event-triggered, derived data.** The points audit log is the source of truth; the scores table is a rebuildable cache (see [Champions of Champions](#champions-of-champions)).
 
 ---
 
@@ -183,9 +222,12 @@ To use a custom database path, add a connection string to `appsettings.json`:
 }
 ```
 
-**Data reset rules:**
-- Uploading new entrants automatically clears all finish bib and timing data to maintain consistency
-- Uploading a new finish bib file automatically clears timing data
+**Data reset rules** (all scoped to the current event only):
+- Uploading new entrants clears that event's finish bib and timing data to maintain consistency
+- Uploading a new finish bib file clears that event's timing data
+- Deleting an event removes its entrants, finish rows, and timing rows (Champions audit rows for the event cascade-delete with it)
+
+**Storage location caution:** SQLite holds write locks on its database file. Running the live database inside a cloud-synced folder (OneDrive, Google Drive, Dropbox) risks sync conflicts and file corruption. Prefer a local, non-synced path for the live database and sync *backup copies* instead. There is no in-app backup yet (planned as US19); until then, copy `raceresults.db` while the app is stopped.
 
 ---
 
@@ -294,14 +336,21 @@ The Champions of Champions is a **yearly cumulative leaderboard** that ranks run
 - After each Crown to Crown race is fully uploaded (entrants + finish positions + timings), the top 10 finishers in each category automatically receive points
 - Points are allocated on a 10→1 scale (1st place = 10 points, 2nd = 9, ..., 10th = 1; 11th+ = 0 points)
 - Categories: Male (18+), Female (18+), Male U18, Female U18
-- All scores are tracked with a complete audit trail
+- **Season window is enforced:** only Crown to Crown events dated May–September inclusive are scored; out-of-season or non-C2C events are rejected by the scoring service
+- All scores are tracked with a complete, append-only audit trail
+
+**Runner Identity:**
+- Bib numbers change between races, and entrant rows are recreated per event, so cumulative scores cannot key on either
+- The same person is recognised across events by **normalised name + club** (alphanumerics only, case-insensitive)
+- Consequences: a runner who changes club mid-season appears as two entries; two same-name runners in the same club would merge. A persistent runner registry (US15) is the planned long-term fix
+- The leaderboard displays each runner's most recent entrant record (latest name/club spelling on file)
 
 **Leaderboard Display:**
 - Accessible at `/Champions/Leaderboard`
-- Shows cumulative scores across all events in the season
-- **Year Selector:** Dropdown to view past or current season leaderboards (2024 onwards)
+- Shows cumulative scores across all events in the season, grouped by category
+- **Default season** is derived from the current event's date (not the wall clock), so historical data views stay correct across calendar years; a year selector switches seasons
 - **Ranking:** Runners ranked by total points, with ties broken by number of events completed (more events = higher rank)
-- **Tie Indicator:** Runners with equal points are marked with † (dagger symbol) with a key explaining the tie-breaking rule
+- **Tie Indicator:** Runners are marked with † (dagger symbol) only when they are tied on **both** points and race count — i.e. the tie-breaker could not separate them
 - **Top 3 Highlighting:**
   - 1st place: Gold background
   - 2nd place: Silver background
@@ -309,8 +358,8 @@ The Champions of Champions is a **yearly cumulative leaderboard** that ranks run
 
 **Edit Handling:**
 - If any past race result is edited (position, runner category, etc.), the entire season's points are **automatically recalculated**
-- All scoring changes are logged with timestamps and reasons in the audit trail
-- Maintains data integrity and accuracy
+- Recalculation **appends** a new `Recalculated` batch of audit entries per event — earlier batches are never deleted, preserving the full history of when points were awarded vs recalculated
+- Aggregation always uses each event's **latest batch** (by timestamp), so superseded awards are excluded without being lost
 
 **Data Isolation:**
 - Each season year is completely isolated (2024 season, 2025 season, etc.)
@@ -329,47 +378,50 @@ The Champions of Champions is a **yearly cumulative leaderboard** that ranks run
 
 ### Database Schema
 
-**ChampionOfChampionsScore Table:**
-- Stores cumulative seasonal scores per runner per category
-- Indexed by (SeasonYear, EntrantId, Category) for fast lookups
-- Tracks: TotalPoints, RaceCount (number of events participated), LastUpdated timestamp
+**PointsAuditLog Table (source of truth):**
+- Append-only audit trail of every scoring action
+- Tracks: SeasonYear, EventId, EntrantId, Category, PointsAwarded, Action (`Initial` / `Recalculated` / `Voided`), AuditTimestamp, Reason
+- Each scoring pass for an event writes one timestamped **batch**; aggregation counts only the latest batch per event, so the full award/recalculation history is retained without double counting
+- `Voided` entries are always excluded from aggregation (reserved for disqualifications — see planned US16)
 
-**PointsAuditLog Table:**
-- Complete audit trail of all scoring actions
-- Tracks: EventId, EntrantId, Category, PointsAwarded, Action (Initial/Recalculated/Voided), Reason
-- Enables recalculation: all points can be recalculated from audit logs
-- Provides transparency and compliance tracking
+**ChampionOfChampionsScore Table (derived cache):**
+- Rebuilt from the audit log after every scoring or recalculation pass
+- Stores cumulative seasonal totals per runner per category: TotalPoints, RaceCount, LastUpdated
+- Indexed by (SeasonYear, EntrantId, Category)
+- Serves the default leaderboard view; "as of event" views aggregate directly from the audit log instead
 
 ### Service Layer
 
 **IChampionsOfChampionsService Interface:**
-- `CalculateAndSaveEventPointsAsync(eventId)` - Scores top 10 per category for an event
-- `RecalculateSeasonPointsAsync(seasonYear)` - Recalculates entire season (called on result edits)
-- `GetLeaderboardAsync(seasonYear, asOfEventId?)` - Retrieves cumulative leaderboard
-- `GetCurrentSeasonLeaderboardAsync(asOfEventId?)` - Retrieves current year leaderboard
-- `IsEligibleForPointsAsync(entrantId, eventId, category)` - Checks if runner scored
+- `CalculateAndSaveEventPointsAsync(eventId)` - Scores top 10 per category for an event; throws if the event is not Crown to Crown or falls outside the May–September window
+- `RecalculateSeasonPointsAsync(seasonYear)` - Re-scores every in-season event, appending `Recalculated` audit batches (called on result edits)
+- `GetLeaderboardAsync(seasonYear, asOfEventId?)` - Retrieves cumulative leaderboard; with `asOfEventId`, aggregates from the audit log including only events up to that event's date
+- `GetCurrentSeasonLeaderboardAsync(asOfEventId?)` - Leaderboard for the season of the current event's date
+- `IsEligibleForPointsAsync(entrantId, eventId, category)` - Checks if runner scored (excludes voided entries)
 
 **Integration Points:**
-- Triggered after all race data (timings) uploaded for a Crown to Crown event
-- Triggered when any result in a season is edited
-- Service automatically extracts season year from event date
+- Triggered automatically after a successful timing upload when the current event is Crown to Crown (`RaceController.UploadTimings`)
+- Triggered automatically after a successful result edit on a Crown to Crown event (`RaceController.EditResult` → season recalculation)
+- Can be triggered manually from the leaderboard page (`ChampionsController.CalculatePoints`)
+- Season year is always extracted from the event's date, never from the system clock
 
 ### URL Routes
 
 ```
-GET  /Champions/Leaderboard                    → Current year leaderboard
-GET  /Champions/Leaderboard?year=2025          → 2025 season leaderboard
+GET  /Champions/Leaderboard                     → Leaderboard for the current event's season
+GET  /Champions/Leaderboard?year=2025           → 2025 season leaderboard
 GET  /Champions/Leaderboard?year=2025&eventId=5 → 2025 leaderboard as of event 5
-GET  /Champions/ExportPdf                      → Export current year to PDF
-GET  /Champions/ExportPdf?year=2025            → Export 2025 season to PDF
-GET  /Champions/ExportPdf?year=2025&eventId=5  → Export 2025 as of event 5
+POST /Champions/CalculatePoints                 → Manually score an event
+GET  /Champions/ExportPdf                       → Export current season to PDF
+GET  /Champions/ExportPdf?year=2025             → Export 2025 season to PDF
+GET  /Champions/ExportPdf?year=2025&eventId=5   → Export 2025 as of event 5
 ```
 
 ### UI Components
 
 **Year Selector:**
 - Dropdown menu showing available years (2024 to current year)
-- Defaults to current year
+- Defaults to the current event's season
 - Clicking a year navigates to `/Champions/Leaderboard?year=YYYY`
 
 **Leaderboard Table:**
@@ -427,8 +479,8 @@ Logging writes to the console by default. Validation failures are logged as `War
 The generated PDF follows the race-day format used by Pitsea Running Club:
 
 - Header on all pages: left and right `pitsea-logo-white.png` logos, `PITSEA RUNNING CLUB`, and current event title in the format `[Event Name] RESULTS [Event Date]`
-- Event date in PDF title uses ordinal day + uppercase month/year (for example: `3RD APRIL 2026`)
-- Page 1: winners summary (`1st Male`, `1st Female`, `1st Male Youth`, `1st Female Youth`) plus course records line
+- Event date in PDF title uses ordinal day + uppercase month/year (for example: `1ST MAY 2026`)
+- Page 1: winners summary (`1st Male`, `1st Female`, `1st Male Youth`, `1st Female Youth`); the course records line is shown for **Crown to Crown events only** (records are course-specific and currently hard-coded — making them data-driven is planned as US22)
 - All pages: results table with columns `Position`, `Time`, `Race No`, `Name`, `Gender`, `Club Name`
 - Table styling: black header row with white text and white borders; plain white body rows
 - Column alignment in PDF table: `Position`, `Time`, `Race No`, and `Gender` are centered
@@ -478,7 +530,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US14 are implemented; US15–US22 are planned. Individual story files are in [`user-stories/`](user-stories/):
+US01–US14 are implemented; US15–US24 are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -513,4 +565,15 @@ US01–US14 are implemented; US15–US22 are planned. Individual story files are
 | [US22](user-stories/US22-course-records-management.md) | Course Records Management |
 | [US23](user-stories/US23-enhanced-race-statistics.md) | Enhanced Race Statistics |
 | [US24](user-stories/US24-season-statistics.md) | Season Statistics and Runner Season Profiles |
+
+### Roadmap dependencies
+
+Most planned stories are independent, with these exceptions:
+
+- **US22 (Course Records)** and the time-based halves of **US23/US24** depend on **US17 (typed times)**
+- **US24 (Season Statistics)** depends on **US15 (Runner Registry)** for all cross-event aggregation; its attendance-based stats need only US15, its time-based stats also need US17
+- **US16 (DSQ)** consumes the existing-but-unused `Voided` audit action in Champions scoring
+- **US21 (Public Results)** pairs naturally with **US20 (Archiving)** so published pages never change underneath readers
+
+Suggested order for the independent quick wins: US18 (CSV export) → US19 (backup/restore) → US23 (enhanced stats), then the US17 → US16 → US15 chain.
 
