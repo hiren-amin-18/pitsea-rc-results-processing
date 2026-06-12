@@ -26,7 +26,9 @@ public class RaceResultsDbContext : DbContext
             {
                 Id = 1,
                 EventName = "Crown to Crown",
-                EventDate = new DateTime(2026, 5, 1),
+                // Good Friday 2026 - the real first race of the C2C series. Deliberately outside
+                // the Champions May-September scoring window; the series spans the full year.
+                EventDate = new DateTime(2026, 4, 3),
                 EventType = EventType.CrownToCrown,
                 IsCurrent = true
             });

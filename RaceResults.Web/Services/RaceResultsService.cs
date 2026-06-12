@@ -868,7 +868,7 @@ public class RaceResultsService : IRaceResultsService
         var created = new RaceEvent
         {
             EventName = "Crown to Crown",
-            EventDate = new DateTime(2026, 5, 1),
+            EventDate = new DateTime(2026, 4, 3), // Good Friday 2026, the series' first race
             EventType = EventType.CrownToCrown,
             IsCurrent = true
         };
@@ -897,7 +897,7 @@ public class RaceResultsService : IRaceResultsService
         var created = new RaceEvent
         {
             EventName = "Crown to Crown",
-            EventDate = new DateTime(2026, 5, 1),
+            EventDate = new DateTime(2026, 4, 3), // Good Friday 2026, the series' first race
             EventType = EventType.CrownToCrown,
             IsCurrent = true
         };

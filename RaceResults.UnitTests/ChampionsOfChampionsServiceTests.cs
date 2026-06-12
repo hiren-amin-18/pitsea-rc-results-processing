@@ -25,6 +25,13 @@ public class ChampionsOfChampionsServiceTests : IDisposable
         _connection = connection;
         _raceResultsService = new RaceResultsService(factory, NullLogger<RaceResultsService>.Instance);
         _championsService = new ChampionsOfChampionsService(factory, _raceResultsService);
+
+        // The seeded default event is dated Good Friday (3 April), which is outside the Champions
+        // May-September scoring window by design. These tests score event 1, so move it in-season.
+        using var db = _factory.CreateDbContext();
+        var seededEvent = db.Events.First(e => e.Id == 1);
+        seededEvent.EventDate = new DateTime(2026, 6, 10);
+        db.SaveChanges();
     }
 
     public void Dispose()
@@ -287,6 +294,24 @@ public class ChampionsOfChampionsServiceTests : IDisposable
         // Assert: No ties yet since we only have one event
         var females = leaderboard.Where(e => e.Category == "Female").ToList();
         Assert.Equal(2, females.Count);
+    }
+
+    [Fact]
+    public async Task CalculateEventPoints_RejectsOutOfSeasonCrownToCrownEvent()
+    {
+        // The C2C series includes Good Friday and Boxing Day races, but the Champions
+        // scoring window is May-September only - out-of-window events must not score.
+        using (var db = _factory.CreateDbContext())
+        {
+            var seededEvent = db.Events.First(e => e.Id == 1);
+            seededEvent.EventDate = new DateTime(2026, 4, 3); // Good Friday 2026
+            await db.SaveChangesAsync();
+        }
+
+        await SeedEventWithResults(1);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _championsService.CalculateAndSaveEventPointsAsync(1));
     }
 
     private async Task SeedEventWithResults(int eventId, string eventName = "Test Race")
