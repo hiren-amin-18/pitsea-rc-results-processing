@@ -45,5 +45,6 @@ For a selected year, across all events:
 ## Notes
 
 - **Depends on [[US28-volunteer-roster]]** — there are no statistics without assignments.
+- Non-member volunteers (helpers who aren't Pitsea RC members — see US28) count equally in all statistics and recognition; the optional member flag enables a member/non-member breakdown but never excludes anyone.
 - The combined run+volunteer stat additionally benefits from [[US15-runner-registry]] linkage.
 - Natural companion to [[US24-season-statistics]] — a club "season review" could eventually combine both pages.

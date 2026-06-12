@@ -20,6 +20,7 @@ Races depend on volunteers as much as runners, but the app currently models only
 ## Roster Model
 
 - **Volunteer** — a persistent person: name, optional contact details, optional link to a runner record (many volunteers also run; see US15).
+  - **Volunteers are not necessarily club members.** Family members and friends of the club regularly help (a member's wife or son, or Ian — and his dog Shane). The model must not require club membership, a runner record, or any registration data: a name alone is enough to put someone on the roster. An optional "club member" flag supports member/non-member breakdowns in US29.
 - **Role** — club-defined list, e.g. Race Director, Marshal, Timekeeper, Funnel, Registration, First Aid, Tail Runner. Roles are configurable, not hard-coded.
 - **Assignment** — volunteer + role + event, with an optional note (e.g. marshal point location "Gate 3").
 
