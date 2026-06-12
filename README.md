@@ -95,8 +95,9 @@ Club-specific conventions that the code relies on. These are deliberate, not bug
 | **Gender normalisation** | Upload values starting with `M` → `Male`, `F` → `Female` (case-insensitive); anything else is kept as typed. Category logic matches on the first letter. |
 | **Bib numbers are per-event** | The same person gets a different bib at each race. Nothing cross-event may key on bib number. |
 | **Runner identity (cross-event)** | Until a runner registry exists (US15), the Champions leaderboard identifies the same person across events by **normalised name + club** (case- and punctuation-insensitive). A mid-season club change therefore splits a runner's points; same-name runners in the same club merge. |
-| **Champions season window** | Crown to Crown races dated May–September inclusive, keyed to the event's calendar year. Out-of-season or non-C2C events are never scored. |
-| **Event types** | `Crown to Crown` and `Bluebell 5`. Course records on the results PDF render only for Crown to Crown. |
+| **C2C series schedule** | The Crown to Crown series runs the full year: Good Friday (11:00), then the second Wednesday of each month May–August (19:30), the first *or* second Wednesday of September (19:00, decided per year), and finally Boxing Day (11:00). Events store only a date — start times are not modelled. |
+| **Champions season window** | Champions of Champions scores only C2C races dated May–September inclusive, keyed to the event's calendar year. This is a **deliberate subset of the series**: the Good Friday and Boxing Day races are real C2C events that earn no Champions points. Out-of-window or non-C2C events are never scored. |
+| **Event types** | `Crown to Crown` and `Bluebell 5` (annual, around April/May, date varies). Course records on the results PDF render only for Crown to Crown. |
 
 ---
 
@@ -183,7 +184,7 @@ pitsea-rc-results-processing/
 │   └── ResultsControllerTests.cs
 │
 └── user-stories/
-    ├── US01-US29 *.md                  # One file per user story, each with a Status line
+    ├── US01-US30 *.md                  # One file per user story, each with a Status line
     └── example-files/                  # Real-format sample upload files
         ├── online-registration.xlsx    # Pre-registration entrants
         ├── on-the-day-1.xlsx           # On-the-day entrants (file 1)
@@ -530,7 +531,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US14 are implemented; US15–US29 are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US14 are implemented; US15–US30 are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -570,6 +571,7 @@ US01–US14 are implemented; US15–US29 are planned. Each story file carries a 
 | [US27](user-stories/US27-example-file-links.md) | Example Upload File Links |
 | [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |
 | [US29](user-stories/US29-volunteer-stats.md) | Volunteer Statistics |
+| [US30](user-stories/US30-end-of-season-review.md) | End of Season Review |
 
 ### Roadmap dependencies
 
@@ -581,6 +583,7 @@ Most planned stories are independent, with these exceptions:
 - **US21 (Public Results)** pairs naturally with **US20 (Archiving)** so published pages never change underneath readers
 - **US26 (Cloud Hosting)** requires authentication to be added first, and makes US21 (public links) genuinely useful; US25 (installer) is the alternative local deployment path
 - **US29 (Volunteer Stats)** depends on **US28 (Volunteer Roster)**; the combined run+volunteer recognition stat also benefits from US15
+- **US30 (End of Season Review)** is the capstone: it depends on **US24** and **US29**, and degrades gracefully where US16/US17/US22 are absent
 
 Suggested order for the independent quick wins: US18 (CSV export) → US19 (backup/restore) → US27 (example file links) → US23 (enhanced stats), then the US17 → US16 → US15 chain.
 
