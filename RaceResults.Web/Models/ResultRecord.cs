@@ -4,6 +4,15 @@ public class ResultRecord
 {
     public int Position { get; set; }
 
+    /// <summary>Closed-up rank for display after any DSQ removals (US16); the stored finish position is unchanged in <see cref="Position"/>.</summary>
+    public int DisplayPosition { get; set; }
+
+    /// <summary>Finishing status (US16).</summary>
+    public FinishStatus Status { get; set; } = FinishStatus.Finished;
+
+    /// <summary>Reason recorded for a DSQ (US16).</summary>
+    public string? StatusReason { get; set; }
+
     /// <summary>Canonical display time (or original raw text for unparseable legacy rows). For display only.</summary>
     public string Time { get; set; } = string.Empty;
 

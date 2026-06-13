@@ -25,6 +25,10 @@ public interface IChampionsOfChampionsService
 
     /// <summary>Check if a runner is eligible for Champions points (must be in top 10 of their category)</summary>
     Task<bool> IsEligibleForPointsAsync(int entrantId, int eventId, string category);
+
+    /// <summary>Void any Champions points held by now-disqualified entrants in the event (using the
+    /// <c>Voided</c> audit action) and recalculate the season leaderboard (US16 AC5).</summary>
+    Task VoidDisqualifiedAndRecalculateAsync(int eventId);
 }
 
 /// <summary>Entry in the Champions of Champions leaderboard</summary>

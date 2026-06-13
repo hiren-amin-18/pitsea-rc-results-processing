@@ -38,7 +38,7 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Collated results view** | All results in finish order, with name, club, gender, age, time, and gap to winner |
 | **Validated finish times** | Finish times are validated at upload, stored as typed durations, normalised for display, and checked for out-of-order anomalies |
 | **Runner registry** | Persistent runners that per-event entrants link to; upload auto-matches by name+club with near-match warnings; a Runners page lists race counts and supports editing and merging duplicates |
-| **DNF indication** | Entrants without a finish row are listed separately |
+| **Finish status (DNS/DNF/DSQ)** | Non-finishers default to DNF and can be set DNS (no-show); finishers can be disqualified with a recorded reason, which removes them from results (positions close up), voids their Champions points, and is reversible |
 | **Edit results** | Correct any result row (position, bib, time, runner details) without re-uploading files; edits to Crown to Crown events trigger a Champions season recalculation |
 | **Race stats + graphs** | Totals plus chart breakdowns for Male/Female, category, club, and finishers per minute |
 | **Top 10 by category** | Top 10 finishers for Male, Female, Male U18, Female U18 |
@@ -96,6 +96,7 @@ Club-specific conventions that the code relies on. These are deliberate, not bug
 |---|---|
 | **Ages are only recorded for under-18s** | The entry form does not capture ages for adults. A blank `Age` means "adult" by convention, so `IsU18` requires a recorded age under 18. Age-based statistics for adults (histograms, veteran categories, age-grading) are not possible from current data. |
 | **Categories** | Four categories throughout: Male (18+), Female (18+), Male U18, Female U18. A runner is U18 only when their recorded age is under 18. |
+| **Finish status** | Each entrant has a status (US16): *Finished* (has a position), *DNF* (no finish row — the default for non-finishers), *DNS* (registered but never started — excluded from the DNF list, stats, and PDF), *DSQ* (finished but disqualified — removed from results with positions closing up, and no Champions points). DSQ requires a reason and is reversible; the stored finish rows are never rewritten (it is a presentation-level adjustment). |
 | **Unaffiliated** | A runner with no club value. Unaffiliated counts in race stats exclude U18 runners. |
 | **Gender normalisation** | Upload values starting with `M` → `Male`, `F` → `Female` (case-insensitive); anything else is kept as typed. Category logic matches on the first letter. |
 | **Bib numbers are per-event** | The same person gets a different bib at each race. Nothing cross-event may key on bib number. |
@@ -395,7 +396,7 @@ The Champions of Champions is a **yearly cumulative leaderboard** that ranks run
 - Append-only audit trail of every scoring action
 - Tracks: SeasonYear, EventId, EntrantId, Category, PointsAwarded, Action (`Initial` / `Recalculated` / `Voided`), AuditTimestamp, Reason
 - Each scoring pass for an event writes one timestamped **batch**; aggregation counts only the latest batch per event, so the full award/recalculation history is retained without double counting
-- `Voided` entries are always excluded from aggregation (reserved for disqualifications — see planned US16)
+- `Voided` entries are always excluded from aggregation; disqualifying a finisher (US16) appends `Voided` entries for their awards and recalculates the season
 
 **ChampionOfChampionsScore Table (derived cache):**
 - Rebuilt from the audit log after every scoring or recalculation pass
@@ -501,6 +502,7 @@ The generated PDF follows the race-day format used by Pitsea Running Club:
 - Table styling: black header row with white text and white borders; plain white body rows
 - Column alignment in PDF table: `Position`, `Time`, `Race No`, and `Gender` are centered
 - Continuation pages: same branded header and table styling as page 1, without repeating the winners block
+- After the results table, DNF and DSQ sections are listed (US16); DNS entrants are excluded
 
 ---
 
@@ -524,9 +526,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 111 | Tests `RaceResultsService`, `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, and the runner registry directly against isolated SQLite DBs per test |
+| `RaceResults.UnitTests` | 116 | Tests `RaceResultsService`, `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, and finish-status logic against isolated SQLite DBs per test |
 | `RaceResults.IntegrationTests` | 22 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **133** | |
+| **Total** | **138** | |
 
 ---
 
@@ -546,7 +548,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US15, US17, US18, US19 and US27 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US19 and US27 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -571,12 +573,12 @@ US01–US15, US17, US18, US19 and US27 are implemented; the remaining stories ar
 | [US19](user-stories/US19-database-backup-restore.md) | Database Backup and Restore |
 | [US17](user-stories/US17-time-validation-and-analytics.md) | Time Validation and Race Analytics |
 | [US15](user-stories/US15-runner-registry.md) | Runner Registry |
+| [US16](user-stories/US16-finish-status-dns-dnf-dsq.md) | Finish Status (DNS / DNF / DSQ) |
 
 ### Planned
 
 | Story | Title |
 |---|---|
-| [US16](user-stories/US16-finish-status-dns-dnf-dsq.md) | Finish Status (DNS / DNF / DSQ) |
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |
 | [US22](user-stories/US22-course-records-management.md) | Course Records Management |

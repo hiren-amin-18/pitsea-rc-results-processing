@@ -51,6 +51,17 @@
 **Summary**: `aidlc-docs/construction/US15/US15-implementation-summary.md`
 **Build Status**: Success (new EF migration AddRunnerRegistry)
 **Test Status**: Pass (111 unit + 22 integration = 133)
-**Notes**: Brownfield + schema change. New Runner entity + Entrant.RunnerId FK, upload matching with near-match warnings, RunnerRegistryService (list/edit/merge) with affected-season recalc, Champions keying on RunnerId, event-delete keeps runners (inactive flag), startup data backfill. Structural prerequisite for US24. Awaiting user review.
+**Notes**: Brownfield + schema change. New Runner entity + Entrant.RunnerId FK, upload matching with near-match warnings, RunnerRegistryService (list/edit/merge) with affected-season recalc, Champions keying on RunnerId, event-delete keeps runners (inactive flag), startup data backfill. Structural prerequisite for US24. Reviewed and committed (00e9e0a).
+
+---
+
+## US16 — Finish Status (DNS / DNF / DSQ)
+**Timestamp**: 2026-06-13
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US16-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US16/US16-implementation-summary.md`
+**Build Status**: Success (new EF migration AddFinishStatus)
+**Test Status**: Pass (116 unit + 22 integration = 138)
+**Notes**: Brownfield + schema change. FinishStatus on Entrant; DSQ removes finishers (display positions close up) + voids Champions points via the Voided audit action + recalc; DNS excluded from DNF/stats/PDF; PDF/CSV gain DNF/DSQ sections; reversible. Awaiting user review.
 
 ---

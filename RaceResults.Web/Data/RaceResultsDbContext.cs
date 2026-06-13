@@ -50,6 +50,7 @@ public class RaceResultsDbContext : DbContext
             e.Property(x => x.Name).IsRequired();
             e.Property(x => x.Gender).IsRequired();
             e.Property(x => x.EventId).HasDefaultValue(1);
+            e.Property(x => x.Status).HasDefaultValue(FinishStatus.Finished);
             // Deleting an event (and its entrants) must never delete the persistent runner (US15 AC7).
             e.HasOne(x => x.Runner).WithMany().HasForeignKey(x => x.RunnerId).OnDelete(DeleteBehavior.Restrict);
         });

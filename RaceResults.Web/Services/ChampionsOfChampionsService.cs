@@ -155,6 +155,58 @@ public class ChampionsOfChampionsService : IChampionsOfChampionsService
         return topTenAudit != null;
     }
 
+    public async Task VoidDisqualifiedAndRecalculateAsync(int eventId)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+
+        var raceEvent = await db.Events.FirstOrDefaultAsync(e => e.Id == eventId);
+        if (raceEvent is null || raceEvent.EventType != EventType.CrownToCrown || !IsInSeasonWindow(raceEvent.EventDate))
+        {
+            return; // Nothing scored for non-C2C / out-of-season events.
+        }
+
+        var seasonYear = raceEvent.EventDate.Year;
+
+        var dsqEntrantIds = await db.Entrants
+            .Where(e => e.EventId == eventId && e.Status == FinishStatus.Disqualified)
+            .Select(e => e.Id)
+            .ToListAsync();
+
+        if (dsqEntrantIds.Count > 0)
+        {
+            // Record an explicit Voided audit entry for each award the disqualified runners currently hold,
+            // preserving why those points were removed. The subsequent recalculation supersedes them.
+            var currentAwards = await db.PointsAuditLogs
+                .Where(a => a.EventId == eventId
+                         && a.SeasonYear == seasonYear
+                         && a.Action != AuditAction.Voided
+                         && a.PointsAwarded > 0
+                         && dsqEntrantIds.Contains(a.EntrantId))
+                .ToListAsync();
+
+            var batchTimestamp = DateTime.UtcNow;
+            foreach (var award in currentAwards)
+            {
+                db.PointsAuditLogs.Add(new PointsAuditLog
+                {
+                    SeasonYear = seasonYear,
+                    EventId = eventId,
+                    EntrantId = award.EntrantId,
+                    Category = award.Category,
+                    PointsAwarded = 0,
+                    Action = AuditAction.Voided,
+                    AuditTimestamp = batchTimestamp,
+                    Reason = "Voided: disqualified"
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        // Re-derive the season from current results, which now exclude disqualified finishers.
+        await RecalculateSeasonPointsAsync(seasonYear);
+    }
+
     private static bool IsInSeasonWindow(DateTime date) =>
         date.Month >= SeasonStartMonth && date.Month <= SeasonEndMonth;
 

@@ -1,6 +1,6 @@
 # US16 - Finish Status (DNS / DNF / DSQ)
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race official

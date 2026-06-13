@@ -80,10 +80,85 @@ public class RaceController : Controller
         var model = new ResultsPageViewModel
         {
             Results = _raceResultsService.GetCollatedResults().ToList(),
-            DnfEntrants = _raceResultsService.GetDnfEntrants().ToList()
+            DnfEntrants = _raceResultsService.GetDnfEntrants().ToList(),
+            DnsEntrants = _raceResultsService.GetDnsEntrants().ToList(),
+            DsqResults = _raceResultsService.GetDsqResults().ToList()
         };
 
         return View(model);
+    }
+
+    [HttpGet]
+    public IActionResult Disqualify(int position)
+    {
+        return View(new DisqualifyInput { Position = position });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Disqualify(DisqualifyInput model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var result = _raceResultsService.DisqualifyResult(model.Position, model.Reason);
+        StoreFeedback(result);
+        if (!result.Success)
+        {
+            return View(model);
+        }
+
+        var currentEvent = _raceResultsService.GetCurrentEvent();
+        if (currentEvent.EventType == EventType.CrownToCrown)
+        {
+            try
+            {
+                await _championsService.VoidDisqualifiedAndRecalculateAsync(currentEvent.Id);
+            }
+            catch (InvalidOperationException)
+            {
+                // Non-critical: scoring is out of season or otherwise not applicable.
+            }
+        }
+
+        return RedirectToAction(nameof(Results));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Reinstate(int position)
+    {
+        var result = _raceResultsService.ReinstateResult(position);
+        StoreFeedback(result);
+
+        if (result.Success)
+        {
+            var currentEvent = _raceResultsService.GetCurrentEvent();
+            if (currentEvent.EventType == EventType.CrownToCrown)
+            {
+                try
+                {
+                    await _championsService.RecalculateSeasonPointsAsync(currentEvent.EventDate.Year);
+                }
+                catch (InvalidOperationException)
+                {
+                    // Non-critical.
+                }
+            }
+        }
+
+        return RedirectToAction(nameof(Results));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult SetStatus(string bibNumber, FinishStatus status)
+    {
+        var result = _raceResultsService.SetNonFinisherStatus(bibNumber, status);
+        StoreFeedback(result);
+        return RedirectToAction(nameof(Results));
     }
 
     [HttpGet]

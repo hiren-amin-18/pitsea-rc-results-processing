@@ -52,7 +52,7 @@ else
             @foreach (var row in Model.Results)
             {
                 <tr class="@(row.IsUnmatched ? "table-warning" : null)">
-                    <td class="text-center">@row.Position</td>
+                    <td class="text-center">@row.DisplayPosition</td>
                     <td class="text-center">@row.Time</td>
                     <td class="text-center">@(row.Duration.HasValue && winnerDuration.HasValue ? RaceTime.FormatGap(row.Duration.Value - winnerDuration.Value) : "")</td>
                     <td class="text-center">@row.BibNumber</td>
@@ -66,14 +66,41 @@ else
                     <td>@row.Club</td>
                     <td class="text-center">@row.Gender</td>
                     <td>@(row.Age?.ToString() ?? "-")</td>
-                    <td>
+                    <td class="text-nowrap">
                         <a class="btn btn-sm btn-outline-secondary" asp-action="EditResult" asp-route-position="@row.Position">Edit</a>
+                        @if (!row.IsUnmatched)
+                        {
+                            <a class="btn btn-sm btn-outline-danger" asp-action="Disqualify" asp-route-position="@row.Position">DSQ</a>
+                        }
                     </td>
                 </tr>
             }
             </tbody>
         </table>
     </div>
+}
+
+@if (Model.DsqResults.Any())
+{
+    <h2 class="mt-4">Disqualified (DSQ)</h2>
+    <p class="small text-muted">Removed from the results above; positions close up automatically.</p>
+    <ul class="list-unstyled">
+    @foreach (var dsq in Model.DsqResults)
+    {
+        var clubSuffix = string.IsNullOrWhiteSpace(dsq.Club) ? string.Empty : $" ({dsq.Club})";
+        <li class="mb-2">
+            <strong>@dsq.BibNumber - @dsq.Name</strong>@clubSuffix
+            @if (!string.IsNullOrWhiteSpace(dsq.StatusReason))
+            {
+                <span class="text-muted">— @dsq.StatusReason</span>
+            }
+            <form method="post" asp-action="Reinstate" asp-route-position="@dsq.Position" class="d-inline ms-2">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-sm btn-outline-success" type="submit">Reinstate</button>
+            </form>
+        </li>
+    }
+    </ul>
 }
 
 <h2 class="mt-4">DNF</h2>
@@ -83,11 +110,44 @@ else
 }
 else
 {
-    <ul>
+    <ul class="list-unstyled">
     @foreach (var dnf in Model.DnfEntrants)
     {
         var clubSuffix = string.IsNullOrWhiteSpace(dnf.Club) ? string.Empty : $" ({dnf.Club})";
-        <li>@dnf.BibNumber - @dnf.Name@clubSuffix</li>
+        <li class="mb-1">
+            @dnf.BibNumber - @dnf.Name@clubSuffix
+            <form method="post" asp-action="SetStatus" class="d-inline ms-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="bibNumber" value="@dnf.BibNumber" />
+                <input type="hidden" name="status" value="@RaceResults.Web.Models.FinishStatus.DidNotStart" />
+                <button class="btn btn-sm btn-outline-secondary" type="submit" title="They never started">Mark DNS</button>
+            </form>
+        </li>
+    }
+    </ul>
+}
+
+<h2 class="mt-4">DNS</h2>
+<p class="small text-muted">Registered but never started — excluded from results, statistics, and the PDF.</p>
+@if (!Model.DnsEntrants.Any())
+{
+    <p>None</p>
+}
+else
+{
+    <ul class="list-unstyled">
+    @foreach (var dns in Model.DnsEntrants)
+    {
+        var clubSuffix = string.IsNullOrWhiteSpace(dns.Club) ? string.Empty : $" ({dns.Club})";
+        <li class="mb-1">
+            @dns.BibNumber - @dns.Name@clubSuffix
+            <form method="post" asp-action="SetStatus" class="d-inline ms-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="bibNumber" value="@dns.BibNumber" />
+                <input type="hidden" name="status" value="@RaceResults.Web.Models.FinishStatus.DidNotFinish" />
+                <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move back to DNF">Mark DNF</button>
+            </form>
+        </li>
     }
     </ul>
 }

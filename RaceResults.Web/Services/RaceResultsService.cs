@@ -524,6 +524,21 @@ public class RaceResultsService : IRaceResultsService
 
     private static IReadOnlyList<ResultRecord> GetCollatedResultsForEvent(RaceResultsDbContext db, int eventId)
     {
+        // Disqualified finishers are removed and the remaining positions close up for display (US16 AC3).
+        var finishers = BuildAllFinishRecords(db, eventId)
+            .Where(r => r.Status != FinishStatus.Disqualified)
+            .ToList();
+
+        for (var i = 0; i < finishers.Count; i++)
+        {
+            finishers[i].DisplayPosition = i + 1;
+        }
+
+        return finishers;
+    }
+
+    private static List<ResultRecord> BuildAllFinishRecords(RaceResultsDbContext db, int eventId)
+    {
         var entrantByBib = db.Entrants
             .Where(e => e.EventId == eventId)
             .ToDictionary(e => e.BibNumber, StringComparer.OrdinalIgnoreCase);
@@ -539,6 +554,7 @@ public class RaceResultsService : IRaceResultsService
             .Select(r =>
             {
                 timings.TryGetValue(r.Position, out var timing);
+                entrantByBib.TryGetValue(r.BibNumber, out var entrant);
                 return new ResultRecord
                 {
                     Position = r.Position,
@@ -548,9 +564,20 @@ public class RaceResultsService : IRaceResultsService
                     Time = timing is null
                         ? string.Empty
                         : timing.Duration is { } d ? RaceTime.Format(d) : timing.Time,
-                    Entrant = entrantByBib.TryGetValue(r.BibNumber, out var entrant) ? entrant : null
+                    Entrant = entrant,
+                    Status = entrant?.Status ?? FinishStatus.Finished,
+                    StatusReason = entrant?.StatusReason
                 };
             })
+            .ToList();
+    }
+
+    public IReadOnlyList<ResultRecord> GetDsqResults()
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        var currentEventId = EnsureCurrentEvent(db).Id;
+        return BuildAllFinishRecords(db, currentEventId)
+            .Where(r => r.Status == FinishStatus.Disqualified)
             .ToList();
     }
 
@@ -561,9 +588,26 @@ public class RaceResultsService : IRaceResultsService
         var finishedBibs = db.FinishBibRecords
             .Where(x => x.EventId == currentEventId)
             .Select(x => x.BibNumber);
+        // Non-finishers default to DNF; those explicitly marked DNS are listed separately (US16).
         return db.Entrants
             .Where(e => e.EventId == currentEventId)
             .Where(e => !finishedBibs.Contains(e.BibNumber))
+            .Where(e => e.Status != FinishStatus.DidNotStart)
+            .OrderBy(e => e.BibNumber)
+            .ToList();
+    }
+
+    public IReadOnlyList<Entrant> GetDnsEntrants()
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        var currentEventId = EnsureCurrentEvent(db).Id;
+        var finishedBibs = db.FinishBibRecords
+            .Where(x => x.EventId == currentEventId)
+            .Select(x => x.BibNumber);
+        return db.Entrants
+            .Where(e => e.EventId == currentEventId)
+            .Where(e => !finishedBibs.Contains(e.BibNumber))
+            .Where(e => e.Status == FinishStatus.DidNotStart)
             .OrderBy(e => e.BibNumber)
             .ToList();
     }
@@ -572,7 +616,10 @@ public class RaceResultsService : IRaceResultsService
     {
         using var db = _dbContextFactory.CreateDbContext();
         var currentEventId = EnsureCurrentEvent(db).Id;
-        var entrants = db.Entrants.Where(e => e.EventId == currentEventId).ToList();
+        // DNS entrants never started, so they are excluded from race statistics totals (US16 AC4).
+        var entrants = db.Entrants
+            .Where(e => e.EventId == currentEventId && e.Status != FinishStatus.DidNotStart)
+            .ToList();
         var males = entrants.Where(e => IsMale(e.Gender)).ToList();
         var females = entrants.Where(e => IsFemale(e.Gender)).ToList();
 
@@ -762,9 +809,96 @@ public class RaceResultsService : IRaceResultsService
         return OperationResult.Ok("Result row updated successfully.");
     }
 
+    public OperationResult DisqualifyResult(int position, string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return OperationResult.Fail(new[] { "A reason is required to disqualify a finisher." });
+        }
+
+        using var db = _dbContextFactory.CreateDbContext();
+        var currentEventId = EnsureCurrentEvent(db).Id;
+        var row = db.FinishBibRecords.FirstOrDefault(r => r.EventId == currentEventId && r.Position == position);
+        if (row is null)
+        {
+            return OperationResult.Fail(new[] { "Result row not found." });
+        }
+
+        var entrant = db.Entrants.FirstOrDefault(e => e.EventId == currentEventId && e.BibNumber.ToLower() == row.BibNumber.ToLower());
+        if (entrant is null)
+        {
+            return OperationResult.Fail(new[] { "Cannot disqualify an unmatched bib — correct the entrant first." });
+        }
+
+        entrant.Status = FinishStatus.Disqualified;
+        entrant.StatusReason = reason.Trim();
+        entrant.StatusUpdatedAt = DateTime.UtcNow;
+        db.SaveChanges();
+
+        _logger.LogInformation("Disqualified position {Position} (bib {Bib}): {Reason}", position, row.BibNumber, reason.Trim());
+        return OperationResult.Ok($"Disqualified {entrant.Name}. They have been removed from the results.");
+    }
+
+    public OperationResult ReinstateResult(int position)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        var currentEventId = EnsureCurrentEvent(db).Id;
+        var row = db.FinishBibRecords.FirstOrDefault(r => r.EventId == currentEventId && r.Position == position);
+        if (row is null)
+        {
+            return OperationResult.Fail(new[] { "Result row not found." });
+        }
+
+        var entrant = db.Entrants.FirstOrDefault(e => e.EventId == currentEventId && e.BibNumber.ToLower() == row.BibNumber.ToLower());
+        if (entrant is null)
+        {
+            return OperationResult.Fail(new[] { "Entrant not found." });
+        }
+
+        entrant.Status = FinishStatus.Finished;
+        entrant.StatusReason = null;
+        entrant.StatusUpdatedAt = DateTime.UtcNow;
+        db.SaveChanges();
+
+        _logger.LogInformation("Reinstated position {Position} (bib {Bib}).", position, row.BibNumber);
+        return OperationResult.Ok($"Reinstated {entrant.Name} to the results.");
+    }
+
+    public OperationResult SetNonFinisherStatus(string bibNumber, FinishStatus status)
+    {
+        if (status != FinishStatus.DidNotStart && status != FinishStatus.DidNotFinish)
+        {
+            return OperationResult.Fail(new[] { "Only DNS or DNF can be set for a non-finisher." });
+        }
+
+        using var db = _dbContextFactory.CreateDbContext();
+        var currentEventId = EnsureCurrentEvent(db).Id;
+        var bibLower = bibNumber.Trim().ToLower();
+        var entrant = db.Entrants.FirstOrDefault(e => e.EventId == currentEventId && e.BibNumber.ToLower() == bibLower);
+        if (entrant is null)
+        {
+            return OperationResult.Fail(new[] { "Entrant not found." });
+        }
+
+        if (db.FinishBibRecords.Any(r => r.EventId == currentEventId && r.BibNumber.ToLower() == bibLower))
+        {
+            return OperationResult.Fail(new[] { "This entrant has a finish position; use Disqualify instead." });
+        }
+
+        entrant.Status = status;
+        entrant.StatusUpdatedAt = DateTime.UtcNow;
+        db.SaveChanges();
+
+        var label = status == FinishStatus.DidNotStart ? "DNS" : "DNF";
+        _logger.LogInformation("Set entrant bib {Bib} to {Status}.", bibNumber, label);
+        return OperationResult.Ok($"Marked {entrant.Name} as {label}.");
+    }
+
     public byte[] GenerateResultsPdf()
     {
         var collated = GetCollatedResults();
+        var dnfEntrants = GetDnfEntrants();
+        var dsqResults = GetDsqResults();
         var currentEvent = GetCurrentEvent();
         var logoBytes = TryLoadPdfLogo();
 
@@ -822,7 +956,7 @@ public class RaceResultsService : IRaceResultsService
                             var row = collated[i];
                             Func<IContainer, IContainer> bodyStyle = BodyCellStyle;
 
-                            table.Cell().Element(bodyStyle).AlignCenter().Text(row.Position.ToString(CultureInfo.InvariantCulture));
+                            table.Cell().Element(bodyStyle).AlignCenter().Text(row.DisplayPosition.ToString(CultureInfo.InvariantCulture));
                             table.Cell().Element(bodyStyle).AlignCenter().Text(row.Time);
                             table.Cell().Element(bodyStyle).AlignCenter().Text(row.BibNumber);
                             table.Cell().Element(bodyStyle).Text(ToPdfCellText(row.Name));
@@ -830,6 +964,28 @@ public class RaceResultsService : IRaceResultsService
                             table.Cell().Element(bodyStyle).Text(ToPdfCellText(row.Club));
                         }
                     });
+
+                    // DNF and DSQ sections mirror the on-screen view (US16 AC6). DNS entrants are excluded.
+                    if (dnfEntrants.Count > 0)
+                    {
+                        column.Item().PaddingTop(8).Text("DNF").SemiBold().FontSize(12);
+                        foreach (var dnf in dnfEntrants)
+                        {
+                            var clubSuffix = string.IsNullOrWhiteSpace(dnf.Club) ? string.Empty : $" ({dnf.Club})";
+                            column.Item().Text($"{dnf.BibNumber} - {dnf.Name}{clubSuffix}").FontSize(10);
+                        }
+                    }
+
+                    if (dsqResults.Count > 0)
+                    {
+                        column.Item().PaddingTop(8).Text("DSQ").SemiBold().FontSize(12);
+                        foreach (var dsq in dsqResults)
+                        {
+                            var clubSuffix = string.IsNullOrWhiteSpace(dsq.Club) ? string.Empty : $" ({dsq.Club})";
+                            var reason = string.IsNullOrWhiteSpace(dsq.StatusReason) ? string.Empty : $" — {dsq.StatusReason}";
+                            column.Item().Text($"{dsq.BibNumber} - {dsq.Name}{clubSuffix}{reason}").FontSize(10);
+                        }
+                    }
                 });
             });
         });
@@ -841,6 +997,8 @@ public class RaceResultsService : IRaceResultsService
     {
         var collated = GetCollatedResults();
         var dnf = GetDnfEntrants();
+        var dns = GetDnsEntrants();
+        var dsq = GetDsqResults();
 
         using var memory = new MemoryStream();
         // UTF-8 with BOM so Excel opens accented names correctly (AC7).
@@ -855,7 +1013,7 @@ public class RaceResultsService : IRaceResultsService
 
             foreach (var row in collated)
             {
-                csv.WriteField(row.Position.ToString(CultureInfo.InvariantCulture));
+                csv.WriteField(row.DisplayPosition.ToString(CultureInfo.InvariantCulture));
                 csv.WriteField(row.Time);
                 csv.WriteField(row.BibNumber);
                 csv.WriteField(row.Name);
@@ -866,8 +1024,8 @@ public class RaceResultsService : IRaceResultsService
                 csv.NextRecord();
             }
 
-            // DNF entrants follow finishers, flagged via the Status column (AC3).
-            foreach (var entrant in dnf)
+            // Non-finishers and disqualified runners follow, flagged via the Status column (US16/US18).
+            void WriteEntrantRow(Entrant entrant, string status)
             {
                 csv.WriteField(string.Empty);
                 csv.WriteField(string.Empty);
@@ -876,7 +1034,30 @@ public class RaceResultsService : IRaceResultsService
                 csv.WriteField(entrant.Club);
                 csv.WriteField(entrant.Gender);
                 csv.WriteField(entrant.Age?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
-                csv.WriteField("DNF");
+                csv.WriteField(status);
+                csv.NextRecord();
+            }
+
+            foreach (var entrant in dnf)
+            {
+                WriteEntrantRow(entrant, "DNF");
+            }
+
+            foreach (var entrant in dns)
+            {
+                WriteEntrantRow(entrant, "DNS");
+            }
+
+            foreach (var row in dsq)
+            {
+                csv.WriteField(string.Empty);
+                csv.WriteField(row.Time);
+                csv.WriteField(row.BibNumber);
+                csv.WriteField(row.Name);
+                csv.WriteField(row.Club);
+                csv.WriteField(row.Gender);
+                csv.WriteField(row.Age?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
+                csv.WriteField("DSQ");
                 csv.NextRecord();
             }
 
