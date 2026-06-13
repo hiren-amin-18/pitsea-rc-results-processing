@@ -1,0 +1,97 @@
+@model IReadOnlyList<RaceResults.Web.Models.RunnerListItem>
+@{
+    ViewData["Title"] = "Runners";
+}
+
+<h1>Runners</h1>
+<p class="text-muted">Persistent runners that per-event entrants link to. Editing or merging recalculates affected Champions seasons.</p>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var feedbackType = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
+}
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">No runners yet. Upload entrants to populate the registry.</div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Merge duplicate runners</h5>
+            <p class="small text-muted">Use this to combine two records for the same person (e.g. a typo or a mid-season club change). All race entries move to the runner you keep.</p>
+            <form method="post" asp-action="Merge" class="row g-2 align-items-end"
+                  onsubmit="return confirm('Merge these runners? All race entries from the first runner move to the second, and the first runner is removed. This recalculates affected Champions seasons.');">
+                @Html.AntiForgeryToken()
+                <div class="col-md-5">
+                    <label class="form-label small">Merge this runner…</label>
+                    <select name="sourceId" class="form-select" data-testid="merge-source" required>
+                        <option value="">— select —</option>
+                        @foreach (var item in Model)
+                        {
+                            <option value="@item.Runner.Id">@item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) — @item.RaceCount race(s)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label small">…into this runner</label>
+                    <select name="targetId" class="form-select" data-testid="merge-target" required>
+                        <option value="">— select —</option>
+                        @foreach (var item in Model)
+                        {
+                            <option value="@item.Runner.Id">@item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) — @item.RaceCount race(s)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-danger w-100" data-testid="merge-submit">Merge</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Club</th>
+                    <th class="text-center">Gender</th>
+                    <th>Age</th>
+                    <th class="text-center">Races</th>
+                    <th>EA number</th>
+                    <th class="text-center">Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr class="@(item.Runner.IsActive ? null : "text-muted")">
+                    <td>@item.Runner.Name</td>
+                    <td>@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)</td>
+                    <td class="text-center">@item.Runner.Gender</td>
+                    <td>@(item.Runner.Age?.ToString() ?? "-")</td>
+                    <td class="text-center">@item.RaceCount</td>
+                    <td>@(string.IsNullOrWhiteSpace(item.Runner.ExternalReference) ? "-" : item.Runner.ExternalReference)</td>
+                    <td class="text-center">
+                        @if (item.Runner.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                        }
+                    </td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@item.Runner.Id">Edit</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

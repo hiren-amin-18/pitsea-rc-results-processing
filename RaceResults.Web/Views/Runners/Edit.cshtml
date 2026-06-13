@@ -1,0 +1,58 @@
+@model RaceResults.Web.Models.EditRunnerInput
+@{
+    ViewData["Title"] = "Edit Runner";
+}
+
+<h1>Edit Runner</h1>
+<p class="text-muted">Changes apply to all of this runner's race entries and recalculate affected Champions seasons. Bib numbers stay per-event.</p>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var feedbackType = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
+}
+
+<form method="post" asp-action="Edit" class="row g-3">
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" />
+
+    <div class="col-md-6">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Club" class="form-label"></label>
+        <input asp-for="Club" class="form-control" placeholder="Leave blank for Unaffiliated" />
+        <span asp-validation-for="Club" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Gender" class="form-label"></label>
+        <input asp-for="Gender" class="form-control" />
+        <span asp-validation-for="Gender" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Age" class="form-label"></label>
+        <input asp-for="Age" class="form-control" />
+        <div class="form-text">Recorded only for under-18s by club convention; leave blank for adults.</div>
+        <span asp-validation-for="Age" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="ExternalReference" class="form-label">EA number</label>
+        <input asp-for="ExternalReference" class="form-control" />
+        <span asp-validation-for="ExternalReference" class="text-danger"></span>
+    </div>
+
+    <div class="col-12">
+        <button class="btn btn-primary" type="submit">Save Changes</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

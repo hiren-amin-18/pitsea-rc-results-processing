@@ -8,6 +8,7 @@ public class RaceResultsDbContext : DbContext
     public RaceResultsDbContext(DbContextOptions<RaceResultsDbContext> options) : base(options) { }
 
     public DbSet<RaceEvent> Events => Set<RaceEvent>();
+    public DbSet<Runner> Runners => Set<Runner>();
     public DbSet<Entrant> Entrants => Set<Entrant>();
     public DbSet<FinishBibRecord> FinishBibRecords => Set<FinishBibRecord>();
     public DbSet<TimingRow> TimingRows => Set<TimingRow>();
@@ -34,6 +35,13 @@ public class RaceResultsDbContext : DbContext
             });
         });
 
+        modelBuilder.Entity<Runner>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).IsRequired();
+            e.Property(x => x.Gender).IsRequired();
+        });
+
         modelBuilder.Entity<Entrant>(e =>
         {
             e.HasKey(x => x.Id);
@@ -42,6 +50,8 @@ public class RaceResultsDbContext : DbContext
             e.Property(x => x.Name).IsRequired();
             e.Property(x => x.Gender).IsRequired();
             e.Property(x => x.EventId).HasDefaultValue(1);
+            // Deleting an event (and its entrants) must never delete the persistent runner (US15 AC7).
+            e.HasOne(x => x.Runner).WithMany().HasForeignKey(x => x.RunnerId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<FinishBibRecord>(e =>

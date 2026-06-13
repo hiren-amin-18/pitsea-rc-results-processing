@@ -122,6 +122,9 @@ public class RaceResultsService : IRaceResultsService
         db.Events.Remove(target);
         db.SaveChanges();
 
+        // Runners persist across events; mark those with no remaining entrants inactive (US15 AC7).
+        RefreshRunnerActiveFlags(db);
+
         if (!db.Events.Any(e => e.IsCurrent))
         {
             var next = db.Events.OrderByDescending(e => e.EventDate).FirstOrDefault();
@@ -218,6 +221,9 @@ public class RaceResultsService : IRaceResultsService
             entrant.EventId = currentEvent.Id;
         }
 
+        // Link each entrant to a persistent runner, creating runners as needed (US15).
+        var runnerWarnings = await LinkEntrantsToRunnersAsync(db, deduped);
+
         db.Entrants.AddRange(deduped);
         await db.SaveChangesAsync();
 
@@ -227,7 +233,94 @@ public class RaceResultsService : IRaceResultsService
         {
             result.Warnings.Add($"Duplicate entrant names detected (please verify): {string.Join(", ", duplicateNames)}");
         }
+        result.Warnings.AddRange(runnerWarnings);
         return result;
+    }
+
+    /// <summary>
+    /// Links each entrant to a persistent runner (US15 AC3): exact normalised name+club matches link to the
+    /// existing runner; otherwise a new runner is created. Likely duplicates (same name/different club, or a small
+    /// typo) against runners that existed before this upload are returned as assistive warnings for the organiser.
+    /// </summary>
+    private static async Task<List<string>> LinkEntrantsToRunnersAsync(RaceResultsDbContext db, List<Entrant> entrants)
+    {
+        var warnings = new List<string>();
+
+        // Runners that existed before this upload — only these are candidates for near-match warnings,
+        // so runners created within this same batch don't warn against each other.
+        var preExisting = await db.Runners.ToListAsync();
+        var byKey = preExisting.ToDictionary(r => RunnerIdentity.NormalizeKey(r.Name, r.Club));
+
+        foreach (var entrant in entrants)
+        {
+            var key = RunnerIdentity.NormalizeKey(entrant.Name, entrant.Club);
+            if (byKey.TryGetValue(key, out var existing))
+            {
+                entrant.Runner = existing;
+                continue;
+            }
+
+            var entrantName = RunnerIdentity.NormalizeName(entrant.Name);
+            var near = preExisting.FirstOrDefault(r =>
+            {
+                var runnerName = RunnerIdentity.NormalizeName(r.Name);
+                if (runnerName == entrantName)
+                {
+                    return true; // same name, different club
+                }
+
+                return entrantName.Length >= 4 && RunnerIdentity.Levenshtein(runnerName, entrantName) <= 2;
+            });
+
+            if (near is not null)
+            {
+                warnings.Add(
+                    $"'{entrant.Name}' ({ClubLabel(entrant.Club)}) looks similar to existing runner " +
+                    $"'{near.Name}' ({ClubLabel(near.Club)}) — created as a new runner; merge them under Runners if they are the same person.");
+            }
+
+            var runner = new Runner
+            {
+                Name = entrant.Name,
+                Club = entrant.Club,
+                Gender = entrant.Gender,
+                Age = entrant.Age,
+                IsActive = true
+            };
+            db.Runners.Add(runner);
+            byKey[key] = runner;
+            entrant.Runner = runner;
+        }
+
+        return warnings;
+    }
+
+    private static string ClubLabel(string? club) => string.IsNullOrWhiteSpace(club) ? "Unaffiliated" : club!;
+
+    /// <summary>Recomputes each runner's active flag: active iff at least one entrant still links to them (US15 AC7).</summary>
+    private static void RefreshRunnerActiveFlags(RaceResultsDbContext db)
+    {
+        var activeRunnerIds = db.Entrants
+            .Where(e => e.RunnerId != null)
+            .Select(e => e.RunnerId!.Value)
+            .Distinct()
+            .ToHashSet();
+
+        var changed = false;
+        foreach (var runner in db.Runners.ToList())
+        {
+            var shouldBeActive = activeRunnerIds.Contains(runner.Id);
+            if (runner.IsActive != shouldBeActive)
+            {
+                runner.IsActive = shouldBeActive;
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            db.SaveChanges();
+        }
     }
 
     public async Task<OperationResult> UploadFinishBibAsync(IFormFile? file)

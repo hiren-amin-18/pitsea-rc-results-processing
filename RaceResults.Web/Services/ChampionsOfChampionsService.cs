@@ -226,12 +226,10 @@ public class ChampionsOfChampionsService : IChampionsOfChampionsService
             .ToList();
     }
 
-    // A runner is identified across events by name and club (case- and punctuation-insensitive).
+    // A runner is identified across events by their persistent RunnerId (US15 AC5). Entrants predating
+    // the runner registry (no RunnerId) fall back to a per-entrant key so they are never merged by accident.
     private static string RunnerKey(Entrant entrant) =>
-        $"{NormalizeKeyPart(entrant.Name)}|{NormalizeKeyPart(entrant.Club)}";
-
-    private static string NormalizeKeyPart(string? value) =>
-        new string((value ?? string.Empty).Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+        entrant.RunnerId.HasValue ? $"r{entrant.RunnerId.Value}" : $"e{entrant.Id}";
 
     private static IReadOnlyList<ChampionsLeaderboardEntry> RankAndReturn(
         List<ChampionsLeaderboardEntry> entries)

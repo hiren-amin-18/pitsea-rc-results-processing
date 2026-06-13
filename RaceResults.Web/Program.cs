@@ -16,6 +16,7 @@ builder.Services.AddDbContextFactory<RaceResultsDbContext>(options =>
 builder.Services.AddSingleton<IRaceResultsService, RaceResultsService>();
 builder.Services.AddScoped<IChampionsOfChampionsService, ChampionsOfChampionsService>();
 builder.Services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
+builder.Services.AddScoped<IRunnerRegistryService, RunnerRegistryService>();
 
 QuestPDF.Settings.License = LicenseType.Community;
 
@@ -27,7 +28,9 @@ if (!app.Environment.IsEnvironment("Testing"))
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<RaceResultsDbContext>();
     db.Database.Migrate();
-    BackfillTimingDurations(db, scope.ServiceProvider.GetRequiredService<ILogger<Program>>());
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    BackfillTimingDurations(db, startupLogger);
+    BackfillRunners(db, startupLogger);
 }
 
 // Configure the HTTP request pipeline.
@@ -104,6 +107,46 @@ static void BackfillTimingDurations(RaceResultsDbContext db, ILogger logger)
             "US17 time migration: {Count} stored time(s) could not be parsed and need manual correction via Edit: {Details}",
             unparseable.Count, details);
     }
+}
+
+// US15: create one persistent runner per distinct normalised name+club across all entrants, and link
+// existing entrant rows to them. Runs once for legacy data (new uploads link runners themselves).
+static void BackfillRunners(RaceResultsDbContext db, ILogger logger)
+{
+    var unlinked = db.Entrants.Where(e => e.RunnerId == null).ToList();
+    if (unlinked.Count == 0)
+    {
+        return;
+    }
+
+    var byKey = db.Runners.ToList()
+        .ToDictionary(r => RunnerIdentity.NormalizeKey(r.Name, r.Club));
+
+    var created = 0;
+    foreach (var entrant in unlinked)
+    {
+        var key = RunnerIdentity.NormalizeKey(entrant.Name, entrant.Club);
+        if (!byKey.TryGetValue(key, out var runner))
+        {
+            runner = new Runner
+            {
+                Name = entrant.Name,
+                Club = entrant.Club,
+                Gender = entrant.Gender,
+                Age = entrant.Age,
+                IsActive = true
+            };
+            db.Runners.Add(runner);
+            byKey[key] = runner;
+            created++;
+        }
+
+        entrant.Runner = runner;
+    }
+
+    db.SaveChanges();
+    logger.LogInformation(
+        "US15 runner backfill: linked {Linked} entrant(s) to {Created} new runner(s).", unlinked.Count, created);
 }
 
 public partial class Program { }

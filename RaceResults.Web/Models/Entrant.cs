@@ -10,6 +10,10 @@ public class Entrant
     public string Gender { get; set; } = string.Empty;
     public int? Age { get; set; }
 
+    /// <summary>Links this per-event entry to a persistent <see cref="Runner"/> (US15). Nullable for legacy rows pre-migration.</summary>
+    public int? RunnerId { get; set; }
+    public Runner? Runner { get; set; }
+
     public bool IsU18 => Age.HasValue && Age.Value < 18;
     public bool IsUnaffiliated => string.IsNullOrWhiteSpace(Club);
 }

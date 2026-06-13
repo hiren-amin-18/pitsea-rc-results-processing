@@ -1,6 +1,6 @@
 # US15 - Runner Registry
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

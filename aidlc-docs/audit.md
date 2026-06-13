@@ -40,6 +40,17 @@
 **Summary**: `aidlc-docs/construction/US17/US17-implementation-summary.md`
 **Build Status**: Success (new EF migration AddTimingDuration)
 **Test Status**: Pass (104 unit + 21 integration = 125)
-**Notes**: Brownfield + schema change. RaceTime helper, typed TimingRow.DurationTicks, validated parsing, out-of-order warning, gap-to-winner column, edit validation, typed stats, legacy backfill at startup. Foundational for US22/US23/US24. Awaiting user review.
+**Notes**: Brownfield + schema change. RaceTime helper, typed TimingRow.DurationTicks, validated parsing, out-of-order warning, gap-to-winner column, edit validation, typed stats, legacy backfill at startup. Foundational for US22/US23/US24. Reviewed and committed (09b62e1).
+
+---
+
+## US15 — Runner Registry
+**Timestamp**: 2026-06-13
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US15-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US15/US15-implementation-summary.md`
+**Build Status**: Success (new EF migration AddRunnerRegistry)
+**Test Status**: Pass (111 unit + 22 integration = 133)
+**Notes**: Brownfield + schema change. New Runner entity + Entrant.RunnerId FK, upload matching with near-match warnings, RunnerRegistryService (list/edit/merge) with affected-season recalc, Champions keying on RunnerId, event-delete keeps runners (inactive flag), startup data backfill. Structural prerequisite for US24. Awaiting user review.
 
 ---
