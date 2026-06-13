@@ -62,6 +62,17 @@
 **Summary**: `aidlc-docs/construction/US16/US16-implementation-summary.md`
 **Build Status**: Success (new EF migration AddFinishStatus)
 **Test Status**: Pass (116 unit + 22 integration = 138)
-**Notes**: Brownfield + schema change. FinishStatus on Entrant; DSQ removes finishers (display positions close up) + voids Champions points via the Voided audit action + recalc; DNS excluded from DNF/stats/PDF; PDF/CSV gain DNF/DSQ sections; reversible. Awaiting user review.
+**Notes**: Brownfield + schema change. FinishStatus on Entrant; DSQ removes finishers (display positions close up) + voids Champions points via the Voided audit action + recalc; DNS excluded from DNF/stats/PDF; PDF/CSV gain DNF/DSQ sections; reversible. Reviewed and committed (0d76310).
+
+---
+
+## US22 — Course Records Management
+**Timestamp**: 2026-06-13
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US22-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US22/US22-implementation-summary.md`
+**Build Status**: Success (new EF migration AddCourseRecords with seed)
+**Test Status**: Pass (121 unit + 22 integration = 143)
+**Notes**: Brownfield + schema change. CourseRecord entity per event type/category with seeded C2C records; data-driven PDF records line with NEW COURSE RECORD flag; automatic detection + organiser confirmation; record history retained; typed-duration comparison; management UI. Depends on US17. Awaiting user review.
 
 ---

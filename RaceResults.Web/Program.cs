@@ -17,6 +17,7 @@ builder.Services.AddSingleton<IRaceResultsService, RaceResultsService>();
 builder.Services.AddScoped<IChampionsOfChampionsService, ChampionsOfChampionsService>();
 builder.Services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
 builder.Services.AddScoped<IRunnerRegistryService, RunnerRegistryService>();
+builder.Services.AddScoped<ICourseRecordService, CourseRecordService>();
 
 QuestPDF.Settings.License = LicenseType.Community;
 

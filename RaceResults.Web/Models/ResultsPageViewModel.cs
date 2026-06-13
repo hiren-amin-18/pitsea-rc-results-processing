@@ -10,4 +10,7 @@ public class ResultsPageViewModel
 
     /// <summary>Disqualified finishers (US16) — shown with their original position and reason.</summary>
     public List<ResultRecord> DsqResults { get; set; } = new();
+
+    /// <summary>Category winners whose time beats the stored course record, awaiting confirmation (US22).</summary>
+    public List<PendingCourseRecord> PendingCourseRecords { get; set; } = new();
 }

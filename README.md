@@ -44,7 +44,8 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Top 10 by category** | Top 10 finishers for Male, Female, Male U18, Female U18 |
 | **Champions leaderboard** | Yearly cumulative scoring across Crown to Crown races in the May–September season window; top 10 per category earn points (10→1); runners identified across events by name + club; tie-breaking by event participation; multi-year navigation |
 | **Champions audit trail** | Append-only points audit log distinguishing initial awards from recalculations; full scoring history retained |
-| **PDF export** | Download a branded, race-ready PDF: first page includes winners + course records (Crown to Crown events only), subsequent pages continue with results table |
+| **PDF export** | Download a branded, race-ready PDF: first page includes winners + data-driven course records for the event type, subsequent pages continue with results table |
+| **Course records** | Records stored per event type and category; a management page to view/correct them, automatic detection of a new record after timings (organiser confirms), retained record history, and a "NEW COURSE RECORD" flag on the PDF |
 | **CSV export** | Download collated results (finishers + DNF, with a Status column) and the Champions leaderboard as Excel-friendly UTF-8 CSV with descriptive filenames |
 | **Champions PDF export** | Export Champions leaderboard to PDF with tie-breaking indicators (†) and gold/silver/bronze highlighting for top 3 |
 | **Event management** | Create, edit, select current, and delete events (`Crown to Crown` / `Bluebell 5`) with event-scoped results |
@@ -103,7 +104,7 @@ Club-specific conventions that the code relies on. These are deliberate, not bug
 | **Runner identity (cross-event)** | A persistent **runner registry** (US15) is the source of cross-event identity: per-event entrants link to a `Runner`, and Champions scoring keys on `RunnerId`. At entrant upload, runners are matched by **normalised name + club** (case- and punctuation-insensitive); an exact match links automatically, no match creates a runner, and a near match (same name/different club or a small typo) is flagged as a warning for the organiser to review and optionally merge under **Runners**. |
 | **C2C series schedule** | The Crown to Crown series runs the full year: Good Friday (11:00), then the second Wednesday of each month May–August (19:30), the first *or* second Wednesday of September (19:00, decided per year), and finally Boxing Day (11:00). Events store only a date — start times are not modelled. |
 | **Champions season window** | Champions of Champions scores only C2C races dated May–September inclusive, keyed to the event's calendar year. This is a **deliberate subset of the series**: the Good Friday and Boxing Day races are real C2C events that earn no Champions points. Out-of-window or non-C2C events are never scored. |
-| **Event types** | `Crown to Crown` and `Bluebell 5` (annual, around April/May, date varies). Course records on the results PDF render only for Crown to Crown. |
+| **Event types** | `Crown to Crown` and `Bluebell 5` (annual, around April/May, date varies). Course records are held per event type (US22): Crown to Crown ships with seeded records; Bluebell 5 starts empty, and the PDF records line is omitted until records exist. |
 
 ---
 
@@ -119,7 +120,8 @@ pitsea-rc-results-processing/
 │   │   ├── RaceController.cs           # All race operations (/Race/*)
    │   ├── EventsController.cs         # Event management (/Events/*)
    │   ├── ChampionsController.cs      # Champions leaderboard (/Champions/*)
-   │   └── RunnersController.cs        # Runner registry: list, edit, merge (/Runners/*)
+   │   ├── RunnersController.cs        # Runner registry: list, edit, merge (/Runners/*)
+   │   └── CourseRecordsController.cs  # Course record management (/CourseRecords/*)
 │   ├── Data/
 │   │   └── RaceResultsDbContext.cs     # EF Core DbContext (SQLite)
 │   ├── Migrations/                     # EF Core migration files
@@ -209,7 +211,7 @@ pitsea-rc-results-processing/
 
 - **Service layer owns all business logic.** Controllers are thin: they call `IRaceResultsService` / `IChampionsOfChampionsService`, store feedback in `TempData`, and redirect. File parsing, validation, collation, scoring, and PDF generation all live in services.
 - **DbContext factory pattern.** Services receive `IDbContextFactory<RaceResultsDbContext>` and create a short-lived context per operation, which is why `RaceResultsService` can be registered as a singleton.
-- **DI registrations** (`Program.cs`): `IRaceResultsService` → singleton; `IChampionsOfChampionsService` → scoped; `IDatabaseBackupService` → scoped; `IRunnerRegistryService` → scoped.
+- **DI registrations** (`Program.cs`): `IRaceResultsService` → singleton; `IChampionsOfChampionsService` → scoped; `IDatabaseBackupService` → scoped; `IRunnerRegistryService` → scoped; `ICourseRecordService` → scoped.
 - **Migrations apply automatically at startup** (`db.Database.Migrate()`), skipped when the environment is `Testing` so integration tests can use `EnsureCreated` against in-memory SQLite.
 - **Current event fallback.** Exactly one event is "current" at a time. If none is current, the most recent event by date is promoted; if no events exist at all, a default `Crown to Crown` event dated 1 May 2026 is created (in-season for Champions scoring).
 - **Operation results, not exceptions.** Upload and edit flows return an `OperationResult` carrying `Messages`, `Warnings`, and `Errors`; controllers render all three. Warnings (e.g. unmatched bibs, duplicate names) do not block the operation.
@@ -497,7 +499,7 @@ The generated PDF follows the race-day format used by Pitsea Running Club:
 
 - Header on all pages: left and right `pitsea-logo-white.png` logos, `PITSEA RUNNING CLUB`, and current event title in the format `[Event Name] RESULTS [Event Date]`
 - Event date in PDF title uses ordinal day + uppercase month/year (for example: `1ST MAY 2026`)
-- Page 1: winners summary (`1st Male`, `1st Female`, `1st Male Youth`, `1st Female Youth`); the course records line is shown for **Crown to Crown events only** (records are course-specific and currently hard-coded — making them data-driven is planned as US22)
+- Page 1: winners summary (`1st Male`, `1st Female`, `1st Male Youth`, `1st Female Youth`); the course records line is rendered from stored records for the event's type and omitted when none exist (US22). A record set at this event is flagged "NEW COURSE RECORD"
 - All pages: results table with columns `Position`, `Time`, `Race No`, `Name`, `Gender`, `Club Name`
 - Table styling: black header row with white text and white borders; plain white body rows
 - Column alignment in PDF table: `Position`, `Time`, `Race No`, and `Gender` are centered
@@ -526,9 +528,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 116 | Tests `RaceResultsService`, `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, and finish-status logic against isolated SQLite DBs per test |
+| `RaceResults.UnitTests` | 121 | Tests `RaceResultsService`, `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, and course records against isolated SQLite DBs per test |
 | `RaceResults.IntegrationTests` | 22 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **138** | |
+| **Total** | **143** | |
 
 ---
 
@@ -548,7 +550,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US19 and US27 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US19, US22 and US27 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -574,6 +576,7 @@ US01–US19 and US27 are implemented; the remaining stories are planned. Each st
 | [US17](user-stories/US17-time-validation-and-analytics.md) | Time Validation and Race Analytics |
 | [US15](user-stories/US15-runner-registry.md) | Runner Registry |
 | [US16](user-stories/US16-finish-status-dns-dnf-dsq.md) | Finish Status (DNS / DNF / DSQ) |
+| [US22](user-stories/US22-course-records-management.md) | Course Records Management |
 
 ### Planned
 
@@ -581,7 +584,6 @@ US01–US19 and US27 are implemented; the remaining stories are planned. Each st
 |---|---|
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |
-| [US22](user-stories/US22-course-records-management.md) | Course Records Management |
 | [US23](user-stories/US23-enhanced-race-statistics.md) | Enhanced Race Statistics |
 | [US24](user-stories/US24-season-statistics.md) | Season Statistics and Runner Season Profiles |
 | [US25](user-stories/US25-app-installer.md) | Application Installer |

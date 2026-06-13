@@ -900,6 +900,7 @@ public class RaceResultsService : IRaceResultsService
         var dnfEntrants = GetDnfEntrants();
         var dsqResults = GetDsqResults();
         var currentEvent = GetCurrentEvent();
+        var courseRecords = LoadCurrentCourseRecords(currentEvent.EventType);
         var logoBytes = TryLoadPdfLogo();
 
         var maleWinner = FindWinner(collated, e => IsMale(e.Gender) && !e.IsU18);
@@ -927,7 +928,8 @@ public class RaceResultsService : IRaceResultsService
                         femaleWinner,
                         maleYouthWinner,
                         femaleYouthWinner,
-                        currentEvent.EventType == EventType.CrownToCrown));
+                        courseRecords,
+                        currentEvent.Id));
 
                     column.Item().Border(1).BorderColor(Colors.Black).Table(table =>
                     {
@@ -1176,13 +1178,25 @@ public class RaceResultsService : IRaceResultsService
         };
     }
 
+    private List<CourseRecord> LoadCurrentCourseRecords(EventType eventType)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        var order = new[] { "Male", "Female", "Male U18", "Female U18" };
+        return db.CourseRecords
+            .Where(r => r.IsCurrent && r.EventType == eventType)
+            .ToList()
+            .OrderBy(r => Array.IndexOf(order, r.Category))
+            .ToList();
+    }
+
     private static void BuildPdfWinnersBlock(
         IContainer container,
         ResultRecord? maleWinner,
         ResultRecord? femaleWinner,
         ResultRecord? maleYouthWinner,
         ResultRecord? femaleYouthWinner,
-        bool showCourseRecords)
+        IReadOnlyList<CourseRecord> courseRecords,
+        int currentEventId)
     {
         container.PaddingTop(8).PaddingBottom(8).Column(column =>
         {
@@ -1200,12 +1214,25 @@ public class RaceResultsService : IRaceResultsService
                 row.RelativeItem().AlignRight().Text($"1st Female Youth = {WinnerText(femaleYouthWinner)}").FontSize(11);
             });
 
-            // Course records are specific to the Crown to Crown course; omit them for other events.
-            if (showCourseRecords)
+            // Course records are rendered from stored data for this event's type (US22); omit the line if none exist.
+            if (courseRecords.Count > 0)
             {
-                column.Item().PaddingTop(3).Text("Course records - 15:25 Adam Hickey (August 2013) 18:01 Jessica Judd (December 2015)")
+                var parts = courseRecords.Select(r =>
+                    $"{RaceTime.Format(r.Duration)} {r.RunnerName} ({r.EventDate:MMMM yyyy})");
+                column.Item().PaddingTop(3).Text($"Course records - {string.Join("  ", parts)}")
                     .SemiBold()
                     .FontSize(11);
+
+                // Records set at this event are celebrated (US22 AC5).
+                var newRecords = courseRecords.Where(r => r.SourceEventId == currentEventId).ToList();
+                if (newRecords.Count > 0)
+                {
+                    var newParts = newRecords.Select(r => $"{r.Category}: {RaceTime.Format(r.Duration)} {r.RunnerName}");
+                    column.Item().PaddingTop(2).Text($"NEW COURSE RECORD — {string.Join("; ", newParts)}")
+                        .Bold()
+                        .FontSize(11)
+                        .FontColor(Colors.Red.Darken2);
+                }
             }
         });
     }

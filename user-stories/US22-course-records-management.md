@@ -1,6 +1,6 @@
 # US22 - Course Records Management
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

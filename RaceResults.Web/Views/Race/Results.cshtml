@@ -20,6 +20,35 @@
     <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
 }
 
+@if (Model.PendingCourseRecords.Any())
+{
+    <div class="alert alert-success" role="alert">
+        <h5 class="alert-heading">🏆 Potential new course record@(Model.PendingCourseRecords.Count == 1 ? "" : "s")!</h5>
+        <p class="mb-2">Confirm to update the stored record (it keeps a history of previous holders). Decline if this looks like a timing error or short course.</p>
+        @foreach (var pending in Model.PendingCourseRecords)
+        {
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span>
+                    <strong>@pending.Category:</strong> @pending.Time — @pending.RunnerName
+                    @if (string.IsNullOrEmpty(pending.PreviousTime))
+                    {
+                        <span class="text-muted">(first record for this category)</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">(beats @pending.PreviousTime)</span>
+                    }
+                </span>
+                <form method="post" asp-action="ConfirmCourseRecord" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="category" value="@pending.Category" />
+                    <button type="submit" class="btn btn-sm btn-success">Confirm record</button>
+                </form>
+            </div>
+        }
+    </div>
+}
+
 @if (!Model.Results.Any())
 {
     <div class="alert alert-info">No collated results yet. Upload files first.</div>

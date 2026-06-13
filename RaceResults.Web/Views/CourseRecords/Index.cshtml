@@ -1,0 +1,63 @@
+@model IReadOnlyList<RaceResults.Web.Models.CourseRecordSlot>
+@using RaceResults.Web.Models
+@using RaceResults.Web.Services
+@{
+    ViewData["Title"] = "Course Records";
+}
+
+<h1>Course Records</h1>
+<p class="text-muted">Standing records per event type and category. New records are proposed automatically on the Results page after timings are uploaded; you can also correct a record here.</p>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var feedbackType = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
+}
+
+@foreach (var typeGroup in Model.GroupBy(s => s.EventType))
+{
+    <h2 class="h5 mt-4">@(typeGroup.Key == EventType.CrownToCrown ? "Crown to Crown" : "Bluebell 5")</h2>
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Time</th>
+                    <th>Holder</th>
+                    <th>Set</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var slot in typeGroup)
+            {
+                <tr>
+                    <td>@slot.Category</td>
+                    <td>@(slot.Current is null ? "—" : RaceTime.Format(slot.Current.Duration))</td>
+                    <td>
+                        @if (slot.Current is null)
+                        {
+                            <span class="text-muted">No record yet</span>
+                        }
+                        else
+                        {
+                            @slot.Current.RunnerName
+                            @if (!string.IsNullOrWhiteSpace(slot.Current.Club))
+                            {
+                                <span class="text-muted">(@slot.Current.Club)</span>
+                            }
+                        }
+                    </td>
+                    <td>@(slot.Current is null ? "" : slot.Current.EventDate.ToString("MMM yyyy"))</td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-secondary"
+                           asp-action="Edit" asp-route-eventType="@slot.EventType" asp-route-category="@slot.Category">
+                            @(slot.Current is null ? "Set" : "Edit")
+                        </a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

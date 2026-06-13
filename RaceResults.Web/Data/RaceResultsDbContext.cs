@@ -14,6 +14,7 @@ public class RaceResultsDbContext : DbContext
     public DbSet<TimingRow> TimingRows => Set<TimingRow>();
     public DbSet<ChampionOfChampionsScore> ChampionOfChampionsScores => Set<ChampionOfChampionsScore>();
     public DbSet<PointsAuditLog> PointsAuditLogs => Set<PointsAuditLog>();
+    public DbSet<CourseRecord> CourseRecords => Set<CourseRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -82,6 +83,45 @@ public class RaceResultsDbContext : DbContext
             e.Property(x => x.RaceCount).IsRequired();
             e.Property(x => x.LastUpdated).IsRequired();
             e.HasOne(x => x.Entrant).WithMany().HasForeignKey(x => x.EntrantId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CourseRecord>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.EventType, x.Category, x.IsCurrent });
+            e.Property(x => x.Category).IsRequired();
+            e.Property(x => x.RunnerName).IsRequired();
+
+            // Existing Crown to Crown course records (US22 AC2). Bluebell 5 starts with none.
+            e.HasData(
+                new CourseRecord
+                {
+                    Id = 1,
+                    EventType = EventType.CrownToCrown,
+                    Category = "Male",
+                    DurationTicks = 9_250_000_000, // 15:25
+                    RunnerName = "Adam Hickey",
+                    Club = string.Empty,
+                    EventName = "Crown to Crown",
+                    EventDate = new DateTime(2013, 8, 1),
+                    SourceEventId = null,
+                    IsCurrent = true,
+                    CreatedAt = new DateTime(2024, 1, 1)
+                },
+                new CourseRecord
+                {
+                    Id = 2,
+                    EventType = EventType.CrownToCrown,
+                    Category = "Female",
+                    DurationTicks = 10_810_000_000, // 18:01
+                    RunnerName = "Jessica Judd",
+                    Club = string.Empty,
+                    EventName = "Crown to Crown",
+                    EventDate = new DateTime(2015, 12, 1),
+                    SourceEventId = null,
+                    IsCurrent = true,
+                    CreatedAt = new DateTime(2024, 1, 1)
+                });
         });
 
         modelBuilder.Entity<PointsAuditLog>(e =>

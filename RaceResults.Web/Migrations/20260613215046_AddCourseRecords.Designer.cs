@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RaceResults.Web.Data;
 
@@ -10,9 +11,11 @@ using RaceResults.Web.Data;
 namespace RaceResults.Web.Migrations
 {
     [DbContext(typeof(RaceResultsDbContext))]
-    partial class RaceResultsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260613215046_AddCourseRecords")]
+    partial class AddCourseRecords
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.7");

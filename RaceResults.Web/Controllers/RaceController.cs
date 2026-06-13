@@ -8,11 +8,16 @@ public class RaceController : Controller
 {
     private readonly IRaceResultsService _raceResultsService;
     private readonly IChampionsOfChampionsService _championsService;
+    private readonly ICourseRecordService _courseRecordService;
 
-    public RaceController(IRaceResultsService raceResultsService, IChampionsOfChampionsService championsService)
+    public RaceController(
+        IRaceResultsService raceResultsService,
+        IChampionsOfChampionsService championsService,
+        ICourseRecordService courseRecordService)
     {
         _raceResultsService = raceResultsService;
         _championsService = championsService;
+        _courseRecordService = courseRecordService;
     }
 
     [HttpGet]
@@ -77,15 +82,27 @@ public class RaceController : Controller
     [HttpGet]
     public IActionResult Results()
     {
+        var currentEvent = _raceResultsService.GetCurrentEvent();
         var model = new ResultsPageViewModel
         {
             Results = _raceResultsService.GetCollatedResults().ToList(),
             DnfEntrants = _raceResultsService.GetDnfEntrants().ToList(),
             DnsEntrants = _raceResultsService.GetDnsEntrants().ToList(),
-            DsqResults = _raceResultsService.GetDsqResults().ToList()
+            DsqResults = _raceResultsService.GetDsqResults().ToList(),
+            PendingCourseRecords = _courseRecordService.GetPendingRecords(currentEvent.Id).ToList()
         };
 
         return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult ConfirmCourseRecord(string category)
+    {
+        var currentEvent = _raceResultsService.GetCurrentEvent();
+        var result = _courseRecordService.ConfirmRecord(currentEvent.Id, category);
+        StoreFeedback(result);
+        return RedirectToAction(nameof(Results));
     }
 
     [HttpGet]
