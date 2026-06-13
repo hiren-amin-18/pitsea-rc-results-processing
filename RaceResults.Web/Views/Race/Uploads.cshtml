@@ -37,6 +37,13 @@
                     <a href="~/example-files/on-the-day-1.xlsx" download>on-the-day-1.xlsx</a>,
                     <a href="~/example-files/on-the-day-2.xlsx" download>on-the-day-2.xlsx</a>
                 </p>
+                @if (Model.FinishBibCount > 0 || Model.TimingCount > 0)
+                {
+                    <div class="alert alert-warning small py-2" role="alert">
+                        Re-uploading entrants clears this event's finish bib and timing data.
+                        <a asp-controller="Home" asp-action="Settings">Download a backup</a> first.
+                    </div>
+                }
                 <form method="post" asp-action="UploadEntrants" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">

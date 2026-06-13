@@ -9,6 +9,8 @@
     <a class="btn btn-primary" asp-action="Create">Create Event</a>
 </div>
 
+<p class="small text-muted">Deleting an event permanently removes its entrants, finish rows, and timing data. <a asp-controller="Home" asp-action="Settings">Download a backup</a> first.</p>
+
 @if (TempData["FeedbackText"] is string feedback)
 {
     var feedbackType = TempData["FeedbackType"] as string ?? "info";
@@ -44,7 +46,7 @@
                     </form>
                 }
 
-                <form method="post" asp-action="Delete" asp-route-id="@raceEvent.Id" onsubmit="return confirm('Delete this event and all associated results?');">
+                <form method="post" asp-action="Delete" asp-route-id="@raceEvent.Id" onsubmit="return confirm('Delete this event and all associated results? This cannot be undone — consider downloading a backup from Settings first.');">
                     @Html.AntiForgeryToken()
                     <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
                 </form>

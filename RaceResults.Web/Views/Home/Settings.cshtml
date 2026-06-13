@@ -15,3 +15,50 @@
         <p class="small text-muted mt-3 mb-0">This setting is stored in your browser and remembered for future visits.</p>
     </div>
 </div>
+
+<div class="card settings-card mt-4">
+    <div class="card-body">
+        <h5 class="card-title mb-3">Data backup</h5>
+
+        @if (TempData["BackupFeedbackText"] is string backupFeedback)
+        {
+            var backupFeedbackType = TempData["BackupFeedbackType"] as string ?? "info";
+            <div class="alert alert-@backupFeedbackType" role="alert">@backupFeedback</div>
+        }
+
+        <p class="text-muted">All race data lives in a single SQLite database. Download a backup regularly — especially before deleting events or re-uploading entrants.</p>
+
+        <a class="btn btn-primary" asp-action="DownloadBackup" data-testid="download-backup-button">
+            Download backup
+        </a>
+
+        <hr class="my-4" />
+
+        <h6>Restore from backup</h6>
+        <div class="alert alert-warning" role="alert">
+            <strong>Restoring replaces all current data</strong> with the contents of the uploaded backup. Your current
+            database is automatically saved aside first (as <code>raceresults-prerestore-…&hairsp;.db</code>) so a bad
+            restore can be undone.
+        </div>
+
+        <form method="post" asp-action="RestoreBackup" enctype="multipart/form-data"
+              onsubmit="return confirm('Replace all current data with this backup? Your current database will be saved aside first.');">
+            @Html.AntiForgeryToken()
+            <div class="mb-3">
+                <input class="form-control" type="file" name="backupFile" accept=".db" data-testid="restore-backup-file" />
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="confirmRestore" value="true" id="confirmRestore" data-testid="restore-backup-confirm" />
+                <label class="form-check-label" for="confirmRestore">
+                    I understand this will replace all current race data.
+                </label>
+            </div>
+            <button class="btn btn-outline-danger" type="submit" data-testid="restore-backup-button">Restore from backup</button>
+        </form>
+
+        <p class="small text-muted mt-4 mb-0">
+            <strong>Tip:</strong> keep the live database outside cloud-synced folders (OneDrive, Google Drive, Dropbox) to
+            avoid file-lock corruption, and sync your downloaded <em>backups</em> instead.
+        </p>
+    </div>
+</div>

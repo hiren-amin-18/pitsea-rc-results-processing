@@ -49,6 +49,7 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
 | **Theme-aware branding** | App logo switches by theme (light uses white logo, dark uses black logo) at a fixed size |
 | **Persistent storage** | All data saved to a SQLite database and survives app restarts |
+| **Backup & restore** | Download a consistent database snapshot and restore from a backup file in Settings; restores are validated, keep the pre-restore database aside, and apply pending migrations |
 | **Structured logging** | Warnings on validation failures; errors on unhandled exceptions |
 
 ---
@@ -204,7 +205,7 @@ pitsea-rc-results-processing/
 
 - **Service layer owns all business logic.** Controllers are thin: they call `IRaceResultsService` / `IChampionsOfChampionsService`, store feedback in `TempData`, and redirect. File parsing, validation, collation, scoring, and PDF generation all live in services.
 - **DbContext factory pattern.** Services receive `IDbContextFactory<RaceResultsDbContext>` and create a short-lived context per operation, which is why `RaceResultsService` can be registered as a singleton.
-- **DI registrations** (`Program.cs`): `IRaceResultsService` → singleton; `IChampionsOfChampionsService` → scoped.
+- **DI registrations** (`Program.cs`): `IRaceResultsService` → singleton; `IChampionsOfChampionsService` → scoped; `IDatabaseBackupService` → scoped.
 - **Migrations apply automatically at startup** (`db.Database.Migrate()`), skipped when the environment is `Testing` so integration tests can use `EnsureCreated` against in-memory SQLite.
 - **Current event fallback.** Exactly one event is "current" at a time. If none is current, the most recent event by date is promoted; if no events exist at all, a default `Crown to Crown` event dated 1 May 2026 is created (in-season for Champions scoring).
 - **Operation results, not exceptions.** Upload and edit flows return an `OperationResult` carrying `Messages`, `Warnings`, and `Errors`; controllers render all three. Warnings (e.g. unmatched bibs, duplicate names) do not block the operation.
@@ -232,7 +233,9 @@ To use a custom database path, add a connection string to `appsettings.json`:
 - Uploading a new finish bib file clears that event's timing data
 - Deleting an event removes its entrants, finish rows, and timing rows (Champions audit rows for the event cascade-delete with it)
 
-**Storage location caution:** SQLite holds write locks on its database file. Running the live database inside a cloud-synced folder (OneDrive, Google Drive, Dropbox) risks sync conflicts and file corruption. Prefer a local, non-synced path for the live database and sync *backup copies* instead. There is no in-app backup yet (planned as US19); until then, copy `raceresults.db` while the app is stopped.
+**Storage location caution:** SQLite holds write locks on its database file. Running the live database inside a cloud-synced folder (OneDrive, Google Drive, Dropbox) risks sync conflicts and file corruption. Prefer a local, non-synced path for the live database and sync *backup copies* instead.
+
+**Backup & restore (US19):** the Settings page offers **Download backup** (a consistent snapshot taken via the SQLite backup API — safe even while the app is running) and **Restore from backup**. Restore validates the uploaded file's schema before replacing anything, saves the current database aside as `raceresults-prerestore-{timestamp}.db` so a bad restore can be undone, then applies any pending EF migrations so older backups upgrade cleanly. Backup filenames are timestamped (e.g. `raceresults-backup-2026-06-12-1430.db`). Destructive actions (deleting an event, re-uploading entrants over existing data) prompt a reminder to back up first. Scheduled/automatic backups are out of scope.
 
 ---
 
@@ -516,9 +519,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 78 | Tests `RaceResultsService` and `ChampionsOfChampionsService` directly against isolated in-memory SQLite DB per test |
+| `RaceResults.UnitTests` | 82 | Tests `RaceResultsService`, `ChampionsOfChampionsService`, and `DatabaseBackupService` directly against isolated SQLite DBs per test |
 | `RaceResults.IntegrationTests` | 21 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **99** | |
+| **Total** | **103** | |
 
 ---
 
@@ -538,7 +541,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US14, US18 and US27 are implemented; the remaining US15–US31 stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US14, US18, US19 and US27 are implemented; the remaining US15–US31 stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -560,6 +563,7 @@ US01–US14, US18 and US27 are implemented; the remaining US15–US31 stories ar
 | [US14](user-stories/US14-champions-of-champions-leaderboard.md) | Champions of Champions Leaderboard |
 | [US18](user-stories/US18-export-results-csv.md) | Export Results to CSV |
 | [US27](user-stories/US27-example-file-links.md) | Example Upload File Links |
+| [US19](user-stories/US19-database-backup-restore.md) | Database Backup and Restore |
 
 ### Planned
 
@@ -568,7 +572,6 @@ US01–US14, US18 and US27 are implemented; the remaining US15–US31 stories ar
 | [US15](user-stories/US15-runner-registry.md) | Runner Registry |
 | [US16](user-stories/US16-finish-status-dns-dnf-dsq.md) | Finish Status (DNS / DNF / DSQ) |
 | [US17](user-stories/US17-time-validation-and-analytics.md) | Time Validation and Race Analytics |
-| [US19](user-stories/US19-database-backup-restore.md) | Database Backup and Restore |
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |
 | [US22](user-stories/US22-course-records-management.md) | Course Records Management |

@@ -1,6 +1,6 @@
 # US19 - Database Backup and Restore
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

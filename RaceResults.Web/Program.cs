@@ -14,6 +14,7 @@ builder.Services.AddDbContextFactory<RaceResultsDbContext>(options =>
 
 builder.Services.AddSingleton<IRaceResultsService, RaceResultsService>();
 builder.Services.AddScoped<IChampionsOfChampionsService, ChampionsOfChampionsService>();
+builder.Services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
 
 QuestPDF.Settings.License = LicenseType.Community;
 
