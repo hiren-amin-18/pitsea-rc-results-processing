@@ -634,6 +634,97 @@ public class RaceResultsService : IRaceResultsService
         };
     }
 
+    public RaceStatisticsSummary GetRaceStatisticsSummary()
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        var eventId = EnsureCurrentEvent(db).Id;
+
+        var entrants = db.Entrants.Where(e => e.EventId == eventId).ToList();
+        var dnsCount = entrants.Count(e => e.Status == FinishStatus.DidNotStart);
+        var startedEntrants = entrants.Where(e => e.Status != FinishStatus.DidNotStart).ToList();
+
+        var collated = GetCollatedResultsForEvent(db, eventId); // finishers, excludes DSQ
+        var finisherCount = collated.Count;
+
+        var finishedBibs = db.FinishBibRecords
+            .Where(r => r.EventId == eventId)
+            .Select(r => r.BibNumber)
+            .ToList()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var dnfCount = startedEntrants.Count(e => !finishedBibs.Contains(e.BibNumber));
+
+        var entrantCount = startedEntrants.Count;
+        var completionRate = entrantCount == 0 ? 0 : Math.Round(100.0 * finisherCount / entrantCount, 1);
+
+        var maleFinishers = collated.Count(r => r.Entrant is not null && IsMale(r.Entrant.Gender));
+        var femaleFinishers = collated.Count(r => r.Entrant is not null && IsFemale(r.Entrant.Gender));
+
+        // Affiliation from the existing RaceStats convention (unaffiliated counts exclude U18).
+        var males = startedEntrants.Where(e => IsMale(e.Gender)).ToList();
+        var females = startedEntrants.Where(e => IsFemale(e.Gender)).ToList();
+        var unaffiliated = males.Count(e => !e.IsU18 && e.IsUnaffiliated) + females.Count(e => !e.IsU18 && e.IsUnaffiliated);
+        var affiliated = startedEntrants.Count - unaffiliated;
+
+        var durations = collated
+            .Where(r => r.Duration.HasValue)
+            .Select(r => r.Duration!.Value)
+            .OrderBy(d => d)
+            .ToList();
+        var excludedTimeRows = collated.Count(r => !r.Duration.HasValue);
+
+        TimeSpan? winner = durations.Count > 0 ? durations[0] : null;
+        TimeSpan? median = Percentile(durations, 50);
+        TimeSpan? average = durations.Count > 0 ? TimeSpan.FromTicks((long)durations.Average(d => d.Ticks)) : null;
+        TimeSpan? spread = winner.HasValue && median.HasValue ? median.Value - winner.Value : null;
+
+        var perMinute = durations
+            .GroupBy(d => (int)Math.Floor(d.TotalMinutes))
+            .Select(g => new { Minute = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.Minute)
+            .ToList();
+        var busiest = perMinute.FirstOrDefault();
+
+        return new RaceStatisticsSummary
+        {
+            EntrantCount = entrantCount,
+            FinisherCount = finisherCount,
+            DnfCount = dnfCount,
+            DnsCount = dnsCount,
+            CompletionRatePercent = completionRate,
+            MaleFinishers = maleFinishers,
+            FemaleFinishers = femaleFinishers,
+            MalePercent = finisherCount == 0 ? 0 : Math.Round(100.0 * maleFinishers / finisherCount, 1),
+            FemalePercent = finisherCount == 0 ? 0 : Math.Round(100.0 * femaleFinishers / finisherCount, 1),
+            AffiliatedCount = affiliated,
+            UnaffiliatedCount = unaffiliated,
+            HasTimes = durations.Count > 0,
+            WinnerTime = winner,
+            MedianTime = median,
+            AverageTime = average,
+            WinnerToMedianSpread = spread,
+            Percentile25 = Percentile(durations, 25),
+            Percentile50 = median,
+            Percentile75 = Percentile(durations, 75),
+            ExcludedTimeRowCount = excludedTimeRows,
+            BusiestWindowMinute = busiest?.Minute,
+            BusiestWindowCount = busiest?.Count ?? 0
+        };
+    }
+
+    /// <summary>Nearest-rank percentile over an ascending-sorted list of durations.</summary>
+    private static TimeSpan? Percentile(IReadOnlyList<TimeSpan> sortedAscending, double percentile)
+    {
+        if (sortedAscending.Count == 0)
+        {
+            return null;
+        }
+
+        var rank = (int)Math.Ceiling(percentile / 100.0 * sortedAscending.Count);
+        rank = Math.Clamp(rank, 1, sortedAscending.Count);
+        return sortedAscending[rank - 1];
+    }
+
     public IReadOnlyList<TopTenCategory> GetTopTenByCategory()
     {
         var collated = GetCollatedResults();

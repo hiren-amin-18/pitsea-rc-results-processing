@@ -29,6 +29,10 @@ public interface IRaceResultsService
     IReadOnlyList<ResultRecord> GetDsqResults();
 
     RaceStats GetRaceStats();
+
+    /// <summary>Headline race statistics for the current event: completion, gender split, finish-time summary (US23).</summary>
+    RaceStatisticsSummary GetRaceStatisticsSummary();
+
     IReadOnlyList<TopTenCategory> GetTopTenByCategory();
     IReadOnlyList<TopTenCategory> GetTopTenByCategory(int eventId);
 

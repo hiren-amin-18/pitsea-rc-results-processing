@@ -250,6 +250,7 @@ public class RaceController : Controller
         var model = new RaceStatsDashboardViewModel
         {
             Stats = stats,
+            Summary = _raceResultsService.GetRaceStatisticsSummary(),
             ClubBreakdown = clubBreakdown,
             FinishersPerMinute = finishersPerMinute
         };

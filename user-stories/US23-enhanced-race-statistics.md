@@ -1,6 +1,6 @@
 # US23 - Enhanced Race Statistics
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

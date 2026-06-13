@@ -1,11 +1,57 @@
 @using System.Text.Json
+@using RaceResults.Web.Services
 @model RaceResults.Web.Models.RaceStatsDashboardViewModel
 @{
     ViewData["Title"] = "Race Stats";
     var clubChartHeight = Math.Max(320, Model.ClubBreakdown.Count * 30);
+    var summary = Model.Summary;
+    string Fmt(TimeSpan? t) => t.HasValue ? RaceTime.Format(t.Value) : "—";
 }
 
 <h1>Race Statistics</h1>
+
+<div class="row g-3 mt-1">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Completion</h5>
+                <p class="display-6 mb-1">@summary.CompletionRatePercent%</p>
+                <p class="mb-0 text-muted">@summary.FinisherCount of @summary.EntrantCount starters finished</p>
+                <p class="mb-0 small text-muted">DNF: @summary.DnfCount &middot; DNS: @summary.DnsCount</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Gender split (finishers)</h5>
+                <p class="mb-1">Male: <strong>@summary.MaleFinishers</strong> (@summary.MalePercent%)</p>
+                <p class="mb-0">Female: <strong>@summary.FemaleFinishers</strong> (@summary.FemalePercent%)</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Finish times</h5>
+                @if (summary.HasTimes)
+                {
+                    <p class="mb-1">Winner: <strong>@Fmt(summary.WinnerTime)</strong> &middot; Median: <strong>@Fmt(summary.MedianTime)</strong> &middot; Average: <strong>@Fmt(summary.AverageTime)</strong></p>
+                    <p class="mb-1 small text-muted">Winner→median spread: @Fmt(summary.WinnerToMedianSpread)</p>
+                    <p class="mb-0 small text-muted">Cut-offs — top 25%: @Fmt(summary.Percentile25) &middot; 50%: @Fmt(summary.Percentile50) &middot; 75%: @Fmt(summary.Percentile75)</p>
+                }
+                else
+                {
+                    <p class="mb-0 text-muted">No finish times yet.</p>
+                }
+                @if (summary.ExcludedTimeRowCount > 0)
+                {
+                    <p class="mb-0 small text-warning">@summary.ExcludedTimeRowCount finisher(s) excluded from time stats (unparseable time).</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="row g-3 mt-1">
     <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Males</h5><p class="display-6">@Model.Stats.TotalMales</p></div></div></div>
@@ -36,6 +82,14 @@
     <div class="col-lg-6">
         <div class="card h-100">
             <div class="card-body">
+                <h5 class="card-title">Affiliated vs Unaffiliated</h5>
+                <div style="height: 280px;"><canvas id="affiliationChart" aria-label="Affiliated vs unaffiliated breakdown"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
                 <h5 class="card-title">Club Breakdown</h5>
                 <div style="height: @(clubChartHeight)px;"><canvas id="clubChart" aria-label="Club breakdown"></canvas></div>
             </div>
@@ -45,6 +99,10 @@
         <div class="card h-100">
             <div class="card-body">
                 <h5 class="card-title">Time Per Minute vs Finishers</h5>
+                @if (summary.BusiestWindowMinute.HasValue)
+                {
+                    <p class="small text-muted mb-2">Peak: @summary.BusiestWindowCount finishers between @($"{summary.BusiestWindowMinute:00}:00") and @($"{summary.BusiestWindowMinute + 1:00}:00")</p>
+                }
                 <div style="height: 320px;"><canvas id="minuteChart" aria-label="Finishers per minute"></canvas></div>
             </div>
         </div>
@@ -67,6 +125,7 @@
 
             const genderValues = [@Model.Stats.TotalMales, @Model.Stats.TotalFemales];
             const categoryValues = [@Model.Stats.TotalMales, @Model.Stats.TotalFemales, @Model.Stats.TotalMalesU18, @Model.Stats.TotalFemalesU18];
+            const affiliationValues = [@Model.Summary.AffiliatedCount, @Model.Summary.UnaffiliatedCount];
 
             const clubLabels = @Html.Raw(JsonSerializer.Serialize(Model.ClubBreakdown.Select(x => x.Label)));
             const clubValues = @Html.Raw(JsonSerializer.Serialize(Model.ClubBreakdown.Select(x => x.Value)));
@@ -86,6 +145,25 @@
                     datasets: [{
                         data: genderValues,
                         backgroundColor: [activePalette[0], activePalette[1]]
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: textColor }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById("affiliationChart"), {
+                type: "doughnut",
+                data: {
+                    labels: ["Affiliated", "Unaffiliated"],
+                    datasets: [{
+                        data: affiliationValues,
+                        backgroundColor: [activePalette[5], activePalette[6]]
                     }]
                 },
                 options: {

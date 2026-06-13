@@ -40,7 +40,8 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Runner registry** | Persistent runners that per-event entrants link to; upload auto-matches by name+club with near-match warnings; a Runners page lists race counts and supports editing and merging duplicates |
 | **Finish status (DNS/DNF/DSQ)** | Non-finishers default to DNF and can be set DNS (no-show); finishers can be disqualified with a recorded reason, which removes them from results (positions close up), voids their Champions points, and is reversible |
 | **Edit results** | Correct any result row (position, bib, time, runner details) without re-uploading files; edits to Crown to Crown events trigger a Champions season recalculation |
-| **Race stats + graphs** | Totals plus chart breakdowns for Male/Female, category, club, and finishers per minute |
+| **Race stats + graphs** | Totals plus chart breakdowns for Male/Female, category, club, affiliation, and finishers per minute |
+| **Enhanced statistics** | Completion rate, gender-split percentages, finish-time summary (winner/median/average, 25/50/75 percentiles), and the busiest finish window (US23) |
 | **Top 10 by category** | Top 10 finishers for Male, Female, Male U18, Female U18 |
 | **Champions leaderboard** | Yearly cumulative scoring across Crown to Crown races in the May–September season window; top 10 per category earn points (10→1); runners identified across events by name + club; tie-breaking by event participation; multi-year navigation |
 | **Champions audit trail** | Append-only points audit log distinguishing initial awards from recalculations; full scoring history retained |
@@ -528,9 +529,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 121 | Tests `RaceResultsService`, `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, and course records against isolated SQLite DBs per test |
+| `RaceResults.UnitTests` | 126 | Tests `RaceResultsService` (incl. statistics), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, and course records against isolated SQLite DBs per test |
 | `RaceResults.IntegrationTests` | 22 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **143** | |
+| **Total** | **148** | |
 
 ---
 
@@ -550,7 +551,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US19, US22 and US27 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US19, US22, US23 and US27 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -577,6 +578,7 @@ US01–US19, US22 and US27 are implemented; the remaining stories are planned. E
 | [US15](user-stories/US15-runner-registry.md) | Runner Registry |
 | [US16](user-stories/US16-finish-status-dns-dnf-dsq.md) | Finish Status (DNS / DNF / DSQ) |
 | [US22](user-stories/US22-course-records-management.md) | Course Records Management |
+| [US23](user-stories/US23-enhanced-race-statistics.md) | Enhanced Race Statistics |
 
 ### Planned
 
@@ -584,7 +586,6 @@ US01–US19, US22 and US27 are implemented; the remaining stories are planned. E
 |---|---|
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |
-| [US23](user-stories/US23-enhanced-race-statistics.md) | Enhanced Race Statistics |
 | [US24](user-stories/US24-season-statistics.md) | Season Statistics and Runner Season Profiles |
 | [US25](user-stories/US25-app-installer.md) | Application Installer |
 | [US26](user-stories/US26-cloud-hosting.md) | Cloud Hosting |

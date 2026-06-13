@@ -73,6 +73,17 @@
 **Summary**: `aidlc-docs/construction/US22/US22-implementation-summary.md`
 **Build Status**: Success (new EF migration AddCourseRecords with seed)
 **Test Status**: Pass (121 unit + 22 integration = 143)
-**Notes**: Brownfield + schema change. CourseRecord entity per event type/category with seeded C2C records; data-driven PDF records line with NEW COURSE RECORD flag; automatic detection + organiser confirmation; record history retained; typed-duration comparison; management UI. Depends on US17. Awaiting user review.
+**Notes**: Brownfield + schema change. CourseRecord entity per event type/category with seeded C2C records; data-driven PDF records line with NEW COURSE RECORD flag; automatic detection + organiser confirmation; record history retained; typed-duration comparison; management UI. Depends on US17. Reviewed and committed (bdfb7be).
+
+---
+
+## US23 — Enhanced Race Statistics
+**Timestamp**: 2026-06-13
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US23-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US23/US23-implementation-summary.md`
+**Build Status**: Success (no schema change)
+**Test Status**: Pass (126 unit + 22 integration = 148)
+**Notes**: Brownfield. GetRaceStatisticsSummary: completion rate, gender-split %, affiliation chart, finish-time summary (winner/median/average/percentiles/spread), busiest window; current-event scoped; typed durations; DNS excluded from completion. Awaiting user review.
 
 ---

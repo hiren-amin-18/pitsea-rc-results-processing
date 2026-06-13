@@ -3,6 +3,7 @@ namespace RaceResults.Web.Models;
 public class RaceStatsDashboardViewModel
 {
     public RaceStats Stats { get; set; } = new();
+    public RaceStatisticsSummary Summary { get; set; } = new();
     public List<BreakdownItem> ClubBreakdown { get; set; } = new();
     public List<BreakdownItem> FinishersPerMinute { get; set; } = new();
 }
