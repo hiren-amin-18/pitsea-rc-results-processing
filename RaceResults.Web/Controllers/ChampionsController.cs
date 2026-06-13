@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+using CsvHelper;
 using Microsoft.AspNetCore.Mvc;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -67,6 +70,48 @@ public class ChampionsController : Controller
         // Top 3 should have gold/silver/bronze backgrounds
         var bytes = GenerateLeaderboardPdf(leaderboard, currentEvent, seasonYear);
         return File(bytes, "application/pdf", $"champions-of-champions-{seasonYear}-{DateTime.Now:yyyyMMdd}.pdf");
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ExportCsv(int? eventId, int? year)
+    {
+        var currentEvent = _raceResultsService.GetCurrentEvent();
+        int seasonYear = year ?? currentEvent.EventDate.Year;
+        var leaderboard = await _championsService.GetLeaderboardAsync(seasonYear, eventId);
+
+        var bytes = GenerateLeaderboardCsv(leaderboard);
+        return File(bytes, "text/csv", $"champions-of-champions-{seasonYear}.csv");
+    }
+
+    private static byte[] GenerateLeaderboardCsv(IReadOnlyList<ChampionsLeaderboardEntry> leaderboard)
+    {
+        using var memory = new MemoryStream();
+        // UTF-8 with BOM so Excel opens accented names correctly (AC7).
+        using (var writer = new StreamWriter(memory, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
+        using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+        {
+            foreach (var heading in new[] { "Category", "Rank", "Name", "Club", "Races", "Points", "Tied" })
+            {
+                csv.WriteField(heading);
+            }
+            csv.NextRecord();
+
+            foreach (var entry in leaderboard.OrderBy(e => e.Category).ThenBy(e => e.Rank))
+            {
+                csv.WriteField(entry.Category);
+                csv.WriteField(entry.Rank.ToString(CultureInfo.InvariantCulture));
+                csv.WriteField(entry.Entrant.Name);
+                csv.WriteField(string.IsNullOrWhiteSpace(entry.Entrant.Club) ? "Unaffiliated" : entry.Entrant.Club);
+                csv.WriteField(entry.RaceCount.ToString(CultureInfo.InvariantCulture));
+                csv.WriteField(entry.TotalPoints.ToString(CultureInfo.InvariantCulture));
+                csv.WriteField(entry.IsPointsTied ? "Yes" : string.Empty);
+                csv.NextRecord();
+            }
+
+            writer.Flush();
+        }
+
+        return memory.ToArray();
     }
 
     private byte[] GenerateLeaderboardPdf(IReadOnlyList<ChampionsLeaderboardEntry> leaderboard, RaceEvent currentEvent, int seasonYear)

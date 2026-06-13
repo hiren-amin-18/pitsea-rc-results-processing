@@ -1,6 +1,6 @@
 # US18 - Export Results to CSV
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

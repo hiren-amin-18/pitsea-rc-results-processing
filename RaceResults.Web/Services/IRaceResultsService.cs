@@ -28,4 +28,10 @@ public interface IRaceResultsService
     bool TryGetEditableResult(int position, out EditResultInput editInput);
     OperationResult UpdateResult(EditResultInput editInput);
     byte[] GenerateResultsPdf();
+
+    /// <summary>Serialise the current event's collated results (and DNF entrants) to Excel-friendly CSV (US18).</summary>
+    byte[] GenerateResultsCsv();
+
+    /// <summary>Descriptive download filename for the results CSV, e.g. <c>crown-to-crown-2026-05-01-results.csv</c> (US18).</summary>
+    string GetResultsCsvFileName();
 }

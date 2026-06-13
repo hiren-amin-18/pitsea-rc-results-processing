@@ -42,6 +42,7 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Champions leaderboard** | Yearly cumulative scoring across Crown to Crown races in the May–September season window; top 10 per category earn points (10→1); runners identified across events by name + club; tie-breaking by event participation; multi-year navigation |
 | **Champions audit trail** | Append-only points audit log distinguishing initial awards from recalculations; full scoring history retained |
 | **PDF export** | Download a branded, race-ready PDF: first page includes winners + course records (Crown to Crown events only), subsequent pages continue with results table |
+| **CSV export** | Download collated results (finishers + DNF, with a Status column) and the Champions leaderboard as Excel-friendly UTF-8 CSV with descriptive filenames |
 | **Champions PDF export** | Export Champions leaderboard to PDF with tie-breaking indicators (†) and gold/silver/bronze highlighting for top 3 |
 | **Event management** | Create, edit, select current, and delete events (`Crown to Crown` / `Bluebell 5`) with event-scoped results |
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
@@ -289,7 +290,7 @@ The typical sequence for processing results after a race:
 5. Results page    →  Edit any incorrect rows if needed
 6. Stats page      →  View numeric stats and chart breakdowns (gender, category, club, finishers/minute)
 7. Top 10 page     →  View category leaders
-8. Results page    →  Export PDF
+8. Results page    →  Export PDF or CSV
 ```
 
 All pages show a live count of loaded entrants, finish rows, and timing rows at the top so you can see the current data state at a glance.
@@ -416,7 +417,10 @@ POST /Champions/CalculatePoints                 → Manually score an event
 GET  /Champions/ExportPdf                       → Export current season to PDF
 GET  /Champions/ExportPdf?year=2025             → Export 2025 season to PDF
 GET  /Champions/ExportPdf?year=2025&eventId=5   → Export 2025 as of event 5
+GET  /Champions/ExportCsv?year=2025&eventId=5   → Export the same leaderboard view to CSV
 ```
+
+Results CSV export is at `GET /Race/ExportCsv` (current event).
 
 ### UI Components
 
@@ -509,9 +513,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 73 | Tests `RaceResultsService` and `ChampionsOfChampionsService` directly against isolated in-memory SQLite DB per test |
+| `RaceResults.UnitTests` | 78 | Tests `RaceResultsService` and `ChampionsOfChampionsService` directly against isolated in-memory SQLite DB per test |
 | `RaceResults.IntegrationTests` | 21 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **94** | |
+| **Total** | **99** | |
 
 ---
 
@@ -531,7 +535,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US14 are implemented; US15–US31 are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US14 and US18 are implemented; the remaining US15–US31 stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -551,6 +555,7 @@ US01–US14 are implemented; US15–US31 are planned. Each story file carries a 
 | [US12](user-stories/US12-top-10-by-category.md) | Top 10 by Category |
 | [US13](user-stories/US13-event-management.md) | Event Management and Event-Scoped Results |
 | [US14](user-stories/US14-champions-of-champions-leaderboard.md) | Champions of Champions Leaderboard |
+| [US18](user-stories/US18-export-results-csv.md) | Export Results to CSV |
 
 ### Planned
 
@@ -559,7 +564,6 @@ US01–US14 are implemented; US15–US31 are planned. Each story file carries a 
 | [US15](user-stories/US15-runner-registry.md) | Runner Registry |
 | [US16](user-stories/US16-finish-status-dns-dnf-dsq.md) | Finish Status (DNS / DNF / DSQ) |
 | [US17](user-stories/US17-time-validation-and-analytics.md) | Time Validation and Race Analytics |
-| [US18](user-stories/US18-export-results-csv.md) | Export Results to CSV |
 | [US19](user-stories/US19-database-backup-restore.md) | Database Backup and Restore |
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |

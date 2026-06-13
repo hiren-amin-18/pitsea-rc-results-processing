@@ -5,7 +5,10 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1>Collated Results</h1>
-    <a class="btn btn-outline-primary" asp-action="ExportPdf">Export PDF</a>
+    <div class="btn-group">
+        <a class="btn btn-outline-primary" asp-action="ExportPdf">Export PDF</a>
+        <a class="btn btn-outline-primary" asp-action="ExportCsv">Export CSV</a>
+    </div>
 </div>
 
 @if (TempData["FeedbackText"] is string feedback)

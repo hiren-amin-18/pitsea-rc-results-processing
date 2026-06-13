@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.IO;
+using System.Text;
+using System.Text.RegularExpressions;
 using CsvHelper;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
@@ -700,6 +702,71 @@ public class RaceResultsService : IRaceResultsService
         });
 
         return document.GeneratePdf();
+    }
+
+    public byte[] GenerateResultsCsv()
+    {
+        var collated = GetCollatedResults();
+        var dnf = GetDnfEntrants();
+
+        using var memory = new MemoryStream();
+        // UTF-8 with BOM so Excel opens accented names correctly (AC7).
+        using (var writer = new StreamWriter(memory, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
+        using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+        {
+            foreach (var heading in new[] { "Position", "Time", "Bib", "Name", "Club", "Gender", "Age", "Status" })
+            {
+                csv.WriteField(heading);
+            }
+            csv.NextRecord();
+
+            foreach (var row in collated)
+            {
+                csv.WriteField(row.Position.ToString(CultureInfo.InvariantCulture));
+                csv.WriteField(row.Time);
+                csv.WriteField(row.BibNumber);
+                csv.WriteField(row.Name);
+                csv.WriteField(row.Club);
+                csv.WriteField(row.Gender);
+                csv.WriteField(row.Age?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
+                csv.WriteField(row.IsUnmatched ? "Unmatched" : "Finished");
+                csv.NextRecord();
+            }
+
+            // DNF entrants follow finishers, flagged via the Status column (AC3).
+            foreach (var entrant in dnf)
+            {
+                csv.WriteField(string.Empty);
+                csv.WriteField(string.Empty);
+                csv.WriteField(entrant.BibNumber);
+                csv.WriteField(entrant.Name);
+                csv.WriteField(entrant.Club);
+                csv.WriteField(entrant.Gender);
+                csv.WriteField(entrant.Age?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
+                csv.WriteField("DNF");
+                csv.NextRecord();
+            }
+
+            writer.Flush();
+        }
+
+        return memory.ToArray();
+    }
+
+    public string GetResultsCsvFileName()
+    {
+        return $"{BuildEventSlug(GetCurrentEvent())}-results.csv";
+    }
+
+    private static string BuildEventSlug(RaceEvent raceEvent)
+    {
+        var slug = Regex.Replace(raceEvent.EventName.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+        if (string.IsNullOrEmpty(slug))
+        {
+            slug = "event";
+        }
+
+        return $"{slug}-{raceEvent.EventDate:yyyy-MM-dd}";
     }
 
     private static ResultRecord? FindWinner(IEnumerable<ResultRecord> results, Func<Entrant, bool> predicate)

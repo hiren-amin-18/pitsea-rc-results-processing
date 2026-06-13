@@ -179,6 +179,13 @@ public class RaceController : Controller
         return File(bytes, "application/pdf", "race-results.pdf");
     }
 
+    [HttpGet]
+    public IActionResult ExportCsv()
+    {
+        var bytes = _raceResultsService.GenerateResultsCsv();
+        return File(bytes, "text/csv", _raceResultsService.GetResultsCsvFileName());
+    }
+
     private void StoreFeedback(OperationResult result)
     {
         var lines = new List<string>();

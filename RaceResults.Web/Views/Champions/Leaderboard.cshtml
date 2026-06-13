@@ -123,6 +123,9 @@ else
     <a href="@Url.Action("ExportPdf", new { eventId = Model.CurrentEventId, year = Model.SeasonYear })" class="btn btn-primary">
         <i class="bi bi-file-pdf"></i> Export to PDF
     </a>
+    <a href="@Url.Action("ExportCsv", new { eventId = Model.CurrentEventId, year = Model.SeasonYear })" class="btn btn-outline-primary">
+        <i class="bi bi-filetype-csv"></i> Export to CSV
+    </a>
 </div>
 
 <style>
