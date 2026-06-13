@@ -4,7 +4,7 @@
 }
 
 <h1>Race File Uploads</h1>
-<p class="text-muted">Upload entrant, finish bib, and timing files in sequence.</p>
+<p class="text-muted">Upload entrant, finish bib, and timing files in sequence. <span class="text-danger">*</span> marks a required column.</p>
 
 @if (TempData["FeedbackText"] is string feedback)
 {
@@ -30,6 +30,13 @@
             <div class="card-body">
                 <h5 class="card-title">1) Upload Entrants (.xlsx)</h5>
                 <p class="small text-muted">Typical files: online-registration.xlsx, on-the-day-1.xlsx, on-the-day-2.xlsx</p>
+                <p class="small mb-1"><strong>Expected columns:</strong> Bib<span class="text-danger">*</span>, Name<span class="text-danger">*</span>, Gender<span class="text-danger">*</span>, Age, Club</p>
+                <p class="small mb-2">
+                    Example files:
+                    <a href="~/example-files/online-registration.xlsx" download>online-registration.xlsx</a>,
+                    <a href="~/example-files/on-the-day-1.xlsx" download>on-the-day-1.xlsx</a>,
+                    <a href="~/example-files/on-the-day-2.xlsx" download>on-the-day-2.xlsx</a>
+                </p>
                 <form method="post" asp-action="UploadEntrants" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">
@@ -46,6 +53,8 @@
             <div class="card-body">
                 <h5 class="card-title">2) Upload Finish Position + Bib (.xlsx)</h5>
                 <p class="small text-muted">Typical file: bib-position.xlsx</p>
+                <p class="small mb-1"><strong>Expected columns:</strong> Position<span class="text-danger">*</span>, Bib<span class="text-danger">*</span></p>
+                <p class="small mb-2">Example file: <a href="~/example-files/bib-position.xlsx" download>bib-position.xlsx</a></p>
                 <form method="post" asp-action="UploadFinishBib" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">
@@ -62,6 +71,8 @@
             <div class="card-body">
                 <h5 class="card-title">3) Upload Timing (.csv or .xlsx)</h5>
                 <p class="small text-muted">Typical file: timings.csv</p>
+                <p class="small mb-1"><strong>Expected columns:</strong> Position<span class="text-danger">*</span>, Time<span class="text-danger">*</span> (CSV also accepts <code>STARTOFEVENT</code>/<code>ENDOFEVENT</code> device rows, which are ignored)</p>
+                <p class="small mb-2">Example file: <a href="~/example-files/timings.csv" download>timings.csv</a></p>
                 <form method="post" asp-action="UploadTimings" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">

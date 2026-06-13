@@ -33,6 +33,7 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Finish bib upload** | Upload a finish-position-to-bib `.xlsx` file; duplicate positions and bibs rejected |
 | **Unmatched bib flagging** | Bibs in the finish file with no matching entrant are warned at upload and highlighted on the Results page with a badge and warning banner |
 | **Timing upload** | Upload a timing file as `.csv` or `.xlsx`; zero-based positions auto-remapped; `STARTOFEVENT`/`ENDOFEVENT` device rows ignored |
+| **Example file links** | The Uploads page shows the expected columns and offers downloadable example files for each upload format |
 | **Timing consistency check** | Timing positions must exactly match finish bib positions; missing and unexpected positions are itemised |
 | **Collated results view** | All results in finish order, with name, club, gender, age, and time |
 | **DNF indication** | Entrants without a finish row are listed separately |
@@ -186,7 +187,7 @@ pitsea-rc-results-processing/
 │
 └── user-stories/
     ├── US01-US31 *.md                  # One file per user story, each with a Status line
-    └── example-files/                  # Real-format sample upload files
+    └── example-files/                  # Real-format sample upload files (canonical copies)
         ├── online-registration.xlsx    # Pre-registration entrants
         ├── on-the-day-1.xlsx           # On-the-day entrants (file 1)
         ├── on-the-day-2.xlsx           # On-the-day entrants (file 2)
@@ -194,6 +195,8 @@ pitsea-rc-results-processing/
         ├── timings.csv                 # Timing device CSV
         └── example-output.pdf          # Reference PDF layout
 ```
+
+> **Example files are mirrored** into `RaceResults.Web/wwwroot/example-files/` so the Uploads page can offer in-app "Download example file" links that work in published/installed builds (US27). The canonical copies live in `user-stories/example-files/`; **if you change a sample file, update both locations.**
 
 ---
 
@@ -535,7 +538,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US14 and US18 are implemented; the remaining US15–US31 stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US14, US18 and US27 are implemented; the remaining US15–US31 stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -556,6 +559,7 @@ US01–US14 and US18 are implemented; the remaining US15–US31 stories are plan
 | [US13](user-stories/US13-event-management.md) | Event Management and Event-Scoped Results |
 | [US14](user-stories/US14-champions-of-champions-leaderboard.md) | Champions of Champions Leaderboard |
 | [US18](user-stories/US18-export-results-csv.md) | Export Results to CSV |
+| [US27](user-stories/US27-example-file-links.md) | Example Upload File Links |
 
 ### Planned
 
@@ -572,7 +576,6 @@ US01–US14 and US18 are implemented; the remaining US15–US31 stories are plan
 | [US24](user-stories/US24-season-statistics.md) | Season Statistics and Runner Season Profiles |
 | [US25](user-stories/US25-app-installer.md) | Application Installer |
 | [US26](user-stories/US26-cloud-hosting.md) | Cloud Hosting |
-| [US27](user-stories/US27-example-file-links.md) | Example Upload File Links |
 | [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |
 | [US29](user-stories/US29-volunteer-stats.md) | Volunteer Statistics |
 | [US30](user-stories/US30-end-of-season-review.md) | End of Season Review |
