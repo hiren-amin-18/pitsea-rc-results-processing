@@ -189,8 +189,8 @@ public class ResultsControllerTests : IClassFixture<RaceResultsWebFactory>
             new FinishBibRecord { Position = 2, BibNumber = "2" }
         );
         db.TimingRows.AddRange(
-            new TimingRow { Position = 1, Time = "00:20:00" },
-            new TimingRow { Position = 2, Time = "00:21:00" }
+            new TimingRow { Position = 1, Time = "00:20:00", DurationTicks = new TimeSpan(0, 20, 0).Ticks },
+            new TimingRow { Position = 2, Time = "00:21:00", DurationTicks = new TimeSpan(0, 21, 0).Ticks }
         );
         await db.SaveChangesAsync();
     }

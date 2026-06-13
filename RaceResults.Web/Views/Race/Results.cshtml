@@ -1,6 +1,9 @@
 @model RaceResults.Web.Models.ResultsPageViewModel
+@using RaceResults.Web.Services
 @{
     ViewData["Title"] = "Results";
+    // Winner = earliest finishing position that has a typed time (US17 gap-to-winner).
+    var winnerDuration = Model.Results.FirstOrDefault(r => r.Duration.HasValue)?.Duration;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -36,6 +39,7 @@ else
                 <tr>
                     <th class="text-center">Pos</th>
                     <th class="text-center">Time</th>
+                    <th class="text-center">Gap</th>
                     <th class="text-center">Bib</th>
                     <th>Name</th>
                     <th>Club</th>
@@ -50,6 +54,7 @@ else
                 <tr class="@(row.IsUnmatched ? "table-warning" : null)">
                     <td class="text-center">@row.Position</td>
                     <td class="text-center">@row.Time</td>
+                    <td class="text-center">@(row.Duration.HasValue && winnerDuration.HasValue ? RaceTime.FormatGap(row.Duration.Value - winnerDuration.Value) : "")</td>
                     <td class="text-center">@row.BibNumber</td>
                     <td>
                         @row.Name

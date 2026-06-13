@@ -35,7 +35,8 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Timing upload** | Upload a timing file as `.csv` or `.xlsx`; zero-based positions auto-remapped; `STARTOFEVENT`/`ENDOFEVENT` device rows ignored |
 | **Example file links** | The Uploads page shows the expected columns and offers downloadable example files for each upload format |
 | **Timing consistency check** | Timing positions must exactly match finish bib positions; missing and unexpected positions are itemised |
-| **Collated results view** | All results in finish order, with name, club, gender, age, and time |
+| **Collated results view** | All results in finish order, with name, club, gender, age, time, and gap to winner |
+| **Validated finish times** | Finish times are validated at upload, stored as typed durations, normalised for display, and checked for out-of-order anomalies |
 | **DNF indication** | Entrants without a finish row are listed separately |
 | **Edit results** | Correct any result row (position, bib, time, runner details) without re-uploading files; edits to Crown to Crown events trigger a Champions season recalculation |
 | **Race stats + graphs** | Totals plus chart breakdowns for Male/Female, category, club, and finishers per minute |
@@ -282,6 +283,8 @@ ENDOFEVENT,...
 | Position | ✅ | `Position`, `FinishPosition`, `Place` |
 | Time | ✅ | `Time`, `Timing`, `FinishTime` |
 
+**Time validation (US17):** every finish time is validated at upload and stored as a typed, sortable duration (the original text is kept for audit). Accepted formats are `mm:ss`, `h:mm:ss`, and `hh:mm:ss.f` (fractional seconds tolerated); minutes/seconds out of range (e.g. `12:75`) and non-numeric values (e.g. `00:2X:99`) are rejected with the row number and offending value. Times are shown in a canonical format (`mm:ss` under an hour, `h:mm:ss` over). If a finisher's time is earlier than someone who placed ahead, the upload still succeeds but warns and lists the affected positions. Pre-existing string times are converted to typed durations at startup; any that cannot be parsed are reported in the log for manual correction via Edit rather than silently dropped.
+
 ---
 
 ## Workflow
@@ -519,9 +522,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 82 | Tests `RaceResultsService`, `ChampionsOfChampionsService`, and `DatabaseBackupService` directly against isolated SQLite DBs per test |
+| `RaceResults.UnitTests` | 104 | Tests `RaceResultsService`, `ChampionsOfChampionsService`, `DatabaseBackupService`, and `RaceTime` directly against isolated SQLite DBs per test |
 | `RaceResults.IntegrationTests` | 21 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **103** | |
+| **Total** | **125** | |
 
 ---
 
@@ -541,7 +544,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US14, US18, US19 and US27 are implemented; the remaining US15–US31 stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US14, US17, US18, US19 and US27 are implemented; the remaining US15–US31 stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -564,6 +567,7 @@ US01–US14, US18, US19 and US27 are implemented; the remaining US15–US31 stor
 | [US18](user-stories/US18-export-results-csv.md) | Export Results to CSV |
 | [US27](user-stories/US27-example-file-links.md) | Example Upload File Links |
 | [US19](user-stories/US19-database-backup-restore.md) | Database Backup and Restore |
+| [US17](user-stories/US17-time-validation-and-analytics.md) | Time Validation and Race Analytics |
 
 ### Planned
 
@@ -571,7 +575,6 @@ US01–US14, US18, US19 and US27 are implemented; the remaining US15–US31 stor
 |---|---|
 | [US15](user-stories/US15-runner-registry.md) | Runner Registry |
 | [US16](user-stories/US16-finish-status-dns-dnf-dsq.md) | Finish Status (DNS / DNF / DSQ) |
-| [US17](user-stories/US17-time-validation-and-analytics.md) | Time Validation and Race Analytics |
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |
 | [US22](user-stories/US22-course-records-management.md) | Course Records Management |

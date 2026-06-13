@@ -1,6 +1,6 @@
 # US17 - Time Validation and Race Analytics
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

@@ -105,10 +105,11 @@ public class UploadTimingsTests : RaceResultsServiceTestBase
         Assert.True(result.Success);
         Assert.Equal(3, Service.GetStatusCounts().TimingCount);
 
+        // Times are normalised to the canonical display format (US17).
         var collated = Service.GetCollatedResults();
-        Assert.Equal("00:20:00", collated.Single(r => r.Position == 1).Time);
-        Assert.Equal("00:21:00", collated.Single(r => r.Position == 2).Time);
-        Assert.Equal("00:22:00", collated.Single(r => r.Position == 3).Time);
+        Assert.Equal("20:00", collated.Single(r => r.Position == 1).Time);
+        Assert.Equal("21:00", collated.Single(r => r.Position == 2).Time);
+        Assert.Equal("22:00", collated.Single(r => r.Position == 3).Time);
     }
 
     [Fact]
@@ -182,6 +183,45 @@ public class UploadTimingsTests : RaceResultsServiceTestBase
 
         Assert.False(result.Success);
         Assert.Contains(result.Errors, e => e.Contains("row 1") && e.Contains("missing required column"));
+    }
+
+    [Fact]
+    public async Task CsvMalformedTime_ReturnsFailureWithRowAndValue()
+    {
+        await SeedEntrantsAndFinishBib();
+        var file = FormFileHelpers.CreateCsv("timings.csv", "STARTOFEVENT,x,x\n1,x,00:2X:99\n2,x,00:21:00\n");
+
+        var result = await Service.UploadTimingsAsync(file);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("row 2") && e.Contains("invalid time") && e.Contains("00:2X:99"));
+    }
+
+    [Fact]
+    public async Task OutOfOrderTimes_SucceedsWithWarning()
+    {
+        await SeedEntrantsAndFinishBib();
+        // Position 2 finishes faster than position 1 — physically inconsistent with finishing order.
+        var file = FormFileHelpers.CreateCsv("timings.csv", "STARTOFEVENT,x,x\n1,x,00:21:00\n2,x,00:20:00\n");
+
+        var result = await Service.UploadTimingsAsync(file);
+
+        Assert.True(result.Success);
+        Assert.Contains(result.Warnings, w => w.Contains("not in finishing order") && w.Contains("2"));
+    }
+
+    [Fact]
+    public async Task ValidTimes_StoreTypedDuration()
+    {
+        await SeedEntrantsAndFinishBib();
+        var file = FormFileHelpers.CreateCsv("timings.csv", "STARTOFEVENT,x,x\n1,x,00:20:00\n2,x,00:21:00\n");
+
+        var result = await Service.UploadTimingsAsync(file);
+
+        Assert.True(result.Success);
+        var collated = Service.GetCollatedResults();
+        Assert.Equal(new TimeSpan(0, 20, 0), collated.Single(r => r.Position == 1).Duration);
+        Assert.Equal(new TimeSpan(0, 21, 0), collated.Single(r => r.Position == 2).Duration);
     }
 
     private async Task SeedEntrantsAndFinishBib()

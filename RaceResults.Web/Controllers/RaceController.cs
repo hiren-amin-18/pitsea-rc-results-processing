@@ -146,10 +146,10 @@ public class RaceController : Controller
             .ThenBy(x => x.Label)
             .ToList();
 
+        // Derive from typed durations (US17): every finisher with a timing row has one, so no row is silently dropped.
         var finishersPerMinute = results
-            .Select(r => TimeSpan.TryParse(r.Time, out var parsed) ? parsed : (TimeSpan?)null)
-            .Where(t => t.HasValue)
-            .Select(t => (int)Math.Floor(t!.Value.TotalMinutes))
+            .Where(r => r.Duration.HasValue)
+            .Select(r => (int)Math.Floor(r.Duration!.Value.TotalMinutes))
             .GroupBy(minute => minute)
             .Select(g => new BreakdownItem { Label = g.Key.ToString(), Value = g.Count() })
             .OrderBy(x => int.Parse(x.Label))

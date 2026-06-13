@@ -29,6 +29,17 @@
 **Summary**: `aidlc-docs/construction/US19/US19-implementation-summary.md`
 **Build Status**: Success
 **Test Status**: Pass (82 unit + 21 integration = 103)
-**Notes**: Brownfield. New DatabaseBackupService (SQLite backup API snapshot, validated restore with pre-restore copy + migrate), Settings UI, destructive-action reminders. Awaiting user review.
+**Notes**: Brownfield. New DatabaseBackupService (SQLite backup API snapshot, validated restore with pre-restore copy + migrate), Settings UI, destructive-action reminders. Reviewed and committed (fbb42df).
+
+---
+
+## US17 — Time Validation and Race Analytics
+**Timestamp**: 2026-06-13
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US17-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US17/US17-implementation-summary.md`
+**Build Status**: Success (new EF migration AddTimingDuration)
+**Test Status**: Pass (104 unit + 21 integration = 125)
+**Notes**: Brownfield + schema change. RaceTime helper, typed TimingRow.DurationTicks, validated parsing, out-of-order warning, gap-to-winner column, edit validation, typed stats, legacy backfill at startup. Foundational for US22/US23/US24. Awaiting user review.
 
 ---

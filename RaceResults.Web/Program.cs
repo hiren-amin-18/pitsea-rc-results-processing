@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
 using RaceResults.Web.Data;
+using RaceResults.Web.Models;
 using RaceResults.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,6 +27,7 @@ if (!app.Environment.IsEnvironment("Testing"))
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<RaceResultsDbContext>();
     db.Database.Migrate();
+    BackfillTimingDurations(db, scope.ServiceProvider.GetRequiredService<ILogger<Program>>());
 }
 
 // Configure the HTTP request pipeline.
@@ -63,5 +65,45 @@ app.MapControllerRoute(
 
 
 app.Run();
+
+// US17: convert legacy string finish times to typed, sortable durations once. Times that cannot be
+// parsed are left untyped and surfaced in a warning report (not silently kept) for manual correction.
+static void BackfillTimingDurations(RaceResultsDbContext db, ILogger logger)
+{
+    var pending = db.TimingRows.Where(t => t.DurationTicks == null).ToList();
+    if (pending.Count == 0)
+    {
+        return;
+    }
+
+    var unparseable = new List<TimingRow>();
+    var converted = 0;
+    foreach (var row in pending)
+    {
+        if (RaceTime.TryParse(row.Time, out var duration))
+        {
+            row.DurationTicks = duration.Ticks;
+            converted++;
+        }
+        else
+        {
+            unparseable.Add(row);
+        }
+    }
+
+    if (converted > 0)
+    {
+        db.SaveChanges();
+        logger.LogInformation("US17 time migration: converted {Count} stored time(s) to typed durations.", converted);
+    }
+
+    if (unparseable.Count > 0)
+    {
+        var details = string.Join("; ", unparseable.Select(r => $"event {r.EventId} position {r.Position} = '{r.Time}'"));
+        logger.LogWarning(
+            "US17 time migration: {Count} stored time(s) could not be parsed and need manual correction via Edit: {Details}",
+            unparseable.Count, details);
+    }
+}
 
 public partial class Program { }

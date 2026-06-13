@@ -3,7 +3,13 @@ namespace RaceResults.Web.Models;
 public class ResultRecord
 {
     public int Position { get; set; }
+
+    /// <summary>Canonical display time (or original raw text for unparseable legacy rows). For display only.</summary>
     public string Time { get; set; } = string.Empty;
+
+    /// <summary>Typed finish duration; null when no timing row or an unparseable legacy value. Use this for comparison/sorting (US17).</summary>
+    public TimeSpan? Duration { get; set; }
+
     public string BibNumber { get; set; } = string.Empty;
     public Entrant? Entrant { get; set; }
 

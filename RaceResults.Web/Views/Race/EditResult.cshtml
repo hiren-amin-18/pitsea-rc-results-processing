@@ -6,6 +6,12 @@
 <h1>Edit Result Row</h1>
 <p class="text-muted">Update a result row without re-uploading all files.</p>
 
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var feedbackType = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
+}
+
 <form method="post" asp-action="EditResult" class="row g-3">
     @Html.AntiForgeryToken()
     <input asp-for="OriginalPosition" type="hidden" />
@@ -48,7 +54,8 @@
 
     <div class="col-md-4">
         <label asp-for="Time" class="form-label"></label>
-        <input asp-for="Time" class="form-control" placeholder="00:25:10" />
+        <input asp-for="Time" class="form-control" placeholder="25:10" />
+        <div class="form-text">Format: <code>mm:ss</code> or <code>h:mm:ss</code> (e.g. <code>25:10</code> or <code>1:05:09</code>). Leave blank for no time.</div>
         <span asp-validation-for="Time" class="text-danger"></span>
     </div>
 

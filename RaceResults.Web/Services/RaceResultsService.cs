@@ -317,7 +317,7 @@ public class RaceResultsService : IRaceResultsService
         }
 
         var errors = new List<string>();
-        var rows = new Dictionary<int, string>();
+        var rows = new Dictionary<int, ParsedTiming>();
 
         await using var stream = file.OpenReadStream();
         if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
@@ -375,12 +375,26 @@ public class RaceResultsService : IRaceResultsService
         {
             EventId = currentEvent.Id,
             Position = kvp.Key,
-            Time = kvp.Value
+            Time = kvp.Value.Raw,
+            DurationTicks = kvp.Value.Duration.Ticks
         }));
         await db.SaveChangesAsync();
 
         _logger.LogInformation("Timings uploaded: {Count} rows.", rows.Count);
-        return OperationResult.Ok($"Loaded {rows.Count} timing rows.");
+        var result = OperationResult.Ok($"Loaded {rows.Count} timing rows.");
+
+        // A finisher whose time is earlier than someone who placed ahead is almost always a
+        // data-entry or chip error. Warn but don't block (US17 AC4).
+        var outOfOrder = FindOutOfOrderPositions(rows);
+        if (outOfOrder.Count > 0)
+        {
+            result.Warnings.Add(
+                $"Times are not in finishing order at position(s): {string.Join(", ", outOfOrder)}. " +
+                "A later finisher has an earlier time than someone ahead — please review.");
+            _logger.LogWarning("UploadTimings: out-of-order times at positions {Positions}", string.Join(", ", outOfOrder));
+        }
+
+        return result;
     }
 
     private static bool ShouldShiftTimingPositions(IReadOnlyCollection<int> finishPositions, IReadOnlyCollection<int> timingPositions)
@@ -422,18 +436,27 @@ public class RaceResultsService : IRaceResultsService
             .ToDictionary(e => e.BibNumber, StringComparer.OrdinalIgnoreCase);
         var timings = db.TimingRows
             .Where(t => t.EventId == eventId)
-            .ToDictionary(t => t.Position, t => t.Time);
+            .ToList()
+            .ToDictionary(t => t.Position);
 
         return db.FinishBibRecords
             .Where(r => r.EventId == eventId)
             .OrderBy(r => r.Position)
             .ToList()
-            .Select(r => new ResultRecord
+            .Select(r =>
             {
-                Position = r.Position,
-                BibNumber = r.BibNumber,
-                Time = timings.TryGetValue(r.Position, out var time) ? time : string.Empty,
-                Entrant = entrantByBib.TryGetValue(r.BibNumber, out var entrant) ? entrant : null
+                timings.TryGetValue(r.Position, out var timing);
+                return new ResultRecord
+                {
+                    Position = r.Position,
+                    BibNumber = r.BibNumber,
+                    Duration = timing?.Duration,
+                    // Canonical display when typed; fall back to raw text for unparseable legacy rows.
+                    Time = timing is null
+                        ? string.Empty
+                        : timing.Duration is { } d ? RaceTime.Format(d) : timing.Time,
+                    Entrant = entrantByBib.TryGetValue(r.BibNumber, out var entrant) ? entrant : null
+                };
             })
             .ToList();
     }
@@ -546,6 +569,20 @@ public class RaceResultsService : IRaceResultsService
             errors.Add("Gender is required.");
         }
 
+        // Validate the optional time with the same rules as upload (US17 AC6).
+        TimeSpan? editDuration = null;
+        if (!string.IsNullOrWhiteSpace(editInput.Time))
+        {
+            if (RaceTime.TryParse(editInput.Time, out var parsedEditTime))
+            {
+                editDuration = parsedEditTime;
+            }
+            else
+            {
+                errors.Add($"Time '{editInput.Time.Trim()}' is not valid. Use mm:ss or h:mm:ss.");
+            }
+        }
+
         using var db = _dbContextFactory.CreateDbContext();
         var currentEventId = EnsureCurrentEvent(db).Id;
         var row = db.FinishBibRecords.FirstOrDefault(r => r.EventId == currentEventId && r.Position == editInput.OriginalPosition);
@@ -605,6 +642,8 @@ public class RaceResultsService : IRaceResultsService
 
         if (!string.IsNullOrWhiteSpace(editInput.Time))
         {
+            var trimmedTime = editInput.Time.Trim();
+            var durationTicks = editDuration?.Ticks;
             if (oldPosition != editInput.NewPosition && oldTiming is not null)
             {
                 db.TimingRows.Remove(oldTiming);
@@ -612,17 +651,18 @@ public class RaceResultsService : IRaceResultsService
             var newTiming = db.TimingRows.FirstOrDefault(t => t.EventId == currentEventId && t.Position == editInput.NewPosition);
             if (newTiming is null)
             {
-                db.TimingRows.Add(new TimingRow { EventId = currentEventId, Position = editInput.NewPosition, Time = editInput.Time.Trim() });
+                db.TimingRows.Add(new TimingRow { EventId = currentEventId, Position = editInput.NewPosition, Time = trimmedTime, DurationTicks = durationTicks });
             }
             else
             {
-                newTiming.Time = editInput.Time.Trim();
+                newTiming.Time = trimmedTime;
+                newTiming.DurationTicks = durationTicks;
             }
         }
         else if (oldTiming is not null && oldPosition != editInput.NewPosition)
         {
             db.TimingRows.Remove(oldTiming);
-            db.TimingRows.Add(new TimingRow { EventId = currentEventId, Position = editInput.NewPosition, Time = oldTiming.Time });
+            db.TimingRows.Add(new TimingRow { EventId = currentEventId, Position = editInput.NewPosition, Time = oldTiming.Time, DurationTicks = oldTiming.DurationTicks });
         }
 
         db.SaveChanges();
@@ -1137,7 +1177,29 @@ public class RaceResultsService : IRaceResultsService
         }
     }
 
-    private static void ParseTimingsWorkbook(Stream stream, string fileName, Dictionary<int, string> rows, List<string> errors)
+    /// <summary>A parsed timing row: the original uploaded text plus its validated duration (US17).</summary>
+    private sealed record ParsedTiming(string Raw, TimeSpan Duration);
+
+    /// <summary>Positions whose duration is earlier than that of an earlier finishing position (US17 AC4).</summary>
+    private static List<int> FindOutOfOrderPositions(Dictionary<int, ParsedTiming> rows)
+    {
+        var outOfOrder = new List<int>();
+        TimeSpan? previous = null;
+        foreach (var position in rows.Keys.OrderBy(p => p))
+        {
+            var duration = rows[position].Duration;
+            if (previous.HasValue && duration < previous.Value)
+            {
+                outOfOrder.Add(position);
+            }
+
+            previous = duration;
+        }
+
+        return outOfOrder;
+    }
+
+    private static void ParseTimingsWorkbook(Stream stream, string fileName, Dictionary<int, ParsedTiming> rows, List<string> errors)
     {
         using var workbook = new XLWorkbook(stream);
         var sheet = workbook.Worksheets.First();
@@ -1182,14 +1244,20 @@ public class RaceResultsService : IRaceResultsService
                 continue;
             }
 
-            if (!rows.TryAdd(position, time.Trim()))
+            if (!RaceTime.TryParse(time, out var duration))
+            {
+                errors.Add($"{fileName} row {rowNumber}: invalid time ({time.Trim()}).");
+                continue;
+            }
+
+            if (!rows.TryAdd(position, new ParsedTiming(time.Trim(), duration)))
             {
                 errors.Add($"{fileName} row {rowNumber}: duplicate timing position ({position}).");
             }
         }
     }
 
-    private static void ParseTimingsCsv(Stream stream, string fileName, Dictionary<int, string> rows, List<string> errors)
+    private static void ParseTimingsCsv(Stream stream, string fileName, Dictionary<int, ParsedTiming> rows, List<string> errors)
     {
         using var reader = new StreamReader(stream);
         using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
@@ -1223,7 +1291,13 @@ public class RaceResultsService : IRaceResultsService
                 continue;
             }
 
-            if (!rows.TryAdd(position, time))
+            if (!RaceTime.TryParse(time, out var duration))
+            {
+                errors.Add($"{fileName} row {rowNumber}: invalid time ({time}).");
+                continue;
+            }
+
+            if (!rows.TryAdd(position, new ParsedTiming(time, duration)))
             {
                 errors.Add($"{fileName} row {rowNumber}: duplicate timing position ({position}).");
             }
