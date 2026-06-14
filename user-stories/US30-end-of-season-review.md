@@ -1,6 +1,6 @@
 # US30 - End of Season Review
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete (degraded — volunteer sections omitted until US29 lands)
 
 ## As a
 Race organiser

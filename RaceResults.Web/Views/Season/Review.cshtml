@@ -1,0 +1,139 @@
+@model RaceResults.Web.Models.SeasonReview
+@using RaceResults.Web.Models
+@using RaceResults.Web.Services
+@{
+    ViewData["Title"] = $"Season Review — {Model.Year}";
+    string TypeLabel(EventType t) => t == EventType.CrownToCrown ? "Crown to Crown" : "Bluebell 5";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h1>End of Season Review — @Model.Year</h1>
+    <div class="d-flex gap-2 align-items-center">
+        @if (Model.AvailableYears.Any())
+        {
+            <select id="reviewYear" class="form-select" style="width:auto;">
+                @foreach (var y in Model.AvailableYears)
+                {
+                    <option value="@y" selected="@(y == Model.Year)">@y</option>
+                }
+            </select>
+        }
+        <a class="btn btn-outline-primary" asp-action="ReviewPdf" asp-route-year="@Model.Year">Export PDF</a>
+    </div>
+</div>
+
+<script>
+    document.getElementById('reviewYear')?.addEventListener('change', function (e) {
+        const url = new URL(window.location);
+        url.searchParams.set('year', e.target.value);
+        window.location = url.toString();
+    });
+</script>
+
+<p class="text-muted">Covers the full racing year (Good Friday through Boxing Day, plus Bluebell 5). Champions of Champions figures use only the May–September scoring window.</p>
+
+@if (Model.Headlines.EventsHeld == 0)
+{
+    <div class="alert alert-info">No events in @Model.Year.</div>
+    return;
+}
+
+<div class="row g-3 mb-2">
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Events</h6><p class="display-6 mb-0">@Model.Headlines.EventsHeld</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Entrants</h6><p class="display-6 mb-0">@Model.Headlines.TotalEntrants</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Unique runners</h6><p class="display-6 mb-0">@Model.Headlines.TotalUniqueRunners</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Completion</h6><p class="display-6 mb-0">@Model.Headlines.CompletionRatePercent%</p></div></div></div>
+</div>
+
+@if (Model.Comparison is { } cmp)
+{
+    <div class="alert alert-secondary">
+        <strong>vs @(Model.Year - 1):</strong>
+        entrants @(cmp.EntrantDelta >= 0 ? $"+{cmp.EntrantDelta}" : cmp.EntrantDelta.ToString()) (@(cmp.EntrantPercentChange >= 0 ? "+" : "")@cmp.EntrantPercentChange%) ·
+        unique runners @(cmp.UniqueRunnerDelta >= 0 ? $"+{cmp.UniqueRunnerDelta}" : cmp.UniqueRunnerDelta.ToString()) ·
+        events @(cmp.EventsHeldDelta >= 0 ? $"+{cmp.EventsHeldDelta}" : cmp.EventsHeldDelta.ToString())
+    </div>
+}
+
+<h2 class="h4 mt-4">Champions of Champions <small class="text-muted">May–September scoring window</small></h2>
+@if (!Model.ChampionsLeaderboard.Any())
+{
+    <p class="text-muted">No Champions scoring this season.</p>
+}
+else
+{
+    <p class="small text-muted">@Model.ChampionsDistinctScorers distinct point scorer(s) across @Model.ChampionsScoringEventCount scoring race(s).</p>
+    foreach (var category in Model.ChampionsLeaderboard.GroupBy(e => e.Category).OrderBy(g => g.Key))
+    {
+        <h3 class="h6 mt-3">@category.Key</h3>
+        <ol class="ps-3 mb-0">
+            @foreach (var entry in category.OrderBy(e => e.Rank).Take(3))
+            {
+                var medal = entry.Rank switch { 1 => "🥇", 2 => "🥈", 3 => "🥉", _ => "" };
+                <li>@medal @entry.Entrant.Name — <strong>@entry.TotalPoints pts</strong> (@entry.RaceCount races)</li>
+            }
+        </ol>
+    }
+}
+
+<h2 class="h4 mt-4">Runner recognition <small class="text-muted">full series</small></h2>
+@if (Model.SeasonDashboard.MostAttendedRunners.Any())
+{
+    <p class="mb-1"><strong>Most attended:</strong> @string.Join(", ", Model.SeasonDashboard.MostAttendedRunners.Select(r => $"{r.RunnerName} ({r.EventsAttended} events" + (r.EverPresent ? " — ever-present" : "") + ")"))</p>
+}
+@if (Model.SeasonDashboard.TopClubsByEntries.Any())
+{
+    <p class="mb-1"><strong>Most attended club:</strong> @Model.SeasonDashboard.TopClubsByEntries.First().Club (@Model.SeasonDashboard.TopClubsByEntries.First().Count entries)</p>
+}
+
+@if (Model.SeasonDashboard.FastestByCategory.Any())
+{
+    <h3 class="h6 mt-3">Fastest in each category</h3>
+    <table class="table table-sm mb-2">
+        <thead><tr><th>Type</th><th>Category</th><th>Time</th><th>Runner</th></tr></thead>
+        <tbody>
+        @foreach (var f in Model.SeasonDashboard.FastestByCategory)
+        {
+            <tr><td>@TypeLabel(f.EventType)</td><td>@f.Category</td><td>@f.Time</td><td>@f.RunnerName</td></tr>
+        }
+        </tbody>
+    </table>
+}
+
+@if (Model.NewCourseRecordsThisYear.Any())
+{
+    <h2 class="h4 mt-4">New course records</h2>
+    <ul class="list-unstyled">
+    @foreach (var record in Model.NewCourseRecordsThisYear)
+    {
+        <li><strong>@TypeLabel(record.EventType) @record.Category:</strong> @RaceTime.Format(record.Duration) — @record.RunnerName <span class="text-muted">(@record.EventName, @record.EventDate.ToString("MMM yyyy"))</span></li>
+    }
+    </ul>
+}
+
+<h2 class="h4 mt-4">DNF / DSQ</h2>
+<p>DNF: @Model.TotalDnf · DSQ: @Model.TotalDsq</p>
+
+<h2 class="h4 mt-4">Awards</h2>
+<table class="table table-sm">
+    <thead><tr><th>Award</th><th>Winner</th><th>Detail</th></tr></thead>
+    <tbody>
+    @foreach (var a in Model.Awards.ChampionsWinners)
+    {
+        <tr><td>@a.Title</td><td><strong>@a.Winner</strong></td><td class="text-muted">@a.Detail</td></tr>
+    }
+    @foreach (var a in Model.Awards.EverPresentRunners)
+    {
+        <tr><td>@a.Title</td><td><strong>@a.Winner</strong></td><td class="text-muted">@a.Detail</td></tr>
+    }
+    @if (Model.Awards.MostImprovedRunner is { } improved)
+    {
+        <tr><td>@improved.Title</td><td><strong>@improved.Winner</strong></td><td class="text-muted">@improved.Detail</td></tr>
+    }
+    </tbody>
+</table>
+
+@if (!Model.HasVolunteerData)
+{
+    <p class="small text-muted">Volunteer recognition section omitted — volunteer tracking (US28/US29) is not implemented yet.</p>
+}

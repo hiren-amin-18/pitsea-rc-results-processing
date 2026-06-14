@@ -128,6 +128,17 @@
 **Summary**: `aidlc-docs/construction/US31/US31-implementation-summary.md`
 **Build Status**: Success (new EF migration AddEventStartTime)
 **Test Status**: Pass (147 unit + 26 integration = 173)
-**Notes**: Brownfield + schema change. Pure SeasonCalendar (Anonymous Gregorian Easter, second/first Wednesday), SeasonCalendarService preview/generate with idempotent skip, RaceEvent.StartTime optional, Generate Season UI on Events page; current event untouched. Awaiting user review.
+**Notes**: Brownfield + schema change. Pure SeasonCalendar (Anonymous Gregorian Easter, second/first Wednesday), SeasonCalendarService preview/generate with idempotent skip, RaceEvent.StartTime optional, Generate Season UI on Events page; current event untouched. Reviewed and committed (0fb2b75).
+
+---
+
+## US30 — End of Season Review (degraded)
+**Timestamp**: 2026-06-14
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US30-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US30/US30-implementation-summary.md`
+**Build Status**: Success (no schema change)
+**Test Status**: Pass (150 unit + 26 integration = 176)
+**Notes**: Brownfield capstone, no schema change. SeasonReviewService composes US24 dashboard + US14 Champions + US22 records + US16 DNF/DSQ into a single page + branded PDF; awards list derived from the same data (single source of calc). YoY only when prior year has data; series-vs-scoring-window labelled. Volunteer sections deliberately empty until US28/US29 land. Awaiting user review.
 
 ---

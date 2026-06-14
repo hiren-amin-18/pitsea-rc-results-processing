@@ -20,6 +20,7 @@ builder.Services.AddScoped<IRunnerRegistryService, RunnerRegistryService>();
 builder.Services.AddScoped<ICourseRecordService, CourseRecordService>();
 builder.Services.AddScoped<ISeasonStatisticsService, SeasonStatisticsService>();
 builder.Services.AddScoped<ISeasonCalendarService, SeasonCalendarService>();
+builder.Services.AddScoped<ISeasonReviewService, SeasonReviewService>();
 
 QuestPDF.Settings.License = LicenseType.Community;
 
