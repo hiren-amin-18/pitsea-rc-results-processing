@@ -1,6 +1,6 @@
 # Pitsea RC Race Result Processor
 
-An ASP.NET Core MVC web application for processing race results, built for Pitsea Running Club. Race organisers upload entrant, finish, and timing data, then view, edit, and export the collated results. The app also maintains the club's yearly **Champions of Champions** leaderboard across the Crown to Crown race series.
+An ASP.NET Core MVC web application for processing race results, built for Pitsea Running Club. Race organisers upload entrant, finish, and timing data, then view, edit, and export the collated results. The app maintains the club's yearly **Champions of Champions** leaderboard across the Crown to Crown race series, and also manages the **volunteer roster** for each event — including a rules-based draft allocator, season-long volunteer recognition, and London Marathon ballot tracking.
 
 ---
 
@@ -56,6 +56,10 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Season calendar generator** | One-click "Generate Season" creates the year's Crown to Crown fixtures from the club's fixed date rules (Good Friday, second Wednesdays May–Aug, first-or-second Wednesday Sep, Boxing Day) with start times; preview before generating; skips dates that already have a C2C event (US31) |
 | **Event archiving** | Mark a finalised event as archived to make it read-only: uploads, edits, and detail changes are rejected; it can't be current or deleted until unarchived; results remain viewable and exportable, and it still counts toward Champions (US20) |
 | **Public results page** | Publish an event from the Events page to expose a shareable read-only URL (`/public/results/{token}`) with the collated results, category winners, DNF list, and a public Champions of Champions leaderboard. Tokens are unguessable per event; unpublished events return 404 (US21) |
+| **Volunteer register** | Persistent volunteers with gender, first-aid-trained flag, club-member flag, and an optional link to a runner. Deactivate to preserve history without losing past assignments (US28) |
+| **Volunteer roster** | Per-event roster page grouped by Leadership / Finish Area / Course, with the 23 Crown to Crown roles seeded by default. Restricted roles (Lead, Results) honour an allow-list; Marshal Point 7 supports a standing pre-placement (Ian + dog Shane); first-aid roles require a trained volunteer; min/max overrides and double-booking warnings supported. Edit retrospectively for past events, copy from the previous event, export to PDF and Excel (US28) |
+| **Volunteer statistics** | Per-event panel on the roster page; season page with total volunteering instances, unique volunteers, role coverage trend, most-active leaderboard, and per-volunteer profile including the "ran X, volunteered Y, involved in Z" combined recognition. CSV export. London Marathon ballot entries counted one per volunteering instance, members only (US29) |
+| **Automated roster allocation** | Pick attendees + per-volunteer preferences (specific role, run-after, near-finish, can't-walk-far, seated, any-role) and have the app propose a draft. Greedy seven-step rules engine: pre-place fixtures → eligibility → run-after rotation across the season → preferences → role mix-up across the season → marshal gender mix → fill remainder. Review and apply; Apply re-validates through the roster service (US32) |
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
 | **Theme-aware branding** | App logo switches by theme (light uses white logo, dark uses black logo) at a fixed size |
 | **Persistent storage** | All data saved to a SQLite database and survives app restarts |
@@ -114,6 +118,10 @@ Club-specific conventions that the code relies on. These are deliberate, not bug
 | **C2C series schedule** | The Crown to Crown series runs the full year: Good Friday (11:00), then the second Wednesday of each month May–August (19:30), the first *or* second Wednesday of September (19:00, decided per year), and finally Boxing Day (11:00). Events store only a date — start times are not modelled. |
 | **Champions season window** | Champions of Champions scores only C2C races dated May–September inclusive, keyed to the event's calendar year. This is a **deliberate subset of the series**: the Good Friday and Boxing Day races are real C2C events that earn no Champions points. Out-of-window or non-C2C events are never scored. |
 | **Event types** | `Crown to Crown` and `Bluebell 5` (annual, around April/May, date varies). Course records are held per event type (US22): Crown to Crown ships with seeded records; Bluebell 5 starts empty, and the PDF records line is omitted until records exist. |
+| **Volunteer roles** | C2C runs with 23 seeded roles in three categories: Leadership (Lead, Shadow Lead, Results), Finish Area (Timekeeping, Course Setup, Number Collection, On The Day Registration, Finish Line Funnel + Results, First Aid and Prizes, Tail Runners, Photographer, Water Table), and Course (Marshal Points 1–7 + 5a, Metal Gate, First Aid On Course). Default counts, min/max overrides, and run-after capacity (how many in a role may run their race afterwards) are configurable per role. Bluebell 5 will get its own role seed in a later story. |
+| **Restricted roles + pre-placement** | Some roles only accept specific volunteers (Lead = Hiren or Michael; Results = Hiren) via an allow-list, seeded empty so the organiser populates it once the people are added. Roles can also pre-place a specific volunteer (Marshal Point 7 is configured to pre-place Ian — and his dog Shane — who is not a Pitsea RC member). |
+| **First-aid roles** | First Aid and Prizes (also presents the prizes) and First Aid On Course can only be filled by volunteers flagged as first-aid trained. |
+| **London Marathon ballot** | One ballot entry per volunteering instance (each role at each event counts), counted **per calendar year, with no per-person cap**, and **for Pitsea RC members only**. Non-members count toward all other volunteer recognition but earn zero ballot entries. Membership is renewed yearly in April, so a single member flag on the volunteer record is sufficient — no per-event-date tracking. |
 
 ---
 
@@ -124,83 +132,99 @@ pitsea-rc-results-processing/
 ├── pitsea-rc-results-processing.slnx   # Solution file
 │
 ├── RaceResults.Web/                    # Main web application
-│   ├── Controllers/
-│   │   ├── HomeController.cs           # Dashboard (/)
-│   │   ├── RaceController.cs           # All race operations (/Race/*)
-   │   ├── EventsController.cs         # Event management (/Events/*)
-   │   ├── ChampionsController.cs      # Champions leaderboard (/Champions/*)
-   │   ├── RunnersController.cs        # Runner registry: list, edit, merge (/Runners/*)
-   │   ├── CourseRecordsController.cs  # Course record management (/CourseRecords/*)
-   │   └── SeasonController.cs         # Season dashboard + runner profiles (/Season/*)
+│   ├── Controllers/                    # Thin controllers; all logic in services
+│   │   ├── HomeController.cs           # Dashboard + Settings (/)
+│   │   ├── RaceController.cs           # Uploads / Results / Stats / Top10 / exports (/Race/*)
+│   │   ├── EventsController.cs         # Event management + season generator (/Events/*)
+│   │   ├── ChampionsController.cs      # Champions leaderboard + exports (/Champions/*)
+│   │   ├── RunnersController.cs        # Runner registry: list, edit, merge (/Runners/*)
+│   │   ├── CourseRecordsController.cs  # Course record management (/CourseRecords/*)
+│   │   ├── SeasonController.cs         # Season dashboard + runner profiles + end-of-season review (/Season/*)
+│   │   ├── PublicController.cs         # Read-only published results pages (/public/*)
+│   │   ├── VolunteersController.cs     # Volunteer register (/Volunteers/*)
+│   │   ├── VolunteerRolesController.cs # Volunteer role catalogue (/VolunteerRoles/*)
+│   │   ├── VolunteerRosterController.cs # Per-event roster + allocator (/Events/{id}/Roster/*)
+│   │   └── VolunteerStatsController.cs # Season volunteer statistics (/VolunteerStats/*)
 │   ├── Data/
-│   │   └── RaceResultsDbContext.cs     # EF Core DbContext (SQLite)
-│   ├── Migrations/                     # EF Core migration files
-│   ├── Models/                         # Domain and view models
-│   │   ├── RaceEvent.cs
-│   │   ├── EventType.cs
-│   │   ├── CreateEventInput.cs
-│   │   ├── EditEventInput.cs
-│   │   ├── EventsPageViewModel.cs
-│   │   ├── Entrant.cs
-│   │   ├── FinishBibRecord.cs
-│   │   ├── TimingRow.cs
-│   │   ├── ResultRecord.cs
-│   │   ├── RaceStats.cs
-│   │   ├── TopTenCategory.cs
-│   │   ├── EditResultInput.cs
-│   │   ├── OperationResult.cs
-│   │   ├── RaceStatusCounts.cs
-│   │   ├── UploadsViewModel.cs
-│   │   ├── ResultsPageViewModel.cs
-│   │   ├── HomeDashboardViewModel.cs
-   │   ├── RaceStatsDashboardViewModel.cs
-   │   ├── ChampionOfChampionsScore.cs # Cumulative yearly scoring data
-   │   ├── PointsAuditLog.cs          # Audit trail for scoring changes
-   │   ├── ChampionsLeaderboardEntry.cs # DTO for leaderboard display
-   │   └── ChampionsLeaderboardViewModel.cs # View model for leaderboard UI
-│   ├── Services/
-│   │   ├── IRaceResultsService.cs      # Service interface
-   │   ├── RaceResultsService.cs       # Implementation (file parsing, business logic)
-   │   ├── IChampionsOfChampionsService.cs # Champions scoring interface
-   │   └── ChampionsOfChampionsService.cs  # Champions scoring & leaderboard logic
-│   ├── Views/
-│   │   ├── Home/Index.cshtml           # Dashboard
-│   │   ├── Events/
-│   │   │   ├── Index.cshtml            # Event list and actions
-│   │   │   ├── Create.cshtml           # Event creation form
-│   │   │   └── Edit.cshtml             # Event edit form
-   │   ├── Race/
-   │   │   ├── Uploads.cshtml          # Upload forms with status counts
-   │   │   ├── Results.cshtml          # Collated results table + DNF list
-   │   │   ├── EditResult.cshtml       # Edit a single result row
-   │   │   ├── Stats.cshtml            # Race statistics
-   │   │   └── Top10.cshtml            # Top 10 by category
-   │   └── Champions/
-   │       └── Leaderboard.cshtml      # Champions leaderboard with year selector
-│   └── Program.cs                      # App bootstrap, DI, middleware
+│   │   └── RaceResultsDbContext.cs     # EF Core DbContext (SQLite); seeds C2C role catalogue
+│   ├── Migrations/                     # EF Core migration files (most recent: AddVolunteerRoster)
+│   ├── Models/                         # Domain entities, input DTOs, view models
+│   │   ├── RaceEvent.cs, EventType.cs, Entrant.cs, FinishBibRecord.cs, TimingRow.cs, ResultRecord.cs
+│   │   ├── Runner.cs                                 # Persistent runner (US15)
+│   │   ├── ChampionOfChampionsScore.cs, PointsAuditLog.cs, ChampionsLeaderboardViewModel.cs
+│   │   ├── CourseRecord.cs, CourseRecordModels.cs    # US22
+│   │   ├── SeasonStatisticsModels.cs                 # US24
+│   │   ├── SeasonReview.cs                           # US30
+│   │   ├── RaceStatisticsSummary.cs, RaceStatsDashboardViewModel.cs # US23
+│   │   ├── FinishStatus.cs                           # US16
+│   │   ├── PublicViewModels.cs                       # US21
+│   │   ├── Volunteer.cs, VolunteerRole.cs, VolunteerRoleEligibility.cs, VolunteerAssignment.cs
+│   │   ├── RoleCategory.cs, VolunteerInputs.cs       # US28 DTOs / view models
+│   │   ├── VolunteerStatsModels.cs                   # US29 stats DTOs
+│   │   └── AllocationModels.cs                       # US32 allocator inputs / draft / report
+│   ├── Services/                       # Business logic; receive IDbContextFactory<RaceResultsDbContext>
+│   │   ├── IRaceResultsService.cs + RaceResultsService.cs           # File parsing, collation, PDF/CSV
+│   │   ├── IChampionsOfChampionsService.cs + ChampionsOfChampionsService.cs
+│   │   ├── IDatabaseBackupService.cs + DatabaseBackupService.cs     # US19
+│   │   ├── IRunnerRegistryService.cs + RunnerRegistryService.cs     # US15
+│   │   ├── ICourseRecordService.cs + CourseRecordService.cs        # US22
+│   │   ├── ISeasonStatisticsService.cs + SeasonStatisticsService.cs # US24
+│   │   ├── ISeasonCalendarService.cs + SeasonCalendarService.cs + SeasonCalendar.cs # US31
+│   │   ├── ISeasonReviewService.cs + SeasonReviewService.cs        # US30
+│   │   ├── IVolunteerRegistryService.cs + VolunteerRegistryService.cs # US28
+│   │   ├── IVolunteerRoleService.cs + VolunteerRoleService.cs       # US28
+│   │   ├── IVolunteerRosterService.cs + VolunteerRosterService.cs   # US28
+│   │   ├── IVolunteerRosterExportService.cs + VolunteerRosterExportService.cs # US28 PDF + Excel
+│   │   ├── IVolunteerStatsService.cs + VolunteerStatsService.cs    # US29
+│   │   ├── IRosterAllocator.cs + RosterAllocator.cs                # US32 rules engine
+│   │   ├── IRosterDraftApplier.cs + RosterDraftApplier.cs          # US32 persist via roster service
+│   │   ├── RaceTime.cs                 # Time parsing/formatting (US17)
+│   │   ├── RunnerIdentity.cs           # Normalised name/club key (US15)
+│   │   └── DatabasePathResolver.cs     # Per-user DB location for installed builds (US25)
+│   ├── Views/                          # Razor views (Bootstrap; dark-mode aware)
+│   │   ├── Shared/_Layout.cshtml       # Navbar (Race / Standings / Manage dropdowns) + theme toggle
+│   │   ├── Home/                       # Dashboard + Settings (backup/restore)
+│   │   ├── Race/                       # Uploads, Results, EditResult, Stats, Top10
+│   │   ├── Events/                     # Index, Create, Edit, GenerateSeason (US31)
+│   │   ├── Champions/                  # Leaderboard
+│   │   ├── Runners/                    # Index, Edit (US15)
+│   │   ├── CourseRecords/              # Index, Edit (US22)
+│   │   ├── Season/                     # Dashboard, runner profile, Review (US24, US30)
+│   │   ├── Public/                     # Read-only published results (US21)
+│   │   ├── Volunteers/                 # Index, Create, Edit, _Form (US28)
+│   │   ├── VolunteerRoles/             # Index, Create, Edit, _Form (US28)
+│   │   ├── VolunteerRoster/            # Index, Allocate, Draft (US28, US32)
+│   │   └── VolunteerStats/             # Index (US29)
+│   └── Program.cs                      # App bootstrap, DI, middleware, runtime backfills
 │
-├── RaceResults.UnitTests/              # xUnit unit tests (73 tests)
-   ├── Helpers/
-   │   ├── DbContextHelpers.cs         # In-memory SQLite factory
-   │   └── FormFileHelpers.cs          # IFormFile test doubles (XLSX + CSV)
-   ├── RaceResultsServiceTestBase.cs   # Base class with isolated DB per test
-   ├── EventManagementTests.cs
-   ├── UploadEntrantsTests.cs
-   ├── UploadFinishBibTests.cs
-   ├── UploadTimingsTests.cs
-   ├── CollatedResultsTests.cs
-   ├── StatsAndTopTenTests.cs
-   ├── EditResultTests.cs
-   ├── PdfGenerationTests.cs
-   └── ChampionsOfChampionsServiceTests.cs # 7 tests for Champions scoring logic
+├── RaceResults.UnitTests/              # xUnit unit tests (193 tests)
+│   ├── Helpers/
+│   │   ├── DbContextHelpers.cs         # In-memory SQLite factory
+│   │   └── FormFileHelpers.cs          # IFormFile test doubles (XLSX + CSV)
+│   ├── RaceResultsServiceTestBase.cs   # Base class with isolated DB per test
+│   ├── Race + uploads: UploadEntrantsTests, UploadFinishBibTests, UploadTimingsTests,
+│   │                   CollatedResultsTests, StatsAndTopTenTests, EditResultTests,
+│   │                   FinishStatusTests, RaceTimeTests, RaceStatisticsSummaryTests
+│   ├── Events / season: EventManagementTests, EventArchivingTests, SeasonCalendarTests,
+│   │                    SeasonStatisticsTests, SeasonReviewTests
+│   ├── Identity / records: RunnerRegistryTests, CourseRecordTests
+│   ├── Exports + backup: PdfGenerationTests, CsvExportTests, DatabaseBackupServiceTests
+│   ├── Installer path: DatabasePathResolverTests
+│   ├── Champions: ChampionsOfChampionsServiceTests
+│   └── Volunteers: VolunteerRosterTests, VolunteerStatsTests, RosterAllocatorTests
 │
-├── RaceResults.IntegrationTests/       # xUnit integration tests (21+ tests)
+├── RaceResults.IntegrationTests/       # xUnit integration tests (26 tests)
 │   ├── RaceResultsWebFactory.cs        # WebApplicationFactory with in-memory SQLite
 │   ├── MultipartHelpers.cs             # Multipart form builders for file uploads
 │   ├── HomeControllerTests.cs
 │   ├── EventsControllerTests.cs
 │   ├── UploadControllerTests.cs
 │   └── ResultsControllerTests.cs
+│
+├── aidlc-docs/                         # AI-DLC plan + summary + audit artefacts per story
+│   ├── audit.md                        # Append-only audit log (one entry per story)
+│   ├── construction/plans/             # USxx-code-generation-plan.md (one per story)
+│   └── construction/USxx/              # USxx-implementation-summary.md (one per story)
 │
 └── user-stories/
     ├── US01-US32 *.md                  # One file per user story, each with a Status line
@@ -221,7 +245,7 @@ pitsea-rc-results-processing/
 
 - **Service layer owns all business logic.** Controllers are thin: they call `IRaceResultsService` / `IChampionsOfChampionsService`, store feedback in `TempData`, and redirect. File parsing, validation, collation, scoring, and PDF generation all live in services.
 - **DbContext factory pattern.** Services receive `IDbContextFactory<RaceResultsDbContext>` and create a short-lived context per operation, which is why `RaceResultsService` can be registered as a singleton.
-- **DI registrations** (`Program.cs`): `IRaceResultsService` → singleton; `IChampionsOfChampionsService` → scoped; `IDatabaseBackupService` → scoped; `IRunnerRegistryService` → scoped; `ICourseRecordService` → scoped; `ISeasonStatisticsService` → scoped.
+- **DI registrations** (`Program.cs`): `IRaceResultsService` → singleton (uses `IDbContextFactory`); everything else scoped — `IChampionsOfChampionsService`, `IDatabaseBackupService`, `IRunnerRegistryService`, `ICourseRecordService`, `ISeasonStatisticsService`, `ISeasonCalendarService`, `ISeasonReviewService`, `IVolunteerRegistryService`, `IVolunteerRoleService`, `IVolunteerStatsService`, `IVolunteerRosterService`, `IVolunteerRosterExportService`, `IRosterAllocator`, `IRosterDraftApplier`.
 - **Migrations apply automatically at startup** (`db.Database.Migrate()`), skipped when the environment is `Testing` so integration tests can use `EnsureCreated` against in-memory SQLite.
 - **Current event fallback.** Exactly one event is "current" at a time. If none is current, the most recent event by date is promoted; if no events exist at all, a default `Crown to Crown` event dated 1 May 2026 is created (in-season for Champions scoring).
 - **Operation results, not exceptions.** Upload and edit flows return an `OperationResult` carrying `Messages`, `Warnings`, and `Errors`; controllers render all three. Warnings (e.g. unmatched bibs, duplicate names) do not block the operation.
@@ -247,7 +271,7 @@ To use a custom database path, add a connection string to `appsettings.json`:
 **Data reset rules** (all scoped to the current event only):
 - Uploading new entrants clears that event's finish bib and timing data to maintain consistency
 - Uploading a new finish bib file clears that event's timing data
-- Deleting an event removes its entrants, finish rows, and timing rows (Champions audit rows for the event cascade-delete with it)
+- Deleting an event removes its entrants, finish rows, timing rows, and **volunteer assignments** (Champions audit rows for the event cascade-delete with it). Volunteers themselves and the role catalogue are never deleted — the persistent register and role allow-lists survive any event deletion (US28 AC10).
 
 **Storage location caution:** SQLite holds write locks on its database file. Running the live database inside a cloud-synced folder (OneDrive, Google Drive, Dropbox) risks sync conflicts and file corruption. Prefer a local, non-synced path for the live database and sync *backup copies* instead.
 
@@ -322,6 +346,22 @@ The typical sequence for processing results after a race:
 All pages show a live count of loaded entrants, finish rows, and timing rows at the top so you can see the current data state at a glance.
 
 All operational race data is scoped to the current selected event.
+
+### Volunteer roster
+
+Sits alongside the race workflow and works for past, current, and future events:
+
+```
+1. Volunteers page          →  Add volunteers (gender, member, first-aid, optional runner link)
+2. Volunteer Roles page     →  Populate the restricted-role allow-lists (Lead, Results),
+                                set Marshal Point 7's pre-placed volunteer (Ian)
+3. Events → Roster          →  Add assignments by hand, or click "Allocate draft" to
+                                pick attendees + preferences and have the rules engine propose one
+4. Roster page (Apply step) →  Review the draft, then Apply to persist assignments
+5. Roster page              →  Edit freely; export to PDF or Excel for race-day briefing
+6. After the event          →  Adjust for no-shows / late additions to keep stats accurate
+7. Volunteer Stats page     →  Season summary + per-volunteer profile + ballot count + CSV
+```
 
 ### Champions of Champions (Yearly Cumulative)
 
@@ -540,9 +580,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 155 | Tests `RaceResultsService` (incl. statistics + archiving), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, course records, season statistics, the season calendar, the season review, and the installer DB-path resolver against isolated SQLite DBs per test |
+| `RaceResults.UnitTests` | 193 | Tests `RaceResultsService` (incl. statistics + archiving), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, course records, season statistics, the season calendar, the season review, the installer DB-path resolver, the volunteer registry / roles / roster / export / stats services, and the US32 roster allocator + draft applier against isolated SQLite DBs per test |
 | `RaceResults.IntegrationTests` | 26 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **181** | |
+| **Total** | **219** | |
 
 ---
 
@@ -562,7 +602,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-All user stories are implemented — US01–US25, US27, US28, US29, US30, US31, and US32 (US26 was dropped as not required). Each story file carries a **Status** line (✅ Complete) for tracking. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+All user stories are implemented — US01–US25, US27, US28, US29, US30, US31, and US32 (US26 cloud hosting was dropped as not required). Each story file carries a **Status** line (✅ Complete) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -594,24 +634,22 @@ All user stories are implemented — US01–US25, US27, US28, US29, US30, US31, 
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |
 | [US31](user-stories/US31-season-calendar-generator.md) | Season Calendar Generator |
-| [US30](user-stories/US30-end-of-season-review.md) | End of Season Review (degraded — US29 volunteer sections omitted) |
+| [US30](user-stories/US30-end-of-season-review.md) | End of Season Review (volunteer-recognition section still degraded — eligible to be wired up to US29's data) |
 | [US25](user-stories/US25-app-installer.md) | Application Installer |
 | [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |
 | [US29](user-stories/US29-volunteer-stats.md) | Volunteer Statistics |
 | [US32](user-stories/US32-roster-auto-allocation.md) | Automated Roster Allocation |
 
-### Roadmap dependencies
+### Story dependencies (for context)
 
-Most planned stories are independent, with these exceptions:
+Most stories are independent; these are the non-obvious dependencies the implementation relied on:
 
 - **US22 (Course Records)** and the time-based halves of **US23/US24** depend on **US17 (typed times)**
 - **US24 (Season Statistics)** depends on **US15 (Runner Registry)** for all cross-event aggregation; its attendance-based stats need only US15, its time-based stats also need US17
 - **US16 (DSQ)** consumes the existing-but-unused `Voided` audit action in Champions scoring
 - **US21 (Public Results)** pairs naturally with **US20 (Archiving)** so published pages never change underneath readers
 - **US29 (Volunteer Stats)** depends on **US28 (Volunteer Roster)**; the combined run+volunteer recognition stat also benefits from US15
-- **US32 (Automated Roster Allocation)** depends on **US28 (Volunteer Roster)** for the register, role complement, and editable roster, and on the season history US29 reports on to drive rotation/mix-up; it hands a draft back to US28's roster
-- **US30 (End of Season Review)** is the capstone: it depends on **US24** and **US29**, and degrades gracefully where US16/US17/US22 are absent
+- **US32 (Automated Roster Allocation)** depends on **US28** for the register, role complement, and editable roster, and on the season history **US29** reports on to drive rotation/mix-up; it hands a draft back to US28's roster
+- **US30 (End of Season Review)** is the capstone: it depends on **US24** and **US29**, and degrades gracefully where US16/US17/US22 are absent — its volunteer-recognition section is still degraded pending wiring up to the now-available US29 data
 - **US31 (Season Calendar Generator)** is independent (it encodes the C2C date rules in the Domain Conventions section) and pairs with US20 for season turnover
-
-Suggested order for the independent quick wins: US18 (CSV export) → US19 (backup/restore) → US27 (example file links) → US23 (enhanced stats), then the US17 → US16 → US15 chain.
 
