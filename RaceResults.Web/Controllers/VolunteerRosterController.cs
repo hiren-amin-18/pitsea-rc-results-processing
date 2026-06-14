@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using RaceResults.Web.Models;
 using RaceResults.Web.Services;
@@ -11,17 +12,23 @@ public class VolunteerRosterController : Controller
     private readonly IVolunteerRosterExportService _export;
     private readonly IVolunteerRegistryService _volunteers;
     private readonly IVolunteerRoleService _roles;
+    private readonly IRosterAllocator _allocator;
+    private readonly IRosterDraftApplier _applier;
 
     public VolunteerRosterController(
         IVolunteerRosterService roster,
         IVolunteerRosterExportService export,
         IVolunteerRegistryService volunteers,
-        IVolunteerRoleService roles)
+        IVolunteerRoleService roles,
+        IRosterAllocator allocator,
+        IRosterDraftApplier applier)
     {
         _roster = roster;
         _export = export;
         _volunteers = volunteers;
         _roles = roles;
+        _allocator = allocator;
+        _applier = applier;
     }
 
     [HttpGet("")]
@@ -78,6 +85,43 @@ public class VolunteerRosterController : Controller
             TempData["FeedbackType"] = "danger";
         }
         TempData["FeedbackText"] = string.Join("<br/>", feedbackLines);
+        return RedirectToAction(nameof(Index), new { eventId });
+    }
+
+    [HttpGet("Allocate")]
+    public IActionResult Allocate(int eventId)
+    {
+        var roster = _roster.GetRoster(eventId);
+        ViewBag.Volunteers = _volunteers.GetVolunteers();
+        ViewBag.Roles = _roles.GetRoles(roster.Event.EventType);
+        ViewBag.Event = roster.Event;
+        return View(new AllocationFormInput { EventId = eventId });
+    }
+
+    [HttpPost("Allocate")]
+    [ValidateAntiForgeryToken]
+    public IActionResult Allocate(AllocationFormInput input)
+    {
+        var draft = _allocator.Propose(input.EventId, input.Candidates ?? new List<AllocationCandidate>());
+        return View("Draft", draft);
+    }
+
+    [HttpPost("Apply")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Apply(int eventId, [FromForm] string draftJson)
+    {
+        AllocationDraft? draft;
+        try { draft = System.Text.Json.JsonSerializer.Deserialize<AllocationDraft>(draftJson); }
+        catch { draft = null; }
+        if (draft is null)
+        {
+            TempData["FeedbackType"] = "danger";
+            TempData["FeedbackText"] = "Could not read the draft to apply.";
+            return RedirectToAction(nameof(Index), new { eventId });
+        }
+
+        var result = await _applier.ApplyAsync(draft);
+        StoreFeedback(result);
         return RedirectToAction(nameof(Index), new { eventId });
     }
 

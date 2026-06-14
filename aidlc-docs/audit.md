@@ -1,5 +1,16 @@
 # AI-DLC Audit Log
 
+## US32 — Automated Roster Allocation
+**Timestamp**: 2026-06-14
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US32-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US32/US32-implementation-summary.md`
+**Build Status**: Success
+**Test Status**: Pass (193 unit + 26 integration = 219)
+**Notes**: Brownfield, no schema change — pure rules engine over US28 assignments and US29 history. Allocator runs the seven-step priority pipeline (pre-place → eligibility → run-after rotation → preferences → mix-up → gender mix → fill); Apply step re-validates via the roster service so the database can never end up invalid. JSON-round-tripped draft (no draft table). All planned user stories now complete.
+
+---
+
 ## US29 — Volunteer Statistics
 **Timestamp**: 2026-06-14
 **Stage**: Construction (Code Generation + Build & Test)

@@ -31,6 +31,8 @@ builder.Services.AddScoped<IVolunteerRoleService, VolunteerRoleService>();
 builder.Services.AddScoped<IVolunteerStatsService, VolunteerStatsService>();
 builder.Services.AddScoped<IVolunteerRosterService, VolunteerRosterService>();
 builder.Services.AddScoped<IVolunteerRosterExportService, VolunteerRosterExportService>();
+builder.Services.AddScoped<IRosterAllocator, RosterAllocator>();
+builder.Services.AddScoped<IRosterDraftApplier, RosterDraftApplier>();
 
 QuestPDF.Settings.License = LicenseType.Community;
 

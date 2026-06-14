@@ -16,6 +16,7 @@
         <p class="small text-muted mb-0">@Model.TotalAssigned assignment(s) across @Model.DistinctVolunteers volunteer(s).</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary btn-sm" asp-action="Allocate" asp-route-eventId="@Model.Event.Id">Allocate draft (US32)</a>
         <a class="btn btn-outline-secondary btn-sm" asp-action="Pdf" asp-route-eventId="@Model.Event.Id">Export PDF</a>
         <a class="btn btn-outline-secondary btn-sm" asp-action="Excel" asp-route-eventId="@Model.Event.Id">Export Excel</a>
         <form method="post" asp-action="CopyPrevious" asp-route-eventId="@Model.Event.Id"

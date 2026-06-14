@@ -1,6 +1,6 @@
 # US32 - Automated Roster Allocation
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

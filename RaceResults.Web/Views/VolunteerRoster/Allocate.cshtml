@@ -1,0 +1,68 @@
+@model RaceResults.Web.Models.AllocationFormInput
+@{
+    var volunteers = ViewBag.Volunteers as IReadOnlyList<RaceResults.Web.Models.VolunteerListItem>
+        ?? new List<RaceResults.Web.Models.VolunteerListItem>();
+    var roles = ViewBag.Roles as IReadOnlyList<RaceResults.Web.Models.VolunteerRole>
+        ?? new List<RaceResults.Web.Models.VolunteerRole>();
+    var raceEvent = (RaceResults.Web.Models.RaceEvent)ViewBag.Event;
+    ViewData["Title"] = $"Allocate Roster — {raceEvent.EventName}";
+}
+
+<h1>Allocate Draft Roster</h1>
+<p class="text-muted">@raceEvent.EventName — @raceEvent.EventDate.ToString("dd MMM yyyy")</p>
+<p class="small text-muted">Tick the volunteers attending this event and any preferences. The allocator drafts a roster honouring the priority rules from US32; you then review and apply.</p>
+
+<form method="post" asp-action="Allocate">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="EventId" />
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 30px;">✓</th>
+                    <th>Name</th>
+                    <th>Preferred role</th>
+                    <th class="small text-muted text-nowrap">Run after</th>
+                    <th class="small text-muted text-nowrap">Near finish</th>
+                    <th class="small text-muted text-nowrap">Can't walk far</th>
+                    <th class="small text-muted text-nowrap">Seated</th>
+                    <th class="small text-muted text-nowrap">Any role</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < volunteers.Count; i++)
+                {
+                    var v = volunteers[i].Volunteer;
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="Candidates[@i].VolunteerId" value="@v.Id" />
+                        </td>
+                        <td>
+                            @v.Name
+                            @if (v.IsFirstAidTrained) { <span class="badge bg-danger ms-1">FA</span> }
+                            @if (!v.IsClubMember) { <span class="badge bg-secondary ms-1">Non-member</span> }
+                        </td>
+                        <td>
+                            <select name="Candidates[@i].PreferredRoleId" class="form-select form-select-sm">
+                                <option value="">—</option>
+                                @foreach (var r in roles)
+                                {
+                                    <option value="@r.Id">@r.Name</option>
+                                }
+                            </select>
+                        </td>
+                        <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsToRunAfter" value="true" /></td>
+                        <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsNearFinish" value="true" /></td>
+                        <td class="text-center"><input type="checkbox" name="Candidates[@i].CantWalkFar" value="true" /></td>
+                        <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsSeated" value="true" /></td>
+                        <td class="text-center"><input type="checkbox" name="Candidates[@i].AnyRole" value="true" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Generate draft</button>
+    <a class="btn btn-link" asp-action="Index" asp-route-eventId="@Model.EventId">Cancel</a>
+</form>
