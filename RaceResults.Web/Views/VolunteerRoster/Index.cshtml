@@ -40,6 +40,16 @@
     </div>
 }
 
+@if (Model.PerEventStats is { } pes)
+{
+    <div class="row g-2 mb-3">
+        <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="text-muted small">Assignments</div><div class="fs-5">@pes.TotalAssignments</div></div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="text-muted small">Volunteers</div><div class="fs-5">@pes.DistinctVolunteers</div></div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="text-muted small">Unfilled roles</div><div class="fs-5 @(pes.UnfilledRoleCount > 0 ? "text-danger" : "")">@pes.UnfilledRoleCount</div></div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body py-2"><a class="small" asp-controller="VolunteerStats" asp-action="Index" asp-route-year="@Model.Event.EventDate.Year">Season volunteer stats →</a></div></div></div>
+    </div>
+}
+
 <div class="card mb-4">
     <div class="card-body">
         <h5 class="card-title">Add assignment</h5>

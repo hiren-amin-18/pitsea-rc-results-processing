@@ -101,6 +101,9 @@ public class RosterViewModel
     public int DistinctVolunteers { get; set; }
     public List<int> DoubleBookedVolunteerIds { get; set; } = new();
     public List<RaceEvent> CopyableEvents { get; set; } = new();
+
+    /// <summary>Per-event stats panel (US29 AC1) — populated by the roster service.</summary>
+    public EventVolunteerStats? PerEventStats { get; set; }
 }
 
 public class CopyRosterResult

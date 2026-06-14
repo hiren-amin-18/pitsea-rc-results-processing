@@ -1,6 +1,6 @@
 # US29 - Volunteer Statistics
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

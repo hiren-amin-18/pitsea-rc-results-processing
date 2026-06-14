@@ -1,5 +1,16 @@
 # AI-DLC Audit Log
 
+## US29 — Volunteer Statistics
+**Timestamp**: 2026-06-14
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US29-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US29/US29-implementation-summary.md`
+**Build Status**: Success
+**Test Status**: Pass (183 unit + 26 integration = 209)
+**Notes**: Brownfield, no schema change — pure aggregation over US28 assignments. New per-event panel on the roster page, season volunteer-stats page (cards + most-active + per-volunteer table + role-coverage trend) with CSV export. Members-only London Marathon ballot baked into aggregation. US30 (End of Season Review) is now eligible to be un-degraded.
+
+---
+
 ## US28 — Volunteer Roster Builder
 **Timestamp**: 2026-06-14
 **Stage**: Construction (Code Generation + Build & Test)

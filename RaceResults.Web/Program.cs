@@ -28,6 +28,7 @@ builder.Services.AddScoped<ISeasonCalendarService, SeasonCalendarService>();
 builder.Services.AddScoped<ISeasonReviewService, SeasonReviewService>();
 builder.Services.AddScoped<IVolunteerRegistryService, VolunteerRegistryService>();
 builder.Services.AddScoped<IVolunteerRoleService, VolunteerRoleService>();
+builder.Services.AddScoped<IVolunteerStatsService, VolunteerStatsService>();
 builder.Services.AddScoped<IVolunteerRosterService, VolunteerRosterService>();
 builder.Services.AddScoped<IVolunteerRosterExportService, VolunteerRosterExportService>();
 

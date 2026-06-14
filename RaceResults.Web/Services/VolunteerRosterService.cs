@@ -8,13 +8,16 @@ public class VolunteerRosterService : IVolunteerRosterService
 {
     private readonly IDbContextFactory<RaceResultsDbContext> _dbContextFactory;
     private readonly ILogger<VolunteerRosterService> _logger;
+    private readonly IVolunteerStatsService? _stats;
 
     public VolunteerRosterService(
         IDbContextFactory<RaceResultsDbContext> dbContextFactory,
-        ILogger<VolunteerRosterService> logger)
+        ILogger<VolunteerRosterService> logger,
+        IVolunteerStatsService? stats = null)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
+        _stats = stats;
     }
 
     public RosterViewModel GetRoster(int eventId)
@@ -70,7 +73,8 @@ public class VolunteerRosterService : IVolunteerRosterService
             TotalAssigned = assignments.Count,
             DistinctVolunteers = assignments.Select(a => a.VolunteerId).Distinct().Count(),
             DoubleBookedVolunteerIds = doubleBooked,
-            CopyableEvents = copyable
+            CopyableEvents = copyable,
+            PerEventStats = _stats?.GetEventStats(eventId)
         };
     }
 

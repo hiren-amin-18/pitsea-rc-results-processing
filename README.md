@@ -562,7 +562,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US25, US27, US28, US30 (degraded) and US31 are implemented; the remaining stories (US29/US32 volunteering) are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US25, US27, US28, US29, US30 (degraded) and US31 are implemented; only US32 (volunteer roster auto-allocation) remains planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -597,12 +597,12 @@ US01–US25, US27, US28, US30 (degraded) and US31 are implemented; the remaining
 | [US30](user-stories/US30-end-of-season-review.md) | End of Season Review (degraded — US29 volunteer sections omitted) |
 | [US25](user-stories/US25-app-installer.md) | Application Installer |
 | [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |
+| [US29](user-stories/US29-volunteer-stats.md) | Volunteer Statistics |
 
 ### Planned
 
 | Story | Title |
 |---|---|
-| [US29](user-stories/US29-volunteer-stats.md) | Volunteer Statistics |
 | [US32](user-stories/US32-roster-auto-allocation.md) | Automated Roster Allocation |
 
 ### Roadmap dependencies
