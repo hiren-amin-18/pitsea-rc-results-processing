@@ -51,6 +51,7 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **CSV export** | Download collated results (finishers + DNF, with a Status column) and the Champions leaderboard as Excel-friendly UTF-8 CSV with descriptive filenames |
 | **Champions PDF export** | Export Champions leaderboard to PDF with tie-breaking indicators (†) and gold/silver/bronze highlighting for top 3 |
 | **Event management** | Create, edit, select current, and delete events (`Crown to Crown` / `Bluebell 5`) with event-scoped results |
+| **Season calendar generator** | One-click "Generate Season" creates the year's Crown to Crown fixtures from the club's fixed date rules (Good Friday, second Wednesdays May–Aug, first-or-second Wednesday Sep, Boxing Day) with start times; preview before generating; skips dates that already have a C2C event (US31) |
 | **Event archiving** | Mark a finalised event as archived to make it read-only: uploads, edits, and detail changes are rejected; it can't be current or deleted until unarchived; results remain viewable and exportable, and it still counts toward Champions (US20) |
 | **Public results page** | Publish an event from the Events page to expose a shareable read-only URL (`/public/results/{token}`) with the collated results, category winners, DNF list, and a public Champions of Champions leaderboard. Tokens are unguessable per event; unpublished events return 404 (US21) |
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
@@ -533,9 +534,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 136 | Tests `RaceResultsService` (incl. statistics + archiving), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, course records, and season statistics against isolated SQLite DBs per test |
+| `RaceResults.UnitTests` | 147 | Tests `RaceResultsService` (incl. statistics + archiving), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, course records, season statistics, and the season calendar against isolated SQLite DBs per test |
 | `RaceResults.IntegrationTests` | 26 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **162** | |
+| **Total** | **173** | |
 
 ---
 
@@ -555,7 +556,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US24 and US27 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US24, US27 and US31 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -586,6 +587,7 @@ US01–US24 and US27 are implemented; the remaining stories are planned. Each st
 | [US24](user-stories/US24-season-statistics.md) | Season Statistics and Runner Season Profiles |
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |
+| [US31](user-stories/US31-season-calendar-generator.md) | Season Calendar Generator |
 
 ### Planned
 
@@ -596,7 +598,6 @@ US01–US24 and US27 are implemented; the remaining stories are planned. Each st
 | [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |
 | [US29](user-stories/US29-volunteer-stats.md) | Volunteer Statistics |
 | [US30](user-stories/US30-end-of-season-review.md) | End of Season Review |
-| [US31](user-stories/US31-season-calendar-generator.md) | Season Calendar Generator |
 
 ### Roadmap dependencies
 

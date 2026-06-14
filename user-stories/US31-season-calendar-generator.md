@@ -1,6 +1,6 @@
 # US31 - Season Calendar Generator
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

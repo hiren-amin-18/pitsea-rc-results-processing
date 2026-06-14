@@ -6,7 +6,10 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1>Events</h1>
-    <a class="btn btn-primary" asp-action="Create">Create Event</a>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-action="GenerateSeason">Generate Season</a>
+        <a class="btn btn-primary" asp-action="Create">Create Event</a>
+    </div>
 </div>
 
 <p class="small text-muted">Deleting an event permanently removes its entrants, finish rows, and timing data. <a asp-controller="Home" asp-action="Settings">Download a backup</a> first.</p>
@@ -38,7 +41,13 @@
                     <span class="badge bg-secondary ms-1">Archived</span>
                 }
             </td>
-            <td>@raceEvent.EventDate.ToString("dd MMM yyyy")</td>
+            <td>
+                @raceEvent.EventDate.ToString("dd MMM yyyy")
+                @if (raceEvent.StartTime.HasValue)
+                {
+                    <span class="text-muted">@raceEvent.StartTime.Value.ToString(@"hh\:mm")</span>
+                }
+            </td>
             <td>@(raceEvent.EventType == EventType.CrownToCrown ? "Crown to Crown" : "Bluebell 5")</td>
             <td>@(raceEvent.Id == Model.CurrentEventId ? "Yes" : "No")</td>
             <td class="d-flex gap-2 flex-wrap">

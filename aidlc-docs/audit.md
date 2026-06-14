@@ -117,6 +117,17 @@
 **Summary**: `aidlc-docs/construction/US21/US21-implementation-summary.md`
 **Build Status**: Success (new EF migration AddPublicResults)
 **Test Status**: Pass (136 unit + 26 integration = 162)
-**Notes**: Brownfield + schema change. RaceEvent.IsPublished + 128-bit PublicToken; /public/results/{token} + /public/champions/{token} with a minimal layout (no admin nav); unknown/unpublished tokens 404; unmatched bibs shown as "Unknown runner"; Publish/Unpublish + copy-link on Events page. Pairs with US20. Awaiting user review.
+**Notes**: Brownfield + schema change. RaceEvent.IsPublished + 128-bit PublicToken; /public/results/{token} + /public/champions/{token} with a minimal layout (no admin nav); unknown/unpublished tokens 404; unmatched bibs shown as "Unknown runner"; Publish/Unpublish + copy-link on Events page. Pairs with US20. Reviewed and committed (cae0548).
+
+---
+
+## US31 — Season Calendar Generator
+**Timestamp**: 2026-06-14
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US31-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US31/US31-implementation-summary.md`
+**Build Status**: Success (new EF migration AddEventStartTime)
+**Test Status**: Pass (147 unit + 26 integration = 173)
+**Notes**: Brownfield + schema change. Pure SeasonCalendar (Anonymous Gregorian Easter, second/first Wednesday), SeasonCalendarService preview/generate with idempotent skip, RaceEvent.StartTime optional, Generate Season UI on Events page; current event untouched. Awaiting user review.
 
 ---

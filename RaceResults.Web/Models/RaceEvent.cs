@@ -16,4 +16,7 @@ public class RaceEvent
 
     /// <summary>Unguessable token for the public results URL (US21); null until first published.</summary>
     public string? PublicToken { get; set; }
+
+    /// <summary>Optional start time (US31); populated by the season-calendar generator. Stored as ticks in SQLite.</summary>
+    public TimeSpan? StartTime { get; set; }
 }

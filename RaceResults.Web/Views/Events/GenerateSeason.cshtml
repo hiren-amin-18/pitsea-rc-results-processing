@@ -1,0 +1,61 @@
+@model IReadOnlyList<RaceResults.Web.Services.SeasonFixturePreview>
+@using RaceResults.Web.Services
+@{
+    ViewData["Title"] = "Generate Season";
+    var year = (int)ViewBag.Year;
+    var sept = (SeasonCalendar.SeptemberOption)ViewBag.SeptemberOption;
+}
+
+<h1>Generate Crown to Crown season — @year</h1>
+<p class="text-muted">
+    The club's fixed date rules build the year's Crown to Crown fixtures.
+    Pick the year and the September Wednesday, review the preview, then confirm.
+    Existing events are never modified, and the current event won't change.
+</p>
+
+<form method="get" asp-action="GenerateSeason" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label small">Year</label>
+        <input class="form-control" type="number" name="year" value="@year" min="2024" max="2100" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label small">September Wednesday</label>
+        <select class="form-select" name="septemberOption">
+            <option value="@SeasonCalendar.SeptemberOption.SecondWednesday" selected="@(sept == SeasonCalendar.SeptemberOption.SecondWednesday)">Second Wednesday</option>
+            <option value="@SeasonCalendar.SeptemberOption.FirstWednesday" selected="@(sept == SeasonCalendar.SeptemberOption.FirstWednesday)">First Wednesday</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-secondary">Refresh preview</button>
+    </div>
+</form>
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Fixture</th>
+            <th>Date</th>
+            <th>Start time</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var preview in Model)
+    {
+        <tr class="@(preview.AlreadyExists ? "table-warning" : null)">
+            <td>@preview.Fixture.EventName</td>
+            <td>@preview.Fixture.EventDate.ToString("dddd dd MMM yyyy")</td>
+            <td>@preview.Fixture.StartTime.ToString(@"hh\:mm")</td>
+            <td>@(preview.AlreadyExists ? "Already exists — will be skipped" : "Will be created")</td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<form method="post" asp-action="GenerateSeason" onsubmit="return confirm('Create the missing fixtures for @year?');">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="year" value="@year" />
+    <input type="hidden" name="septemberOption" value="@sept" />
+    <button class="btn btn-primary" type="submit">Generate</button>
+    <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+</form>

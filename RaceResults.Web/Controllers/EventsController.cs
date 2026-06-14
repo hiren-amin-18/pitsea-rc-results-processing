@@ -1,16 +1,45 @@
 using Microsoft.AspNetCore.Mvc;
 using RaceResults.Web.Models;
 using RaceResults.Web.Services;
+using static RaceResults.Web.Services.SeasonCalendar;
 
 namespace RaceResults.Web.Controllers;
 
 public class EventsController : Controller
 {
     private readonly IRaceResultsService _raceResultsService;
+    private readonly ISeasonCalendarService _seasonCalendar;
 
-    public EventsController(IRaceResultsService raceResultsService)
+    public EventsController(IRaceResultsService raceResultsService, ISeasonCalendarService seasonCalendar)
     {
         _raceResultsService = raceResultsService;
+        _seasonCalendar = seasonCalendar;
+    }
+
+    [HttpGet]
+    public IActionResult GenerateSeason(int? year, SeasonCalendar.SeptemberOption septemberOption = SeasonCalendar.SeptemberOption.SecondWednesday)
+    {
+        var resolvedYear = year ?? DateTime.Today.Year;
+        ViewBag.Year = resolvedYear;
+        ViewBag.SeptemberOption = septemberOption;
+        var preview = _seasonCalendar.Preview(resolvedYear, septemberOption);
+        return View(preview);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [ActionName("GenerateSeason")]
+    public IActionResult GenerateSeasonConfirm(int year, SeasonCalendar.SeptemberOption septemberOption)
+    {
+        var result = _seasonCalendar.Generate(year, septemberOption);
+        var lines = new List<string> { $"Created {result.CreatedCount} Crown to Crown event(s) for {year}." };
+        if (result.SkippedDates.Count > 0)
+        {
+            lines.Add($"Skipped {result.SkippedDates.Count} date(s) that already had a Crown to Crown event: {string.Join(", ", result.SkippedDates)}.");
+        }
+        TempData["FeedbackType"] = result.SkippedDates.Count > 0 ? "warning" : "success";
+        TempData["FeedbackText"] = string.Join("<br/>", lines);
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet]
