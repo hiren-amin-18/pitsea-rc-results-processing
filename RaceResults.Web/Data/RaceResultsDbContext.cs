@@ -15,6 +15,10 @@ public class RaceResultsDbContext : DbContext
     public DbSet<ChampionOfChampionsScore> ChampionOfChampionsScores => Set<ChampionOfChampionsScore>();
     public DbSet<PointsAuditLog> PointsAuditLogs => Set<PointsAuditLog>();
     public DbSet<CourseRecord> CourseRecords => Set<CourseRecord>();
+    public DbSet<Volunteer> Volunteers => Set<Volunteer>();
+    public DbSet<VolunteerRole> VolunteerRoles => Set<VolunteerRole>();
+    public DbSet<VolunteerRoleEligibility> VolunteerRoleEligibilities => Set<VolunteerRoleEligibility>();
+    public DbSet<VolunteerAssignment> VolunteerAssignments => Set<VolunteerAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -136,5 +140,93 @@ public class RaceResultsDbContext : DbContext
             e.HasOne(x => x.Event).WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.Entrant).WithMany().HasForeignKey(x => x.EntrantId).OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<Volunteer>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).IsRequired();
+            e.Property(x => x.Gender).IsRequired();
+            // Deleting an event (and its assignments) must never delete the persistent volunteer (US28 AC10).
+            e.HasOne(x => x.Runner).WithMany().HasForeignKey(x => x.RunnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<VolunteerRole>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.EventType, x.Name }).IsUnique();
+            e.Property(x => x.Name).IsRequired();
+            e.HasOne(x => x.PrePlacedVolunteer).WithMany().HasForeignKey(x => x.PrePlacedVolunteerId).OnDelete(DeleteBehavior.SetNull);
+            e.HasData(SeedC2CRoles());
+        });
+
+        modelBuilder.Entity<VolunteerRoleEligibility>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.VolunteerRoleId, x.VolunteerId }).IsUnique();
+            e.HasOne(x => x.VolunteerRole).WithMany().HasForeignKey(x => x.VolunteerRoleId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Volunteer).WithMany().HasForeignKey(x => x.VolunteerId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<VolunteerAssignment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.EventId, x.VolunteerId });
+            // Deleting the event cascades its assignments (US28 AC10). The volunteer & role are protected.
+            e.HasOne(x => x.Event).WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Volunteer).WithMany().HasForeignKey(x => x.VolunteerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.VolunteerRole).WithMany().HasForeignKey(x => x.VolunteerRoleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.PreferredRole).WithMany().HasForeignKey(x => x.PreferredRoleId).OnDelete(DeleteBehavior.SetNull);
+        });
+    }
+
+    /// <summary>Seeds the 23 Crown to Crown volunteer roles (US28). Bluebell 5 is seeded by a later story.</summary>
+    private static VolunteerRole[] SeedC2CRoles()
+    {
+        VolunteerRole R(int id, RoleCategory cat, string name, int def, int min, int max,
+            bool optional = false, int runAfter = 0, bool firstAid = false, bool restricted = false) =>
+            new()
+            {
+                Id = id,
+                Name = name,
+                Category = cat,
+                EventType = EventType.CrownToCrown,
+                DefaultCount = def,
+                MinCount = min,
+                MaxCount = max,
+                IsOptional = optional,
+                RunAfterCapacity = runAfter,
+                RequiresFirstAid = firstAid,
+                HasEligibilityRestriction = restricted,
+                PrePlacedVolunteerId = null,
+                SortOrder = id,
+                IsActive = true
+            };
+
+        return new[]
+        {
+            R(1,  RoleCategory.Leadership, "Lead",                   1, 1, 1, restricted: true),
+            R(2,  RoleCategory.Leadership, "Shadow Lead",            1, 0, 1, optional: true),
+            R(3,  RoleCategory.Leadership, "Results",                1, 1, 1, restricted: true),
+            R(4,  RoleCategory.FinishArea, "Timekeeping",            2, 2, 2),
+            R(5,  RoleCategory.FinishArea, "Course Setup",           2, 2, 2),
+            R(6,  RoleCategory.FinishArea, "Number Collection",      2, 1, 2, runAfter: 1),
+            R(7,  RoleCategory.FinishArea, "On The Day Registration",4, 4, 4, runAfter: 2),
+            R(8,  RoleCategory.FinishArea, "Finish Line Funnel",     1, 1, 1),
+            R(9,  RoleCategory.FinishArea, "Finish Line Results",    2, 2, 2),
+            R(10, RoleCategory.FinishArea, "First Aid and Prizes",   1, 1, 1, firstAid: true),
+            R(11, RoleCategory.FinishArea, "Tail Runners",           2, 2, 2),
+            R(12, RoleCategory.FinishArea, "Photographer",           1, 0, 1, optional: true),
+            R(13, RoleCategory.FinishArea, "Water Table",            2, 2, 2),
+            R(14, RoleCategory.Course,     "Marshal Point 1",        2, 2, 2),
+            R(15, RoleCategory.Course,     "Marshal Point 2",        2, 2, 2),
+            R(16, RoleCategory.Course,     "Marshal Point 3",        2, 2, 2),
+            R(17, RoleCategory.Course,     "Marshal Point 4",        3, 3, 3),
+            R(18, RoleCategory.Course,     "Marshal Point 5",        2, 2, 2),
+            R(19, RoleCategory.Course,     "Marshal Point 5a",       2, 2, 2),
+            R(20, RoleCategory.Course,     "Marshal Point 6",        2, 2, 2),
+            R(21, RoleCategory.Course,     "Marshal Point 7",        2, 2, 2),
+            R(22, RoleCategory.Course,     "Metal Gate",             1, 0, 1, optional: true),
+            R(23, RoleCategory.Course,     "First Aid On Course",    1, 1, 1, firstAid: true)
+        };
     }
 }

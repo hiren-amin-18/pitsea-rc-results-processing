@@ -1,0 +1,165 @@
+@model RaceResults.Web.Models.RosterViewModel
+@using RaceResults.Web.Models
+@{
+    ViewData["Title"] = $"Roster — {Model.Event.EventName}";
+    var volunteers = ViewBag.Volunteers as IReadOnlyList<RaceResults.Web.Models.VolunteerListItem> ?? new List<RaceResults.Web.Models.VolunteerListItem>();
+    var roles = ViewBag.Roles as IReadOnlyList<RaceResults.Web.Models.VolunteerRole> ?? new List<RaceResults.Web.Models.VolunteerRole>();
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h1>Volunteer Roster</h1>
+        <p class="text-muted mb-0">
+            @Model.Event.EventName — @Model.Event.EventDate.ToString("dd MMM yyyy")
+            @if (Model.Event.StartTime.HasValue) { <span>(start @Model.Event.StartTime.Value.ToString(@"hh\:mm"))</span> }
+        </p>
+        <p class="small text-muted mb-0">@Model.TotalAssigned assignment(s) across @Model.DistinctVolunteers volunteer(s).</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Pdf" asp-route-eventId="@Model.Event.Id">Export PDF</a>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Excel" asp-route-eventId="@Model.Event.Id">Export Excel</a>
+        <form method="post" asp-action="CopyPrevious" asp-route-eventId="@Model.Event.Id"
+              onsubmit="return confirm('Copy assignments from the previous event of this type? Existing assignments are kept; only new ones are added.');">
+            @Html.AntiForgeryToken()
+            <button class="btn btn-outline-secondary btn-sm" type="submit">Copy from previous event</button>
+        </form>
+        <a class="btn btn-link btn-sm" asp-controller="Events" asp-action="Index">Back to events</a>
+    </div>
+</div>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var ftype = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
+}
+
+@if (Model.DoubleBookedVolunteerIds.Any())
+{
+    <div class="alert alert-warning small">
+        Double-booked volunteers (deliberate or otherwise): @Model.DoubleBookedVolunteerIds.Count person(s).
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Add assignment</h5>
+        <form method="post" asp-action="Add" class="row g-2 align-items-end">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="EventId" value="@Model.Event.Id" />
+            <div class="col-md-3">
+                <label class="form-label small">Volunteer</label>
+                <select name="VolunteerId" class="form-select form-select-sm" required>
+                    <option value="">—</option>
+                    @foreach (var v in volunteers) {
+                        <option value="@v.Volunteer.Id">@v.Volunteer.Name @(v.Volunteer.IsFirstAidTrained ? "(FA)" : "")</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Role</label>
+                <select name="VolunteerRoleId" class="form-select form-select-sm" required>
+                    <option value="">—</option>
+                    @foreach (var r in roles) {
+                        <option value="@r.Id">@r.Category — @r.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 form-check ms-2">
+                <input class="form-check-input" type="checkbox" name="WillRunAfter" value="true" />
+                <label class="form-check-label small">Will run after</label>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Note</label>
+                <input name="Note" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-primary btn-sm w-100" type="submit">Add</button>
+            </div>
+
+            <details class="col-12 mt-2">
+                <summary class="small text-muted">Preferences (used by the US32 auto-allocator)</summary>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-3">
+                        <label class="form-label small">Preferred role</label>
+                        <select name="PreferredRoleId" class="form-select form-select-sm">
+                            <option value="">—</option>
+                            @foreach (var r in roles) {
+                                <option value="@r.Id">@r.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-9 d-flex flex-wrap gap-3 align-items-center">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" name="WantsToRunAfter" value="true" /><label class="form-check-label small">Wants to run after</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" name="WantsNearFinish" value="true" /><label class="form-check-label small">Near finish</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" name="CantWalkFar" value="true" /><label class="form-check-label small">Can't walk far</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" name="WantsSeated" value="true" /><label class="form-check-label small">Seated</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" name="AnyRole" value="true" /><label class="form-check-label small">Any role</label></div>
+                    </div>
+                </div>
+            </details>
+        </form>
+    </div>
+</div>
+
+@foreach (var category in new[] { RoleCategory.Leadership, RoleCategory.FinishArea, RoleCategory.Course })
+{
+    if (!Model.ByCategory.TryGetValue(category, out var rows) || rows.Count == 0) { continue; }
+    <h3 class="mt-4">@(category == RoleCategory.FinishArea ? "Finish Area" : category.ToString())</h3>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 22%;">Role</th>
+                    <th class="text-center" style="width: 8%;">Count</th>
+                    <th>Volunteers</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in rows)
+            {
+                <tr>
+                    <td>
+                        @row.Role.Name
+                        @if (row.Role.IsOptional) { <span class="badge bg-secondary ms-1">Optional</span> }
+                        @if (row.Role.RequiresFirstAid) { <span class="badge bg-danger ms-1">First Aid</span> }
+                        @if (row.Role.HasEligibilityRestriction) { <span class="badge bg-warning text-dark ms-1">Restricted</span> }
+                    </td>
+                    <td class="text-center">
+                        <span class="@(row.IsAtDefault ? "text-success" : row.IsUnderComplement ? "text-danger" : row.IsOverComplement ? "text-warning" : "text-muted")">
+                            @row.AssignedCount / @row.DefaultCount
+                        </span>
+                    </td>
+                    <td>
+                        @if (!row.Assignments.Any())
+                        {
+                            <span class="text-muted small">—</span>
+                        }
+                        else
+                        {
+                            @foreach (var a in row.Assignments)
+                            {
+                                <span class="badge bg-light text-dark border me-1 mb-1">
+                                    @a.Volunteer.Name
+                                    @if (a.Assignment.WillRunAfter) { <em class="text-primary">(running after)</em> }
+                                    @if (!a.Volunteer.IsClubMember) { <em class="text-muted">*</em> }
+                                    @if (!string.IsNullOrWhiteSpace(a.Assignment.Note)) { <span class="text-muted"> — @a.Assignment.Note</span> }
+                                    <form method="post" asp-action="Remove" class="d-inline ms-1" onsubmit="return confirm('Remove this assignment?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="eventId" value="@Model.Event.Id" />
+                                        <input type="hidden" name="assignmentId" value="@a.Assignment.Id" />
+                                        <button class="btn btn-link btn-sm p-0 align-baseline" type="submit" title="Remove">×</button>
+                                    </form>
+                                </span>
+                            }
+                        }
+                    </td>
+                    <td></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+<p class="small text-muted">* non-member.</p>

@@ -1,0 +1,8 @@
+@model RaceResults.Web.Models.VolunteerInput
+@{
+    ViewData["Title"] = "Add Volunteer";
+    var runners = ViewBag.Runners as IReadOnlyList<RaceResults.Web.Models.RunnerListItem>;
+}
+
+<h1>Add Volunteer</h1>
+@await Html.PartialAsync("_Form", Model)

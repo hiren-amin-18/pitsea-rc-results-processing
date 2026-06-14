@@ -1,6 +1,6 @@
 # US28 - Volunteer Roster Builder
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

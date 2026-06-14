@@ -1,0 +1,375 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using RaceResults.UnitTests.Helpers;
+using RaceResults.Web.Data;
+using RaceResults.Web.Models;
+using RaceResults.Web.Services;
+
+namespace RaceResults.UnitTests;
+
+public class VolunteerRosterTests : IDisposable
+{
+    private readonly SqliteConnection _connection;
+    private readonly IDbContextFactory<RaceResultsDbContext> _factory;
+    private readonly VolunteerRegistryService _registry;
+    private readonly VolunteerRoleService _roleService;
+    private readonly VolunteerRosterService _rosterService;
+    private readonly VolunteerRosterExportService _exportService;
+
+    public VolunteerRosterTests()
+    {
+        (var factory, _connection) = DbContextHelpers.CreateFactory();
+        _factory = factory;
+        _registry = new VolunteerRegistryService(factory, NullLogger<VolunteerRegistryService>.Instance);
+        _roleService = new VolunteerRoleService(factory, NullLogger<VolunteerRoleService>.Instance);
+        _rosterService = new VolunteerRosterService(factory, NullLogger<VolunteerRosterService>.Instance);
+        _exportService = new VolunteerRosterExportService(_rosterService);
+    }
+
+    public void Dispose() => _connection.Dispose();
+
+    // ---------- Registry ----------
+
+    [Fact]
+    public async Task CreateVolunteer_PersistsAndIsListed()
+    {
+        var result = await _registry.CreateAsync(new VolunteerInput
+        {
+            Name = "Alice",
+            Gender = "Female",
+            IsClubMember = true,
+            IsFirstAidTrained = true
+        });
+        Assert.True(result.Success);
+        var list = _registry.GetVolunteers();
+        var item = Assert.Single(list);
+        Assert.Equal("Alice", item.Volunteer.Name);
+        Assert.True(item.Volunteer.IsFirstAidTrained);
+    }
+
+    [Fact]
+    public async Task CreateVolunteer_NameRequired()
+    {
+        var result = await _registry.CreateAsync(new VolunteerInput { Name = "  ", Gender = "Female" });
+        Assert.False(result.Success);
+        Assert.Contains("Name is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task DeactivatedVolunteer_PreservedButHiddenByDefault()
+    {
+        var create = await _registry.CreateAsync(new VolunteerInput { Name = "Bob", Gender = "Male" });
+        Assert.True(create.Success);
+        var bob = _registry.GetVolunteers().Single().Volunteer;
+
+        await _registry.SetActiveAsync(bob.Id, false);
+        Assert.Empty(_registry.GetVolunteers());
+        Assert.Single(_registry.GetVolunteers(includeInactive: true));
+    }
+
+    // ---------- Role catalogue (seed verified) ----------
+
+    [Fact]
+    public void Seed_Has23C2CRoles_AcrossThreeCategories()
+    {
+        var roles = _roleService.GetRoles(EventType.CrownToCrown);
+        Assert.Equal(23, roles.Count);
+        Assert.Equal(3, roles.Count(r => r.Category == RoleCategory.Leadership));
+        Assert.Equal(10, roles.Count(r => r.Category == RoleCategory.FinishArea));
+        Assert.Equal(10, roles.Count(r => r.Category == RoleCategory.Course));
+    }
+
+    [Fact]
+    public void Seed_LeadAndResultsAreRestricted_FirstAidRolesMarked()
+    {
+        var roles = _roleService.GetRoles(EventType.CrownToCrown);
+        Assert.True(roles.Single(r => r.Name == "Lead").HasEligibilityRestriction);
+        Assert.True(roles.Single(r => r.Name == "Results").HasEligibilityRestriction);
+        Assert.True(roles.Single(r => r.Name == "First Aid and Prizes").RequiresFirstAid);
+        Assert.True(roles.Single(r => r.Name == "First Aid On Course").RequiresFirstAid);
+
+        var numberCollection = roles.Single(r => r.Name == "Number Collection");
+        Assert.Equal(1, numberCollection.RunAfterCapacity);
+        Assert.Equal(1, numberCollection.MinCount);
+        Assert.Equal(2, numberCollection.MaxCount);
+
+        var otd = roles.Single(r => r.Name == "On The Day Registration");
+        Assert.Equal(2, otd.RunAfterCapacity);
+        Assert.Equal(4, otd.DefaultCount);
+    }
+
+    [Fact]
+    public async Task RoleValidation_RejectsBadCounts()
+    {
+        var result = await _roleService.CreateAsync(new VolunteerRoleInput
+        {
+            Name = "Bad", Category = RoleCategory.Course, EventType = EventType.CrownToCrown,
+            DefaultCount = 3, MinCount = 5, MaxCount = 5
+        });
+        Assert.False(result.Success);
+    }
+
+    // ---------- Roster building ----------
+
+    [Fact]
+    public async Task AddAssignment_AddsToRoster_AndCountsAgainstComplement()
+    {
+        var alice = await CreateVolunteerAsync("Alice", "Female");
+        var timekeeping = (await GetRoleAsync("Timekeeping")).Id;
+
+        var add = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        {
+            EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = timekeeping
+        });
+        Assert.True(add.Success);
+
+        var roster = _rosterService.GetRoster(1);
+        var tk = roster.ByCategory[RoleCategory.FinishArea].Single(r => r.Role.Name == "Timekeeping");
+        Assert.Single(tk.Assignments);
+        Assert.True(tk.IsUnderComplement); // default = 2
+    }
+
+    [Fact]
+    public async Task DoubleBooking_AllowedButWarns()
+    {
+        var alice = await CreateVolunteerAsync("Alice", "Female");
+        var numColl = (await GetRoleAsync("Number Collection")).Id;
+        var funnel = (await GetRoleAsync("Finish Line Funnel")).Id;
+
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = numColl });
+
+        var second = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = funnel });
+
+        Assert.True(second.Success);
+        Assert.Contains(second.Warnings, w => w.Contains("Number Collection"));
+
+        var roster = _rosterService.GetRoster(1);
+        Assert.Contains(alice.Id, roster.DoubleBookedVolunteerIds);
+    }
+
+    [Fact]
+    public async Task FirstAidRole_RejectsNonFirstAidVolunteer()
+    {
+        var bob = await CreateVolunteerAsync("Bob", "Male", firstAid: false);
+        var firstAidPrizes = (await GetRoleAsync("First Aid and Prizes")).Id;
+
+        var result = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = bob.Id, VolunteerRoleId = firstAidPrizes });
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("first-aid-trained"));
+    }
+
+    [Fact]
+    public async Task FirstAidRole_AcceptsFirstAidVolunteer()
+    {
+        var carol = await CreateVolunteerAsync("Carol", "Female", firstAid: true);
+        var firstAidPrizes = (await GetRoleAsync("First Aid and Prizes")).Id;
+
+        var result = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = carol.Id, VolunteerRoleId = firstAidPrizes });
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task RestrictedRole_RejectsVolunteerNotOnAllowList()
+    {
+        var dave = await CreateVolunteerAsync("Dave", "Male");
+        var leadId = (await GetRoleAsync("Lead")).Id;
+
+        var result = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = dave.Id, VolunteerRoleId = leadId });
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("restricted"));
+    }
+
+    [Fact]
+    public async Task RestrictedRole_AcceptsVolunteerOnAllowList()
+    {
+        var hiren = await CreateVolunteerAsync("Hiren", "Male");
+        var lead = await GetRoleAsync("Lead");
+
+        // Add Hiren to the Lead allow-list.
+        var leadInput = new VolunteerRoleInput();
+        Assert.True(_roleService.TryGetRoleForEdit(lead.Id, out leadInput));
+        leadInput.EligibleVolunteerIds.Add(hiren.Id);
+        await _roleService.UpdateAsync(leadInput);
+
+        var result = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = hiren.Id, VolunteerRoleId = lead.Id });
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task MaxCount_RejectsBeyondLimit()
+    {
+        var photographer = await GetRoleAsync("Photographer"); // Max = 1
+        var v1 = await CreateVolunteerAsync("A", "Female");
+        var v2 = await CreateVolunteerAsync("B", "Male");
+
+        var first = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = v1.Id, VolunteerRoleId = photographer.Id });
+        var second = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = v2.Id, VolunteerRoleId = photographer.Id });
+
+        Assert.True(first.Success);
+        Assert.False(second.Success);
+        Assert.Contains(second.Errors, e => e.Contains("maximum"));
+    }
+
+    [Fact]
+    public async Task RunAfterCapacity_RejectsBeyondLimit()
+    {
+        var numCol = await GetRoleAsync("Number Collection"); // RunAfterCapacity = 1
+        var a = await CreateVolunteerAsync("A", "Female");
+        var b = await CreateVolunteerAsync("B", "Male");
+
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = a.Id, VolunteerRoleId = numCol.Id, WillRunAfter = true });
+
+        var second = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = b.Id, VolunteerRoleId = numCol.Id, WillRunAfter = true });
+
+        Assert.False(second.Success);
+        Assert.Contains(second.Errors, e => e.Contains("run-after"));
+    }
+
+    [Fact]
+    public async Task RemoveAssignment_RemovesFromRoster()
+    {
+        var alice = await CreateVolunteerAsync("Alice", "Female");
+        var timekeeping = (await GetRoleAsync("Timekeeping")).Id;
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = timekeeping });
+
+        var rosterBefore = _rosterService.GetRoster(1);
+        var assignmentId = rosterBefore.ByCategory[RoleCategory.FinishArea]
+            .Single(r => r.Role.Name == "Timekeeping").Assignments.Single().Assignment.Id;
+
+        var result = await _rosterService.RemoveAssignmentAsync(assignmentId);
+        Assert.True(result.Success);
+
+        var rosterAfter = _rosterService.GetRoster(1);
+        Assert.Empty(rosterAfter.ByCategory[RoleCategory.FinishArea].Single(r => r.Role.Name == "Timekeeping").Assignments);
+    }
+
+    // ---------- Copy from previous event ----------
+
+    [Fact]
+    public async Task CopyFromPreviousEvent_CopiesAssignments_SkipsInactive()
+    {
+        // Set up: event 1 (seeded), event 2 (new), assignments on event 1, then copy to event 2.
+        var alice = await CreateVolunteerAsync("Alice", "Female");
+        var bob = await CreateVolunteerAsync("Bob", "Male");
+
+        var tk = (await GetRoleAsync("Timekeeping")).Id;
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = tk });
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = bob.Id, VolunteerRoleId = tk });
+
+        // Create event 2 after event 1.
+        int newEventId;
+        await using (var db = _factory.CreateDbContext())
+        {
+            db.Events.Add(new RaceEvent
+            {
+                EventName = "Crown to Crown - May",
+                EventDate = new DateTime(2026, 5, 13),
+                EventType = EventType.CrownToCrown
+            });
+            await db.SaveChangesAsync();
+            newEventId = db.Events.OrderByDescending(e => e.Id).First().Id;
+        }
+
+        // Bob goes inactive — should be skipped on copy.
+        await _registry.SetActiveAsync(bob.Id, false);
+
+        var result = await _rosterService.CopyFromPreviousEventAsync(newEventId);
+        Assert.True(result.Success);
+        Assert.Equal(1, result.CopiedCount);
+        Assert.Contains(result.SkippedItems, s => s.Contains("Bob") && s.Contains("inactive"));
+
+        var roster = _rosterService.GetRoster(newEventId);
+        var tkRow = roster.ByCategory[RoleCategory.FinishArea].Single(r => r.Role.Name == "Timekeeping");
+        Assert.Single(tkRow.Assignments);
+        Assert.Equal("Alice", tkRow.Assignments.Single().Volunteer.Name);
+    }
+
+    [Fact]
+    public async Task CopyFromPreviousEvent_NoEarlierEvent_Fails()
+    {
+        var result = await _rosterService.CopyFromPreviousEventAsync(1);
+        Assert.False(result.Success);
+        Assert.Contains("earlier event", result.ErrorMessage ?? "");
+    }
+
+    // ---------- Exports ----------
+
+    [Fact]
+    public async Task ExportExcel_ProducesValidXlsx_WithRows()
+    {
+        var alice = await CreateVolunteerAsync("Alice", "Female");
+        var tk = (await GetRoleAsync("Timekeeping")).Id;
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = tk });
+
+        var bytes = _exportService.ExportExcel(1);
+        Assert.NotNull(bytes);
+        Assert.True(bytes.Length > 1000);
+        // XLSX is a zip — first two bytes are PK
+        Assert.Equal((byte)'P', bytes[0]);
+        Assert.Equal((byte)'K', bytes[1]);
+    }
+
+    [Fact]
+    public void ExportExcel_EmptyRoster_StillProduces()
+    {
+        var bytes = _exportService.ExportExcel(1);
+        Assert.NotNull(bytes);
+        Assert.True(bytes.Length > 500);
+    }
+
+    [Fact]
+    public async Task ExportPdf_ProducesValidPdf()
+    {
+        var alice = await CreateVolunteerAsync("Alice", "Female");
+        var tk = (await GetRoleAsync("Timekeeping")).Id;
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = tk });
+
+        var bytes = _exportService.ExportPdf(1);
+        Assert.NotNull(bytes);
+        Assert.True(bytes.Length > 500);
+        // PDF magic: %PDF
+        Assert.Equal((byte)'%', bytes[0]);
+        Assert.Equal((byte)'P', bytes[1]);
+        Assert.Equal((byte)'D', bytes[2]);
+        Assert.Equal((byte)'F', bytes[3]);
+    }
+
+    // ---------- Helpers ----------
+
+    private async Task<Volunteer> CreateVolunteerAsync(string name, string gender, bool firstAid = false, bool clubMember = true)
+    {
+        var result = await _registry.CreateAsync(new VolunteerInput
+        {
+            Name = name, Gender = gender, IsClubMember = clubMember, IsFirstAidTrained = firstAid
+        });
+        Assert.True(result.Success);
+        await using var db = _factory.CreateDbContext();
+        return db.Volunteers.Single(v => v.Name == name);
+    }
+
+    private async Task<VolunteerRole> GetRoleAsync(string name)
+    {
+        await using var db = _factory.CreateDbContext();
+        return db.VolunteerRoles.Single(r => r.Name == name && r.EventType == EventType.CrownToCrown);
+    }
+}

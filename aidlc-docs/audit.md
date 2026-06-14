@@ -1,5 +1,16 @@
 # AI-DLC Audit Log
 
+## US28 — Volunteer Roster Builder
+**Timestamp**: 2026-06-14
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US28-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US28/US28-implementation-summary.md`
+**Build Status**: Success
+**Test Status**: Pass (175 unit + 26 integration = 201)
+**Notes**: Brownfield + new schema (4 entities, 1 migration, 23-row C2C role seed). New manage pages for Volunteers / Volunteer Roles and a per-event Roster page with PDF + Excel export (ClosedXML / QuestPDF — both already on csproj). Restricted-role allow-lists seeded empty; organiser populates Lead / Results / Marshal 7 pre-place via the UI. Sets the data foundation for US29 and US32.
+
+---
+
 ## US18 — Export Results to CSV
 **Timestamp**: 2026-06-13
 **Stage**: Construction (Code Generation + Build & Test)

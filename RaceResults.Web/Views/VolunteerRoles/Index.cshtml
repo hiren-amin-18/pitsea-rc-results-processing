@@ -1,0 +1,75 @@
+@model IReadOnlyList<RaceResults.Web.Models.VolunteerRole>
+@using RaceResults.Web.Models
+@{
+    ViewData["Title"] = "Volunteer Roles";
+    var eventType = (EventType)(ViewBag.EventType ?? EventType.CrownToCrown);
+    var includeInactive = ViewBag.IncludeInactive == true;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Volunteer Roles</h1>
+    <a class="btn btn-primary" asp-action="Create" asp-route-eventType="@eventType">Add Role</a>
+</div>
+
+<p class="small text-muted">
+    Role catalogue for @(eventType == EventType.CrownToCrown ? "Crown to Crown" : "Bluebell 5").
+    Each role has a default and min/max count (override per-event). Restricted roles allow only specific volunteers; pre-placed roles
+    pin a specific volunteer (the allocator in US32 honours both).
+</p>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var ftype = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
+}
+
+<div class="mb-2">
+    <a class="small" asp-action="Index" asp-route-eventType="@eventType" asp-route-includeInactive="@(!includeInactive)">
+        @(includeInactive ? "Hide retired" : "Show retired")
+    </a>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Role</th>
+                <th class="text-center">Default</th>
+                <th class="text-center">Min / Max</th>
+                <th class="text-center">Run after</th>
+                <th>Flags</th>
+                <th>Pre-placed</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var role in Model)
+        {
+            <tr class="@(role.IsActive ? null : "table-light text-muted")">
+                <td>@role.Category</td>
+                <td>
+                    @role.Name
+                    @if (!role.IsActive) { <span class="badge bg-secondary ms-1">Retired</span> }
+                </td>
+                <td class="text-center">@role.DefaultCount</td>
+                <td class="text-center">@role.MinCount / @role.MaxCount</td>
+                <td class="text-center">@role.RunAfterCapacity</td>
+                <td>
+                    @if (role.IsOptional) { <span class="badge bg-secondary me-1">Optional</span> }
+                    @if (role.RequiresFirstAid) { <span class="badge bg-danger me-1">First Aid</span> }
+                    @if (role.HasEligibilityRestriction) { <span class="badge bg-warning text-dark me-1">Restricted</span> }
+                </td>
+                <td>@(role.PrePlacedVolunteer?.Name ?? "")</td>
+                <td class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@role.Id">Edit</a>
+                    <form method="post" asp-action="SetActive" asp-route-id="@role.Id" asp-route-isActive="@(!role.IsActive)" asp-route-eventType="@eventType">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">@(role.IsActive ? "Retire" : "Reactivate")</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

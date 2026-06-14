@@ -1,0 +1,73 @@
+@model RaceResults.Web.Models.VolunteerRoleInput
+@using RaceResults.Web.Models
+@{
+    var volunteers = ViewBag.Volunteers as IReadOnlyList<RaceResults.Web.Models.VolunteerListItem>;
+    var isEdit = Model.Id > 0;
+    var action = isEdit ? "Edit" : "Create";
+}
+
+<form method="post" asp-action="@action" class="row g-3" style="max-width: 900px;">
+    @Html.AntiForgeryToken()
+    @if (isEdit) { <input type="hidden" asp-for="Id" /> }
+
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="col-md-6">
+        <label asp-for="Name" class="form-label">Name</label>
+        <input asp-for="Name" class="form-control" required />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="Category" class="form-label">Category</label>
+        <select asp-for="Category" class="form-select" asp-items="Html.GetEnumSelectList<RoleCategory>()"></select>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="EventType" class="form-label">Event type</label>
+        <select asp-for="EventType" class="form-select" asp-items="Html.GetEnumSelectList<EventType>()"></select>
+    </div>
+
+    <div class="col-md-3"><label class="form-label">Default count</label><input asp-for="DefaultCount" class="form-control" type="number" min="0" /></div>
+    <div class="col-md-3"><label class="form-label">Min</label><input asp-for="MinCount" class="form-control" type="number" min="0" /></div>
+    <div class="col-md-3"><label class="form-label">Max</label><input asp-for="MaxCount" class="form-control" type="number" min="0" /></div>
+    <div class="col-md-3"><label class="form-label">Run-after capacity</label><input asp-for="RunAfterCapacity" class="form-control" type="number" min="0" /></div>
+
+    <div class="col-md-6">
+        <div class="form-check"><input asp-for="IsOptional" class="form-check-input" /><label class="form-check-label" asp-for="IsOptional">Optional role</label></div>
+        <div class="form-check"><input asp-for="RequiresFirstAid" class="form-check-input" /><label class="form-check-label" asp-for="RequiresFirstAid">Requires first aid</label></div>
+        <div class="form-check"><input asp-for="HasEligibilityRestriction" class="form-check-input" /><label class="form-check-label" asp-for="HasEligibilityRestriction">Restricted (allow-list only)</label></div>
+        <div class="form-check"><input asp-for="IsActive" class="form-check-input" /><label class="form-check-label" asp-for="IsActive">Active</label></div>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="PrePlacedVolunteerId" class="form-label">Pre-placed volunteer (e.g. Ian at Marshal 7)</label>
+        <select asp-for="PrePlacedVolunteerId" class="form-select">
+            <option value="">— none —</option>
+            @if (volunteers != null)
+            {
+                @foreach (var v in volunteers)
+                {
+                    <option value="@v.Volunteer.Id">@v.Volunteer.Name</option>
+                }
+            }
+        </select>
+
+        <label class="form-label mt-3">Eligibility allow-list (used when restricted)</label>
+        <select name="EligibleVolunteerIds" class="form-select" multiple size="8">
+            @if (volunteers != null)
+            {
+                @foreach (var v in volunteers)
+                {
+                    var selected = Model.EligibleVolunteerIds.Contains(v.Volunteer.Id) ? "selected" : null;
+                    <option value="@v.Volunteer.Id" selected="@selected">@v.Volunteer.Name</option>
+                }
+            }
+        </select>
+        <small class="text-muted">Hold Ctrl/Cmd to select multiple.</small>
+    </div>
+
+    <div class="col-md-3"><label class="form-label">Sort order</label><input asp-for="SortOrder" class="form-control" type="number" min="0" /></div>
+
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a class="btn btn-link" asp-action="Index" asp-route-eventType="@Model.EventType">Cancel</a>
+    </div>
+</form>
