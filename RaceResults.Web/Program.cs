@@ -9,9 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+// US25: in installed builds with no configured connection string, fall back to a per-user data directory
+// outside cloud-synced folders. An explicit ConnectionStrings:DefaultConnection still wins.
 builder.Services.AddDbContextFactory<RaceResultsDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? "Data Source=raceresults.db"));
+    options.UseSqlite(DatabasePathResolver.Resolve(builder.Configuration.GetConnectionString("DefaultConnection"))));
 
 builder.Services.AddSingleton<IRaceResultsService, RaceResultsService>();
 builder.Services.AddScoped<IChampionsOfChampionsService, ChampionsOfChampionsService>();

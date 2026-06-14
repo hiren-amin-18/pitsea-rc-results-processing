@@ -139,6 +139,17 @@
 **Summary**: `aidlc-docs/construction/US30/US30-implementation-summary.md`
 **Build Status**: Success (no schema change)
 **Test Status**: Pass (150 unit + 26 integration = 176)
-**Notes**: Brownfield capstone, no schema change. SeasonReviewService composes US24 dashboard + US14 Champions + US22 records + US16 DNF/DSQ into a single page + branded PDF; awards list derived from the same data (single source of calc). YoY only when prior year has data; series-vs-scoring-window labelled. Volunteer sections deliberately empty until US28/US29 land. Awaiting user review.
+**Notes**: Brownfield capstone, no schema change. SeasonReviewService composes US24 dashboard + US14 Champions + US22 records + US16 DNF/DSQ into a single page + branded PDF; awards list derived from the same data (single source of calc). YoY only when prior year has data; series-vs-scoring-window labelled. Volunteer sections deliberately empty until US28/US29 land. Reviewed and committed (7b890b6).
+
+---
+
+## US25 — Application Installer
+**Timestamp**: 2026-06-14
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US25-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US25/US25-implementation-summary.md`
+**Build Status**: Success (no schema change)
+**Test Status**: Pass (155 unit + 26 integration = 181)
+**Notes**: Brownfield deployment story. Added DatabasePathResolver (per-user %LOCALAPPDATA%\PitseaRaceResults default when no connection string configured), win-x64 self-contained publish profile, Inno Setup installer with opt-in uninstall data removal, launcher .cmd, build script with zip fallback, and installer README. Awaiting user review.
 
 ---

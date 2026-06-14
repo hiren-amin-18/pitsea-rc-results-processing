@@ -44,6 +44,7 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Enhanced statistics** | Completion rate, gender-split percentages, finish-time summary (winner/median/average, 25/50/75 percentiles), and the busiest finish window (US23) |
 | **Season statistics** | A per-year dashboard (most attended + ever-present, top clubs, fastest per category per event type, most improved, participation trends, season DNF rate) and per-runner season profiles, keyed on the runner registry (US24) |
 | **End of season review** | A consolidated season-end page and branded PDF covering headlines, year-on-year deltas, the Champions of Champions standings, runner recognition, new course records, DNF/DSQ totals, and an awards list ready for trophy engraving — degrades gracefully where dependent stories aren't implemented (US30) |
+| **Windows installer** | A self-contained Windows release (Inno Setup installer or zip fallback) lets committee members install and run the app without the .NET SDK; database lives in a per-user folder so upgrades preserve data and uninstall keeps it by default (US25) |
 | **Top 10 by category** | Top 10 finishers for Male, Female, Male U18, Female U18 |
 | **Champions leaderboard** | Yearly cumulative scoring across Crown to Crown races in the May–September season window; top 10 per category earn points (10→1); runners identified across events by name + club; tie-breaking by event participation; multi-year navigation |
 | **Champions audit trail** | Append-only points audit log distinguishing initial awards from recalculations; full scoring history retained |
@@ -83,6 +84,8 @@ dotnet run --project .\RaceResults.Web\RaceResults.Web.csproj
 Open the URL printed to the console (typically `http://localhost:5200` when using the default launch profile).
 
 The SQLite database (`raceresults.db`) is created automatically on first run in the working directory.
+
+For non-technical users, a pre-built Windows release is produced by [`installer/build-installer.ps1`](installer/build-installer.ps1) — see [installer/README.md](installer/README.md). Installed builds default to a per-user database location and don't need the .NET SDK.
 
 ### Logo assets
 
@@ -247,6 +250,8 @@ To use a custom database path, add a connection string to `appsettings.json`:
 - Deleting an event removes its entrants, finish rows, and timing rows (Champions audit rows for the event cascade-delete with it)
 
 **Storage location caution:** SQLite holds write locks on its database file. Running the live database inside a cloud-synced folder (OneDrive, Google Drive, Dropbox) risks sync conflicts and file corruption. Prefer a local, non-synced path for the live database and sync *backup copies* instead.
+
+**Installed builds (US25):** when no `ConnectionStrings:DefaultConnection` is configured (i.e. on installed builds rather than `dotnet run` from the repo), the app defaults to `%LOCALAPPDATA%\PitseaRaceResults\raceresults.db` — a per-user folder outside cloud-synced paths. An explicit connection string in `appsettings.json` or the `ConnectionStrings__DefaultConnection` environment variable still wins.
 
 **Backup & restore (US19):** the Settings page offers **Download backup** (a consistent snapshot taken via the SQLite backup API — safe even while the app is running) and **Restore from backup**. Restore validates the uploaded file's schema before replacing anything, saves the current database aside as `raceresults-prerestore-{timestamp}.db` so a bad restore can be undone, then applies any pending EF migrations so older backups upgrade cleanly. Backup filenames are timestamped (e.g. `raceresults-backup-2026-06-12-1430.db`). Destructive actions (deleting an event, re-uploading entrants over existing data) prompt a reminder to back up first. Scheduled/automatic backups are out of scope.
 
@@ -535,9 +540,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 150 | Tests `RaceResultsService` (incl. statistics + archiving), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, course records, season statistics, the season calendar, and the season review against isolated SQLite DBs per test |
+| `RaceResults.UnitTests` | 155 | Tests `RaceResultsService` (incl. statistics + archiving), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, course records, season statistics, the season calendar, the season review, and the installer DB-path resolver against isolated SQLite DBs per test |
 | `RaceResults.IntegrationTests` | 26 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **176** | |
+| **Total** | **181** | |
 
 ---
 
@@ -557,7 +562,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US24, US27, US30 (degraded) and US31 are implemented; the remaining stories (US25 installer, US26 cloud hosting, US28/US29 volunteering) are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US25, US27, US30 (degraded) and US31 are implemented; the remaining stories (US26 cloud hosting and US28/US29 volunteering) are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -590,12 +595,12 @@ US01–US24, US27, US30 (degraded) and US31 are implemented; the remaining stori
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |
 | [US31](user-stories/US31-season-calendar-generator.md) | Season Calendar Generator |
 | [US30](user-stories/US30-end-of-season-review.md) | End of Season Review (degraded — US29 volunteer sections omitted) |
+| [US25](user-stories/US25-app-installer.md) | Application Installer |
 
 ### Planned
 
 | Story | Title |
 |---|---|
-| [US25](user-stories/US25-app-installer.md) | Application Installer |
 | [US26](user-stories/US26-cloud-hosting.md) | Cloud Hosting |
 | [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |
 | [US29](user-stories/US29-volunteer-stats.md) | Volunteer Statistics |

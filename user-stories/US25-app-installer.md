@@ -1,6 +1,6 @@
 # US25 - Application Installer
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser (non-technical user)
