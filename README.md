@@ -580,9 +580,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 193 | Tests `RaceResultsService` (incl. statistics + archiving), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, course records, season statistics, the season calendar, the season review, the installer DB-path resolver, the volunteer registry / roles / roster / export / stats services, and the US32 roster allocator + draft applier against isolated SQLite DBs per test |
+| `RaceResults.UnitTests` | 195 | Tests `RaceResultsService` (incl. statistics + archiving), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, course records, season statistics, the season calendar, the season review (including volunteer recognition wired up to US29), the installer DB-path resolver, the volunteer registry / roles / roster / export / stats services, and the US32 roster allocator + draft applier against isolated SQLite DBs per test |
 | `RaceResults.IntegrationTests` | 26 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **219** | |
+| **Total** | **221** | |
 
 ---
 
@@ -634,7 +634,7 @@ All user stories are implemented — US01–US25, US27, US28, US29, US30, US31, 
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |
 | [US31](user-stories/US31-season-calendar-generator.md) | Season Calendar Generator |
-| [US30](user-stories/US30-end-of-season-review.md) | End of Season Review (volunteer-recognition section still degraded — eligible to be wired up to US29's data) |
+| [US30](user-stories/US30-end-of-season-review.md) | End of Season Review (volunteer-recognition section now wired up to US29) |
 | [US25](user-stories/US25-app-installer.md) | Application Installer |
 | [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |
 | [US29](user-stories/US29-volunteer-stats.md) | Volunteer Statistics |
@@ -650,6 +650,6 @@ Most stories are independent; these are the non-obvious dependencies the impleme
 - **US21 (Public Results)** pairs naturally with **US20 (Archiving)** so published pages never change underneath readers
 - **US29 (Volunteer Stats)** depends on **US28 (Volunteer Roster)**; the combined run+volunteer recognition stat also benefits from US15
 - **US32 (Automated Roster Allocation)** depends on **US28** for the register, role complement, and editable roster, and on the season history **US29** reports on to drive rotation/mix-up; it hands a draft back to US28's roster
-- **US30 (End of Season Review)** is the capstone: it depends on **US24** and **US29**, and degrades gracefully where US16/US17/US22 are absent — its volunteer-recognition section is still degraded pending wiring up to the now-available US29 data
+- **US30 (End of Season Review)** is the capstone: it depends on **US24** and **US29**, and degrades gracefully where US16/US17/US22 are absent. The volunteer recognition section is now wired up to US29 (Volunteer of the Season + ever-present volunteers + ran-and-volunteered double commitment); if no volunteer assignments exist for the year, the section is omitted gracefully.
 - **US31 (Season Calendar Generator)** is independent (it encodes the C2C date rules in the Domain Conventions section) and pairs with US20 for season turnover
 

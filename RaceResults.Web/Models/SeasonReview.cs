@@ -30,9 +30,27 @@ public class SeasonReview
     /// <summary>The configurable awards list (US30 §Awards List). Single source of calculation.</summary>
     public required AwardsList Awards { get; init; }
 
-    // --- Volunteer sections (US29 — not implemented). Kept here so the model is stable; view omits them. ---
-    public IReadOnlyList<string> MostActiveVolunteers { get; init; } = Array.Empty<string>();
-    public bool HasVolunteerData => MostActiveVolunteers.Count > 0;
+    // --- Volunteer recognition (US29 wired up). When no volunteer assignments exist in the year,
+    // VolunteerRecognition is null and the view/PDF omit the section gracefully.
+    public VolunteerRecognition? VolunteerRecognition { get; init; }
+    public bool HasVolunteerData => VolunteerRecognition is not null;
+}
+
+public class VolunteerRecognition
+{
+    public int TotalInstances { get; init; }
+    public int UniqueVolunteers { get; init; }
+    public int EventsCovered { get; init; }
+    public int TotalBallotEntries { get; init; }
+
+    /// <summary>Top contributors by events attended (ties broken by assignments, then name).</summary>
+    public required IReadOnlyList<VolunteerSeasonProfile> MostActive { get; init; }
+
+    /// <summary>Volunteers who attended every event of the year.</summary>
+    public required IReadOnlyList<VolunteerSeasonProfile> EverPresent { get; init; }
+
+    /// <summary>Volunteers who both ran and volunteered in the same year (recognises double commitment).</summary>
+    public required IReadOnlyList<VolunteerSeasonProfile> RanAndVolunteered { get; init; }
 }
 
 public class SeasonHeadlines
@@ -60,7 +78,11 @@ public class AwardsList
     public required IReadOnlyList<AwardEntry> EverPresentRunners { get; init; }
     public AwardEntry? MostImprovedRunner { get; init; }
 
-    // Volunteer awards omitted until US29 lands.
+    /// <summary>Volunteer of the season — most active volunteer when at least one assignment exists in the year.</summary>
+    public AwardEntry? VolunteerOfTheSeason { get; init; }
+
+    /// <summary>Ever-present volunteers, mirroring the runner ever-present award.</summary>
+    public IReadOnlyList<AwardEntry> EverPresentVolunteers { get; init; } = Array.Empty<AwardEntry>();
 }
 
 public class AwardEntry

@@ -1,5 +1,15 @@
 # AI-DLC Audit Log
 
+## US30 — End of Season Review (volunteer section wired up to US29)
+**Timestamp**: 2026-06-14
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: incremental change — no new plan; tracked here.
+**Build Status**: Success
+**Test Status**: Pass (195 unit + 26 integration = 221)
+**Notes**: Replaced the placeholder `MostActiveVolunteers` collection on `SeasonReview` with a real `VolunteerRecognition` block (total instances + ballot count + most-active list + ever-present list + ran-and-volunteered list). `SeasonReviewService` now optionally takes `IVolunteerStatsService`; when injected and the year has assignments, the review page and PDF render the volunteer section and the awards table includes "Volunteer of the season" + "Ever-present volunteer" entries. Degrades gracefully when no assignments exist. US30 status flipped to ✅ Complete (no remaining degraded sections).
+
+---
+
 ## US32 — Automated Roster Allocation
 **Timestamp**: 2026-06-14
 **Stage**: Construction (Code Generation + Build & Test)

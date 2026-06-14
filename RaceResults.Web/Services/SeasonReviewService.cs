@@ -12,15 +12,18 @@ public class SeasonReviewService : ISeasonReviewService
     private readonly IDbContextFactory<RaceResultsDbContext> _dbContextFactory;
     private readonly ISeasonStatisticsService _seasonStats;
     private readonly IChampionsOfChampionsService _championsService;
+    private readonly IVolunteerStatsService? _volunteerStats;
 
     public SeasonReviewService(
         IDbContextFactory<RaceResultsDbContext> dbContextFactory,
         ISeasonStatisticsService seasonStats,
-        IChampionsOfChampionsService championsService)
+        IChampionsOfChampionsService championsService,
+        IVolunteerStatsService? volunteerStats = null)
     {
         _dbContextFactory = dbContextFactory;
         _seasonStats = seasonStats;
         _championsService = championsService;
+        _volunteerStats = volunteerStats;
     }
 
     public SeasonReview Build(int year)
@@ -32,7 +35,8 @@ public class SeasonReviewService : ISeasonReviewService
         var (newRecords, totalDnf, totalDsq, scoringEventCount, distinctScorers) = ReadYearScopedFigures(year);
 
         var comparison = TryBuildComparison(year - 1, headlines);
-        var awards = BuildAwardsList(dashboard, champions);
+        var volunteerRecognition = BuildVolunteerRecognition(year);
+        var awards = BuildAwardsList(dashboard, champions, volunteerRecognition);
 
         return new SeasonReview
         {
@@ -47,7 +51,33 @@ public class SeasonReviewService : ISeasonReviewService
             NewCourseRecordsThisYear = newRecords,
             TotalDnf = totalDnf,
             TotalDsq = totalDsq,
-            Awards = awards
+            Awards = awards,
+            VolunteerRecognition = volunteerRecognition
+        };
+    }
+
+    private VolunteerRecognition? BuildVolunteerRecognition(int year)
+    {
+        if (_volunteerStats is null) return null;
+        var stats = _volunteerStats.GetSeasonStats(year);
+        if (stats.TotalInstances == 0) return null;
+
+        var everPresent = stats.VolunteerProfiles.Where(p => p.IsEverPresent).ToList();
+        var ranAndVolunteered = stats.VolunteerProfiles
+            .Where(p => p.RunAndVolunteer is { RunCount: > 0, VolunteerCount: > 0 })
+            .OrderByDescending(p => p.RunAndVolunteer!.EventsInvolvedIn)
+            .ThenBy(p => p.Name)
+            .ToList();
+
+        return new VolunteerRecognition
+        {
+            TotalInstances = stats.TotalInstances,
+            UniqueVolunteers = stats.UniqueVolunteers,
+            EventsCovered = stats.EventsCovered,
+            TotalBallotEntries = stats.TotalBallotEntries,
+            MostActive = stats.MostActive,
+            EverPresent = everPresent,
+            RanAndVolunteered = ranAndVolunteered
         };
     }
 
@@ -113,7 +143,10 @@ public class SeasonReviewService : ISeasonReviewService
         return (newRecords, totalDnf, totalDsq, scoringEvents, distinctScorers);
     }
 
-    private static AwardsList BuildAwardsList(SeasonDashboard dashboard, IReadOnlyList<ChampionsLeaderboardEntry> champions)
+    private static AwardsList BuildAwardsList(
+        SeasonDashboard dashboard,
+        IReadOnlyList<ChampionsLeaderboardEntry> champions,
+        VolunteerRecognition? volunteers)
     {
         var championsWinners = champions
             .Where(e => e.Rank == 1)
@@ -150,11 +183,34 @@ public class SeasonReviewService : ISeasonReviewService
             };
         }
 
+        AwardEntry? volunteerOfTheSeason = null;
+        var everPresentVolunteers = Array.Empty<AwardEntry>() as IReadOnlyList<AwardEntry>;
+        if (volunteers is not null && volunteers.MostActive.Count > 0)
+        {
+            var top = volunteers.MostActive[0];
+            volunteerOfTheSeason = new AwardEntry
+            {
+                Title = "Volunteer of the season",
+                Winner = top.Name,
+                Detail = $"{top.EventsAttended} event(s), {top.Assignments} assignment(s)"
+            };
+            everPresentVolunteers = volunteers.EverPresent
+                .Select(v => new AwardEntry
+                {
+                    Title = "Ever-present volunteer",
+                    Winner = v.Name,
+                    Detail = $"{v.EventsAttended} event(s)"
+                })
+                .ToList();
+        }
+
         return new AwardsList
         {
             ChampionsWinners = championsWinners,
             EverPresentRunners = everPresentRunners,
-            MostImprovedRunner = mostImproved
+            MostImprovedRunner = mostImproved,
+            VolunteerOfTheSeason = volunteerOfTheSeason,
+            EverPresentVolunteers = everPresentVolunteers
         };
     }
 
@@ -234,10 +290,41 @@ public class SeasonReviewService : ISeasonReviewService
                     column.Item().PaddingTop(6).Text("DNF / DSQ summary").Bold().FontSize(12);
                     column.Item().Text($"DNF: {review.TotalDnf} · DSQ: {review.TotalDsq}");
 
+                    if (review.VolunteerRecognition is { } vols)
+                    {
+                        column.Item().PaddingTop(6).Text("Volunteer recognition").Bold().FontSize(12);
+                        column.Item().Text(
+                            $"{vols.TotalInstances} volunteering instance(s) by {vols.UniqueVolunteers} volunteer(s) across {vols.EventsCovered} event(s). " +
+                            $"London Marathon ballot entries (members only): {vols.TotalBallotEntries}.");
+
+                        if (vols.MostActive.Count > 0)
+                        {
+                            column.Item().Text("Most active volunteers:");
+                            foreach (var v in vols.MostActive.Take(5))
+                            {
+                                var badge = v.IsEverPresent ? " — ever-present" : string.Empty;
+                                column.Item().Text($"  {v.Name} — {v.EventsAttended} event(s), {v.Assignments} assignment(s){badge}");
+                            }
+                        }
+
+                        if (vols.RanAndVolunteered.Count > 0)
+                        {
+                            column.Item().Text("Ran and volunteered (double commitment):");
+                            foreach (var v in vols.RanAndVolunteered.Take(5))
+                            {
+                                var rv = v.RunAndVolunteer!;
+                                column.Item().Text($"  {v.Name} — ran {rv.RunCount}, volunteered {rv.VolunteerCount}, involved in {rv.EventsInvolvedIn} event(s)");
+                            }
+                        }
+                    }
+
                     column.Item().PaddingTop(6).Text("Awards").Bold().FontSize(12);
-                    foreach (var award in review.Awards.ChampionsWinners
+                    var awardEntries = review.Awards.ChampionsWinners
                         .Concat(review.Awards.EverPresentRunners)
-                        .Concat(review.Awards.MostImprovedRunner is null ? Array.Empty<AwardEntry>() : new[] { review.Awards.MostImprovedRunner }))
+                        .Concat(review.Awards.MostImprovedRunner is null ? Array.Empty<AwardEntry>() : new[] { review.Awards.MostImprovedRunner })
+                        .Concat(review.Awards.VolunteerOfTheSeason is null ? Array.Empty<AwardEntry>() : new[] { review.Awards.VolunteerOfTheSeason })
+                        .Concat(review.Awards.EverPresentVolunteers);
+                    foreach (var award in awardEntries)
                     {
                         column.Item().Text($"  {award.Title}: {award.Winner}" + (string.IsNullOrEmpty(award.Detail) ? "" : $" ({award.Detail})"));
                     }

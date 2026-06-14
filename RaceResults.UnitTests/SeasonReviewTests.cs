@@ -44,7 +44,63 @@ public class SeasonReviewTests : IDisposable
         var review = _review.Build(2025);
         Assert.Equal(0, review.Headlines.EventsHeld);
         Assert.Null(review.Comparison);
-        Assert.False(review.HasVolunteerData); // graceful degradation: US29 unimplemented
+        Assert.False(review.HasVolunteerData); // no assignments → recognition omitted (graceful)
+    }
+
+    [Fact]
+    public async Task Build_WithVolunteerAssignments_PopulatesVolunteerRecognition_AndAwardsVolunteerOfSeason()
+    {
+        // Move seeded event into 2026 so EventDate.Year matches the review year.
+        await using (var db = _factory.CreateDbContext())
+        {
+            db.Events.First(e => e.Id == 1).EventDate = new DateTime(2026, 6, 10);
+            await db.SaveChangesAsync();
+        }
+
+        var volunteerRegistry = new VolunteerRegistryService(_factory, NullLogger<VolunteerRegistryService>.Instance);
+        var volunteerStats = new VolunteerStatsService(_factory);
+        var roster = new VolunteerRosterService(_factory, NullLogger<VolunteerRosterService>.Instance, volunteerStats);
+
+        await volunteerRegistry.CreateAsync(new VolunteerInput { Name = "Alice", Gender = "Female", IsClubMember = true });
+        Volunteer alice;
+        VolunteerRole timekeeping;
+        await using (var db = _factory.CreateDbContext())
+        {
+            alice = db.Volunteers.Single(v => v.Name == "Alice");
+            timekeeping = db.VolunteerRoles.Single(r => r.Name == "Timekeeping" && r.EventType == EventType.CrownToCrown);
+        }
+        var add = await roster.AddAssignmentAsync(new VolunteerAssignmentInput
+        {
+            EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = timekeeping.Id
+        });
+        Assert.True(add.Success);
+
+        var reviewWithVolunteers = new SeasonReviewService(_factory, _seasonStats, _championsService, volunteerStats);
+        var review = reviewWithVolunteers.Build(2026);
+
+        Assert.True(review.HasVolunteerData);
+        Assert.NotNull(review.VolunteerRecognition);
+        Assert.Equal(1, review.VolunteerRecognition!.TotalInstances);
+        Assert.Equal(1, review.VolunteerRecognition.UniqueVolunteers);
+        Assert.Equal(1, review.VolunteerRecognition.TotalBallotEntries); // Alice is a member
+        Assert.NotNull(review.Awards.VolunteerOfTheSeason);
+        Assert.Equal("Alice", review.Awards.VolunteerOfTheSeason!.Winner);
+        Assert.Single(review.Awards.EverPresentVolunteers); // single event → trivially ever-present
+    }
+
+    [Fact]
+    public async Task Build_WithVolunteerStatsButNoAssignments_StillDegradesGracefully()
+    {
+        var volunteerStats = new VolunteerStatsService(_factory);
+        var reviewWithVolunteers = new SeasonReviewService(_factory, _seasonStats, _championsService, volunteerStats);
+
+        var review = reviewWithVolunteers.Build(2026);
+
+        // Even with the volunteer stats service injected, no assignments in 2026 → no recognition block.
+        Assert.False(review.HasVolunteerData);
+        Assert.Null(review.VolunteerRecognition);
+        Assert.Null(review.Awards.VolunteerOfTheSeason);
+        Assert.Empty(review.Awards.EverPresentVolunteers);
     }
 
     [Fact]

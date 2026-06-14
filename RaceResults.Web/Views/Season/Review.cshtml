@@ -114,6 +114,43 @@ else
 <h2 class="h4 mt-4">DNF / DSQ</h2>
 <p>DNF: @Model.TotalDnf · DSQ: @Model.TotalDsq</p>
 
+@if (Model.VolunteerRecognition is { } vols)
+{
+    <h2 class="h4 mt-4">Volunteer recognition</h2>
+    <p class="small text-muted">
+        @vols.TotalInstances volunteering instance(s) by @vols.UniqueVolunteers volunteer(s) across @vols.EventsCovered event(s).
+        London Marathon ballot entries (members only): <strong>@vols.TotalBallotEntries</strong>.
+        See <a asp-controller="VolunteerStats" asp-action="Index" asp-route-year="@Model.Year">full volunteer stats</a>.
+    </p>
+
+    @if (vols.MostActive.Any())
+    {
+        <h3 class="h6 mt-3">Most active volunteers</h3>
+        <ul class="list-unstyled">
+        @foreach (var v in vols.MostActive.Take(5))
+        {
+            <li>
+                <strong>@v.Name</strong> — @v.EventsAttended event(s), @v.Assignments assignment(s)
+                @if (v.IsEverPresent) { <span class="badge bg-success ms-1">Ever-present</span> }
+                @if (!v.IsClubMember) { <span class="badge bg-secondary ms-1">Non-member</span> }
+            </li>
+        }
+        </ul>
+    }
+
+    @if (vols.RanAndVolunteered.Any())
+    {
+        <h3 class="h6 mt-3">Ran and volunteered (double commitment)</h3>
+        <ul class="list-unstyled">
+        @foreach (var v in vols.RanAndVolunteered.Take(5))
+        {
+            var rv = v.RunAndVolunteer!;
+            <li><strong>@v.Name</strong> — ran @rv.RunCount, volunteered @rv.VolunteerCount, involved in @rv.EventsInvolvedIn event(s)</li>
+        }
+        </ul>
+    }
+}
+
 <h2 class="h4 mt-4">Awards</h2>
 <table class="table table-sm">
     <thead><tr><th>Award</th><th>Winner</th><th>Detail</th></tr></thead>
@@ -130,10 +167,18 @@ else
     {
         <tr><td>@improved.Title</td><td><strong>@improved.Winner</strong></td><td class="text-muted">@improved.Detail</td></tr>
     }
+    @if (Model.Awards.VolunteerOfTheSeason is { } vos)
+    {
+        <tr><td>@vos.Title</td><td><strong>@vos.Winner</strong></td><td class="text-muted">@vos.Detail</td></tr>
+    }
+    @foreach (var a in Model.Awards.EverPresentVolunteers)
+    {
+        <tr><td>@a.Title</td><td><strong>@a.Winner</strong></td><td class="text-muted">@a.Detail</td></tr>
+    }
     </tbody>
 </table>
 
 @if (!Model.HasVolunteerData)
 {
-    <p class="small text-muted">Volunteer recognition section omitted — volunteer tracking (US28/US29) is not implemented yet.</p>
+    <p class="small text-muted">Volunteer recognition section omitted — no volunteer assignments recorded for @Model.Year yet.</p>
 }
