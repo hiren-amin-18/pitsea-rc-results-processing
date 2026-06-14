@@ -42,6 +42,7 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Edit results** | Correct any result row (position, bib, time, runner details) without re-uploading files; edits to Crown to Crown events trigger a Champions season recalculation |
 | **Race stats + graphs** | Totals plus chart breakdowns for Male/Female, category, club, affiliation, and finishers per minute |
 | **Enhanced statistics** | Completion rate, gender-split percentages, finish-time summary (winner/median/average, 25/50/75 percentiles), and the busiest finish window (US23) |
+| **Season statistics** | A per-year dashboard (most attended + ever-present, top clubs, fastest per category per event type, most improved, participation trends, season DNF rate) and per-runner season profiles, keyed on the runner registry (US24) |
 | **Top 10 by category** | Top 10 finishers for Male, Female, Male U18, Female U18 |
 | **Champions leaderboard** | Yearly cumulative scoring across Crown to Crown races in the May–September season window; top 10 per category earn points (10→1); runners identified across events by name + club; tie-breaking by event participation; multi-year navigation |
 | **Champions audit trail** | Append-only points audit log distinguishing initial awards from recalculations; full scoring history retained |
@@ -122,7 +123,8 @@ pitsea-rc-results-processing/
    │   ├── EventsController.cs         # Event management (/Events/*)
    │   ├── ChampionsController.cs      # Champions leaderboard (/Champions/*)
    │   ├── RunnersController.cs        # Runner registry: list, edit, merge (/Runners/*)
-   │   └── CourseRecordsController.cs  # Course record management (/CourseRecords/*)
+   │   ├── CourseRecordsController.cs  # Course record management (/CourseRecords/*)
+   │   └── SeasonController.cs         # Season dashboard + runner profiles (/Season/*)
 │   ├── Data/
 │   │   └── RaceResultsDbContext.cs     # EF Core DbContext (SQLite)
 │   ├── Migrations/                     # EF Core migration files
@@ -212,7 +214,7 @@ pitsea-rc-results-processing/
 
 - **Service layer owns all business logic.** Controllers are thin: they call `IRaceResultsService` / `IChampionsOfChampionsService`, store feedback in `TempData`, and redirect. File parsing, validation, collation, scoring, and PDF generation all live in services.
 - **DbContext factory pattern.** Services receive `IDbContextFactory<RaceResultsDbContext>` and create a short-lived context per operation, which is why `RaceResultsService` can be registered as a singleton.
-- **DI registrations** (`Program.cs`): `IRaceResultsService` → singleton; `IChampionsOfChampionsService` → scoped; `IDatabaseBackupService` → scoped; `IRunnerRegistryService` → scoped; `ICourseRecordService` → scoped.
+- **DI registrations** (`Program.cs`): `IRaceResultsService` → singleton; `IChampionsOfChampionsService` → scoped; `IDatabaseBackupService` → scoped; `IRunnerRegistryService` → scoped; `ICourseRecordService` → scoped; `ISeasonStatisticsService` → scoped.
 - **Migrations apply automatically at startup** (`db.Database.Migrate()`), skipped when the environment is `Testing` so integration tests can use `EnsureCreated` against in-memory SQLite.
 - **Current event fallback.** Exactly one event is "current" at a time. If none is current, the most recent event by date is promoted; if no events exist at all, a default `Crown to Crown` event dated 1 May 2026 is created (in-season for Champions scoring).
 - **Operation results, not exceptions.** Upload and edit flows return an `OperationResult` carrying `Messages`, `Warnings`, and `Errors`; controllers render all three. Warnings (e.g. unmatched bibs, duplicate names) do not block the operation.
@@ -529,9 +531,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 126 | Tests `RaceResultsService` (incl. statistics), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, and course records against isolated SQLite DBs per test |
+| `RaceResults.UnitTests` | 132 | Tests `RaceResultsService` (incl. statistics), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, course records, and season statistics against isolated SQLite DBs per test |
 | `RaceResults.IntegrationTests` | 22 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **148** | |
+| **Total** | **154** | |
 
 ---
 
@@ -551,7 +553,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US19, US22, US23 and US27 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US19, US22, US23, US24 and US27 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -579,6 +581,7 @@ US01–US19, US22, US23 and US27 are implemented; the remaining stories are plan
 | [US16](user-stories/US16-finish-status-dns-dnf-dsq.md) | Finish Status (DNS / DNF / DSQ) |
 | [US22](user-stories/US22-course-records-management.md) | Course Records Management |
 | [US23](user-stories/US23-enhanced-race-statistics.md) | Enhanced Race Statistics |
+| [US24](user-stories/US24-season-statistics.md) | Season Statistics and Runner Season Profiles |
 
 ### Planned
 
@@ -586,7 +589,6 @@ US01–US19, US22, US23 and US27 are implemented; the remaining stories are plan
 |---|---|
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
 | [US21](user-stories/US21-public-results-page.md) | Public Results Page |
-| [US24](user-stories/US24-season-statistics.md) | Season Statistics and Runner Season Profiles |
 | [US25](user-stories/US25-app-installer.md) | Application Installer |
 | [US26](user-stories/US26-cloud-hosting.md) | Cloud Hosting |
 | [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |

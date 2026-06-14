@@ -1,6 +1,6 @@
 # US24 - Season Statistics and Runner Season Profiles
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

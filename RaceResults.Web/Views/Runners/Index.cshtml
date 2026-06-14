@@ -86,8 +86,9 @@ else
                             <span class="badge bg-secondary">Inactive</span>
                         }
                     </td>
-                    <td>
+                    <td class="text-nowrap">
                         <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@item.Runner.Id">Edit</a>
+                        <a class="btn btn-sm btn-outline-secondary" asp-controller="Season" asp-action="Runner" asp-route-id="@item.Runner.Id">Season</a>
                     </td>
                 </tr>
             }

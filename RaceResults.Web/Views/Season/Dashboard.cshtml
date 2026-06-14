@@ -1,0 +1,136 @@
+@model RaceResults.Web.Models.SeasonDashboard
+@using RaceResults.Web.Models
+@{
+    ViewData["Title"] = "Season Statistics";
+    string TypeLabel(EventType t) => t == EventType.CrownToCrown ? "Crown to Crown" : "Bluebell 5";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Season Statistics — @Model.Year</h1>
+    @if (Model.AvailableYears.Any())
+    {
+        <select id="seasonYear" class="form-select" style="width:auto;">
+            @foreach (var y in Model.AvailableYears)
+            {
+                <option value="@y" selected="@(y == Model.Year)">@y</option>
+            }
+        </select>
+    }
+</div>
+
+<script>
+    document.getElementById('seasonYear')?.addEventListener('change', function (e) {
+        const url = new URL(window.location);
+        url.searchParams.set('year', e.target.value);
+        window.location = url.toString();
+    });
+</script>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var feedbackType = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
+}
+
+@if (!Model.Events.Any())
+{
+    <div class="alert alert-info">No events in @Model.Year.</div>
+    return;
+}
+
+<div class="row g-3 mb-2">
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Events</h6><p class="display-6 mb-0">@Model.EventCount</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Unique runners</h6><p class="display-6 mb-0">@Model.TotalUniqueRunners</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Season DNF rate</h6><p class="display-6 mb-0">@Model.SeasonDnfRatePercent%</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Ever-present</h6><p class="display-6 mb-0">@Model.MostAttendedRunners.Count(r => r.EverPresent)</p></div></div></div>
+</div>
+
+@if (Model.ExcludedTimeRows > 0)
+{
+    <p class="small text-warning">@Model.ExcludedTimeRows finisher row(s) excluded from time-based stats (unparseable time).</p>
+}
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <h5 class="card-title">Most attended</h5>
+            <ul class="list-unstyled mb-0">
+            @foreach (var r in Model.MostAttendedRunners)
+            {
+                <li>
+                    <a asp-action="Runner" asp-route-id="@r.RunnerId" asp-route-year="@Model.Year">@r.RunnerName</a>
+                    — @r.EventsAttended event(s)
+                    @if (r.EverPresent)
+                    {
+                        <span class="badge bg-success">Ever-present</span>
+                    }
+                </li>
+            }
+            </ul>
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <h5 class="card-title">Top clubs</h5>
+            <div class="row">
+                <div class="col-6">
+                    <p class="small text-muted mb-1">By entries</p>
+                    <ol class="ps-3 mb-0">@foreach (var c in Model.TopClubsByEntries) { <li>@c.Club — @c.Count</li> }</ol>
+                </div>
+                <div class="col-6">
+                    <p class="small text-muted mb-1">By unique runners</p>
+                    <ol class="ps-3 mb-0">@foreach (var c in Model.TopClubsByRunners) { <li>@c.Club — @c.Count</li> }</ol>
+                </div>
+            </div>
+        </div></div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <h5 class="card-title">Fastest of the season (per event type)</h5>
+            @if (Model.FastestByCategory.Any())
+            {
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Type</th><th>Category</th><th>Time</th><th>Runner</th></tr></thead>
+                    <tbody>
+                    @foreach (var f in Model.FastestByCategory)
+                    {
+                        <tr><td>@TypeLabel(f.EventType)</td><td>@f.Category</td><td>@f.Time</td><td>@f.RunnerName</td></tr>
+                    }
+                    </tbody>
+                </table>
+            }
+            else { <p class="text-muted mb-0">No timed finishes yet.</p> }
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <h5 class="card-title">Most improved (per event type)</h5>
+            @if (Model.MostImprovedByType.Any())
+            {
+                <ul class="list-unstyled mb-0">
+                @foreach (var m in Model.MostImprovedByType)
+                {
+                    <li>@TypeLabel(m.EventType): <strong>@m.RunnerName</strong> @m.Improvement (@m.FirstTime → @m.BestTime)</li>
+                }
+                </ul>
+            }
+            else { <p class="text-muted mb-0">Needs at least two races of the same type.</p> }
+        </div></div>
+    </div>
+
+    <div class="col-12">
+        <div class="card"><div class="card-body">
+            <h5 class="card-title">Participation</h5>
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Event</th><th>Date</th><th>Entrants</th><th>Finishers</th><th>First-timers</th></tr></thead>
+                <tbody>
+                @foreach (var p in Model.Participation)
+                {
+                    <tr><td>@p.EventName</td><td>@p.EventDate.ToString("dd MMM")</td><td>@p.Entrants</td><td>@p.Finishers</td><td>@p.FirstTimers</td></tr>
+                }
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+</div>

@@ -84,6 +84,17 @@
 **Summary**: `aidlc-docs/construction/US23/US23-implementation-summary.md`
 **Build Status**: Success (no schema change)
 **Test Status**: Pass (126 unit + 22 integration = 148)
-**Notes**: Brownfield. GetRaceStatisticsSummary: completion rate, gender-split %, affiliation chart, finish-time summary (winner/median/average/percentiles/spread), busiest window; current-event scoped; typed durations; DNS excluded from completion. Awaiting user review.
+**Notes**: Brownfield. GetRaceStatisticsSummary: completion rate, gender-split %, affiliation chart, finish-time summary (winner/median/average/percentiles/spread), busiest window; current-event scoped; typed durations; DNS excluded from completion. Reviewed and committed (2413d53).
+
+---
+
+## US24 — Season Statistics & Runner Season Profiles
+**Timestamp**: 2026-06-13
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US24-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US24/US24-implementation-summary.md`
+**Build Status**: Success (no schema change)
+**Test Status**: Pass (132 unit + 22 integration = 154)
+**Notes**: Brownfield. SeasonStatisticsService: per-year dashboard (attendance/ever-present, clubs, fastest per category per type, most improved, participation, DNF rate) + runner season profile (races, season bests per type, average position, streak, Champions progression). Keyed on RunnerId; typed same-type time stats; derived/read-only. Depends on US15 + US17. Awaiting user review.
 
 ---
