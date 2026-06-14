@@ -203,7 +203,7 @@ pitsea-rc-results-processing/
 │   └── ResultsControllerTests.cs
 │
 └── user-stories/
-    ├── US01-US31 *.md                  # One file per user story, each with a Status line
+    ├── US01-US32 *.md                  # One file per user story, each with a Status line
     └── example-files/                  # Real-format sample upload files (canonical copies)
         ├── online-registration.xlsx    # Pre-registration entrants
         ├── on-the-day-1.xlsx           # On-the-day entrants (file 1)
@@ -562,7 +562,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US25, US27, US30 (degraded) and US31 are implemented; the remaining stories (US26 cloud hosting and US28/US29 volunteering) are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US25, US27, US30 (degraded) and US31 are implemented; the remaining stories (US28/US29/US32 volunteering) are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -601,9 +601,9 @@ US01–US25, US27, US30 (degraded) and US31 are implemented; the remaining stori
 
 | Story | Title |
 |---|---|
-| [US26](user-stories/US26-cloud-hosting.md) | Cloud Hosting |
 | [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |
 | [US29](user-stories/US29-volunteer-stats.md) | Volunteer Statistics |
+| [US32](user-stories/US32-roster-auto-allocation.md) | Automated Roster Allocation |
 
 ### Roadmap dependencies
 
@@ -613,8 +613,8 @@ Most planned stories are independent, with these exceptions:
 - **US24 (Season Statistics)** depends on **US15 (Runner Registry)** for all cross-event aggregation; its attendance-based stats need only US15, its time-based stats also need US17
 - **US16 (DSQ)** consumes the existing-but-unused `Voided` audit action in Champions scoring
 - **US21 (Public Results)** pairs naturally with **US20 (Archiving)** so published pages never change underneath readers
-- **US26 (Cloud Hosting)** requires authentication to be added first, and makes US21 (public links) genuinely useful; US25 (installer) is the alternative local deployment path
 - **US29 (Volunteer Stats)** depends on **US28 (Volunteer Roster)**; the combined run+volunteer recognition stat also benefits from US15
+- **US32 (Automated Roster Allocation)** depends on **US28 (Volunteer Roster)** for the register, role complement, and editable roster, and on the season history US29 reports on to drive rotation/mix-up; it hands a draft back to US28's roster
 - **US30 (End of Season Review)** is the capstone: it depends on **US24** and **US29**, and degrades gracefully where US16/US17/US22 are absent
 - **US31 (Season Calendar Generator)** is independent (it encodes the C2C date rules in the Domain Conventions section) and pairs with US20 for season turnover
 

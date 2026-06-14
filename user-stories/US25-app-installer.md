@@ -29,4 +29,4 @@ Running the app currently requires cloning the repository, installing the .NET 1
 ## Notes
 
 - Candidate approaches: self-contained `dotnet publish` + Inno Setup / MSIX, or a simple zip-and-shortcut distribution as a first step.
-- This story targets local, single-machine use. Cloud hosting is the alternative deployment path — see [[US26-cloud-hosting]]; the two should share configuration (connection string, data directory) so neither blocks the other.
+- This story targets local, single-machine use, which is the club's chosen deployment model; cloud hosting was considered and dropped as unnecessary.

@@ -20,7 +20,7 @@ Correctly formatted example files already exist in `user-stories/example-files/`
 ## Acceptance Criteria
 
 1. Each upload section on the Uploads page (entrants, finish bib, timings) offers a "Download example file" link for its format.
-2. The example files are served by the app (copied into `wwwroot` or embedded), not referenced from the `user-stories/` folder, so they work in published/installed builds (US25/US26).
+2. The example files are served by the app (copied into `wwwroot` or embedded), not referenced from the `user-stories/` folder, so they work in published/installed builds (US25).
 3. Examples match the documented accepted header names in the README and stay representative: multiple entrant files, a realistic timing CSV including `STARTOFEVENT`/`ENDOFEVENT` rows.
 4. A short "expected columns" summary is shown next to each upload form (required vs optional columns), consistent with the README's Upload File Formats section.
 
