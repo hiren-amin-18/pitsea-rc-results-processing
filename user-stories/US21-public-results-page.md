@@ -1,6 +1,6 @@
 # US21 - Public Results Page
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Club member or race participant

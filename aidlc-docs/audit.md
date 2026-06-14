@@ -106,6 +106,17 @@
 **Summary**: `aidlc-docs/construction/US20/US20-implementation-summary.md`
 **Build Status**: Success (new EF migration AddEventArchiving)
 **Test Status**: Pass (136 unit + 22 integration = 158)
-**Notes**: Brownfield + schema change. RaceEvent.IsArchived; archived events reject uploads/edits/detail-edits/set-current/delete; archiving the current event promotes another; read-only eventId viewing added across Results/Stats/Top10/exports; Champions untouched. Awaiting user review.
+**Notes**: Brownfield + schema change. RaceEvent.IsArchived; archived events reject uploads/edits/detail-edits/set-current/delete; archiving the current event promotes another; read-only eventId viewing added across Results/Stats/Top10/exports; Champions untouched. Reviewed and committed (6290d52).
+
+---
+
+## US21 — Public Results Page
+**Timestamp**: 2026-06-14
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US21-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US21/US21-implementation-summary.md`
+**Build Status**: Success (new EF migration AddPublicResults)
+**Test Status**: Pass (136 unit + 26 integration = 162)
+**Notes**: Brownfield + schema change. RaceEvent.IsPublished + 128-bit PublicToken; /public/results/{token} + /public/champions/{token} with a minimal layout (no admin nav); unknown/unpublished tokens 404; unmatched bibs shown as "Unknown runner"; Publish/Unpublish + copy-link on Events page. Pairs with US20. Awaiting user review.
 
 ---

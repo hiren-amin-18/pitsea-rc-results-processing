@@ -222,6 +222,53 @@ public class RaceResultsService : IRaceResultsService
         return OperationResult.Ok($"'{target.EventName}' unarchived and editable again.");
     }
 
+    public OperationResult PublishEvent(int eventId)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        var target = db.Events.FirstOrDefault(e => e.Id == eventId);
+        if (target is null)
+        {
+            return OperationResult.Fail(new[] { "Event not found." });
+        }
+
+        target.IsPublished = true;
+        if (string.IsNullOrEmpty(target.PublicToken))
+        {
+            target.PublicToken = Guid.NewGuid().ToString("N");
+        }
+        db.SaveChanges();
+
+        _logger.LogInformation("Published event {EventId} ('{Name}').", eventId, target.EventName);
+        return OperationResult.Ok($"'{target.EventName}' is now public.");
+    }
+
+    public OperationResult UnpublishEvent(int eventId)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        var target = db.Events.FirstOrDefault(e => e.Id == eventId);
+        if (target is null)
+        {
+            return OperationResult.Fail(new[] { "Event not found." });
+        }
+
+        target.IsPublished = false;
+        db.SaveChanges();
+
+        _logger.LogInformation("Unpublished event {EventId} ('{Name}').", eventId, target.EventName);
+        return OperationResult.Ok($"'{target.EventName}' is no longer public.");
+    }
+
+    public RaceEvent? GetPublishedEventByToken(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        using var db = _dbContextFactory.CreateDbContext();
+        return db.Events.FirstOrDefault(e => e.IsPublished && e.PublicToken == token);
+    }
+
     public RaceStatusCounts GetStatusCounts()
     {
         using var db = _dbContextFactory.CreateDbContext();

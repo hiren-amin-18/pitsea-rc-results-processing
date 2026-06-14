@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Pitsea Running Club</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        body { padding-bottom: 3rem; }
+        .public-header { background: #18212f; color: #fff; padding: 1rem 0; margin-bottom: 1.5rem; }
+    </style>
+</head>
+<body>
+    <div class="public-header">
+        <div class="container">
+            <h1 class="h4 mb-0">Pitsea Running Club</h1>
+        </div>
+    </div>
+    <main class="container">
+        @RenderBody()
+    </main>
+    <footer class="container mt-5 text-muted small">
+        <hr />
+        Published results — read only.
+    </footer>
+</body>
+</html>

@@ -1,0 +1,98 @@
+@model RaceResults.Web.Models.PublicResultsViewModel
+@{
+    Layout = "_PublicLayout";
+    ViewData["Title"] = Model.Event.EventName + " Results";
+    string Name(RaceResults.Web.Models.ResultRecord r) => r.IsUnmatched ? "Unknown runner" : r.Name;
+    string WinnerName(RaceResults.Web.Models.ResultRecord? r) => r is null ? "—" : (r.IsUnmatched ? "Unknown runner" : r.Name);
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+    <h2 class="h3 mb-0">@Model.Event.EventName</h2>
+    <span class="text-muted">@Model.Event.EventDate.ToString("dddd d MMMM yyyy")</span>
+</div>
+
+@if (Model.Event.EventType == RaceResults.Web.Models.EventType.CrownToCrown)
+{
+    <p class="mb-3">
+        <a href="@Url.Action("Champions", "Public", new { token = Model.Event.PublicToken })">View @Model.SeasonYear Champions of Champions leaderboard →</a>
+    </p>
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h3 class="h6">Category winners</h3>
+        <div class="row">
+            <div class="col-sm-6">1st Male: <strong>@WinnerName(Model.MaleWinner)</strong></div>
+            <div class="col-sm-6">1st Female: <strong>@WinnerName(Model.FemaleWinner)</strong></div>
+            <div class="col-sm-6">1st Male U18: <strong>@WinnerName(Model.MaleU18Winner)</strong></div>
+            <div class="col-sm-6">1st Female U18: <strong>@WinnerName(Model.FemaleU18Winner)</strong></div>
+        </div>
+    </div>
+</div>
+
+@if (!Model.Results.Any())
+{
+    <div class="alert alert-info">Results are not available yet.</div>
+}
+else
+{
+    <div class="mb-3">
+        <input id="filter" class="form-control" type="search" placeholder="Filter by name, club, or bib…" aria-label="Filter results" />
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped align-middle" id="resultsTable">
+            <thead>
+                <tr>
+                    <th class="text-center">Pos</th>
+                    <th class="text-center">Time</th>
+                    <th class="text-center">Bib</th>
+                    <th>Name</th>
+                    <th>Club</th>
+                    <th class="text-center">Gender</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.Results)
+            {
+                <tr>
+                    <td class="text-center">@row.DisplayPosition</td>
+                    <td class="text-center">@row.Time</td>
+                    <td class="text-center">@row.BibNumber</td>
+                    <td>@Name(row)</td>
+                    <td>@row.Club</td>
+                    <td class="text-center">@row.Gender</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h3 class="h5 mt-4">DNF</h3>
+@if (!Model.DnfEntrants.Any())
+{
+    <p>None</p>
+}
+else
+{
+    <ul>
+    @foreach (var dnf in Model.DnfEntrants)
+    {
+        var clubSuffix = string.IsNullOrWhiteSpace(dnf.Club) ? string.Empty : $" ({dnf.Club})";
+        <li>@dnf.Name@clubSuffix</li>
+    }
+    </ul>
+}
+
+<script>
+    (function () {
+        var input = document.getElementById('filter');
+        if (!input) { return; }
+        input.addEventListener('input', function () {
+            var term = this.value.trim().toLowerCase();
+            document.querySelectorAll('#resultsTable tbody tr').forEach(function (row) {
+                row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+            });
+        });
+    })();
+</script>

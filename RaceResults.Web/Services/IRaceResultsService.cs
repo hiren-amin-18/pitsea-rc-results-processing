@@ -18,6 +18,15 @@ public interface IRaceResultsService
     /// <summary>Restore normal editing for an archived event (US20).</summary>
     OperationResult UnarchiveEvent(int eventId);
 
+    /// <summary>Publish an event's public results page, generating an unguessable token on first publish (US21).</summary>
+    OperationResult PublishEvent(int eventId);
+
+    /// <summary>Take an event's public results page offline (US21).</summary>
+    OperationResult UnpublishEvent(int eventId);
+
+    /// <summary>The event for a public token, or null when the token is unknown or the event is not published (US21).</summary>
+    RaceEvent? GetPublishedEventByToken(string token);
+
     RaceStatusCounts GetStatusCounts();
 
     Task<OperationResult> UploadEntrantsAsync(IEnumerable<IFormFile> files);

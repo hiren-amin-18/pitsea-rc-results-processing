@@ -52,6 +52,7 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Champions PDF export** | Export Champions leaderboard to PDF with tie-breaking indicators (†) and gold/silver/bronze highlighting for top 3 |
 | **Event management** | Create, edit, select current, and delete events (`Crown to Crown` / `Bluebell 5`) with event-scoped results |
 | **Event archiving** | Mark a finalised event as archived to make it read-only: uploads, edits, and detail changes are rejected; it can't be current or deleted until unarchived; results remain viewable and exportable, and it still counts toward Champions (US20) |
+| **Public results page** | Publish an event from the Events page to expose a shareable read-only URL (`/public/results/{token}`) with the collated results, category winners, DNF list, and a public Champions of Champions leaderboard. Tokens are unguessable per event; unpublished events return 404 (US21) |
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
 | **Theme-aware branding** | App logo switches by theme (light uses white logo, dark uses black logo) at a fixed size |
 | **Persistent storage** | All data saved to a SQLite database and survives app restarts |
@@ -533,8 +534,8 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 | Project | Tests | Approach |
 |---|---|---|
 | `RaceResults.UnitTests` | 136 | Tests `RaceResultsService` (incl. statistics + archiving), `ChampionsOfChampionsService`, `DatabaseBackupService`, `RaceTime`, the runner registry, finish-status, course records, and season statistics against isolated SQLite DBs per test |
-| `RaceResults.IntegrationTests` | 22 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **158** | |
+| `RaceResults.IntegrationTests` | 26 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
+| **Total** | **162** | |
 
 ---
 
@@ -554,7 +555,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-US01–US20, US22, US23, US24 and US27 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+US01–US24 and US27 are implemented; the remaining stories are planned. Each story file carries a **Status** line (✅ Complete / 📋 Planned) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -584,12 +585,12 @@ US01–US20, US22, US23, US24 and US27 are implemented; the remaining stories ar
 | [US23](user-stories/US23-enhanced-race-statistics.md) | Enhanced Race Statistics |
 | [US24](user-stories/US24-season-statistics.md) | Season Statistics and Runner Season Profiles |
 | [US20](user-stories/US20-archive-completed-events.md) | Archive Completed Events |
+| [US21](user-stories/US21-public-results-page.md) | Public Results Page |
 
 ### Planned
 
 | Story | Title |
 |---|---|
-| [US21](user-stories/US21-public-results-page.md) | Public Results Page |
 | [US25](user-stories/US25-app-installer.md) | Application Installer |
 | [US26](user-stories/US26-cloud-hosting.md) | Cloud Hosting |
 | [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |

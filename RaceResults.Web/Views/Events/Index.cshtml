@@ -72,8 +72,36 @@
                         <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
                     </form>
                 }
+
+                @if (raceEvent.IsPublished)
+                {
+                    <form method="post" asp-action="Unpublish" asp-route-id="@raceEvent.Id">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-sm btn-outline-warning" type="submit">Unpublish</button>
+                    </form>
+                }
+                else
+                {
+                    <form method="post" asp-action="Publish" asp-route-id="@raceEvent.Id">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-sm btn-outline-success" type="submit">Publish</button>
+                    </form>
+                }
             </td>
         </tr>
+        @if (raceEvent.IsPublished && !string.IsNullOrEmpty(raceEvent.PublicToken))
+        {
+            var publicUrl = Url.Action("Results", "Public", new { token = raceEvent.PublicToken }, Context.Request.Scheme);
+            <tr class="table-light">
+                <td colspan="5">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">Public link</span>
+                        <input type="text" class="form-control" value="@publicUrl" readonly onclick="this.select();" aria-label="Public results link" />
+                        <a class="btn btn-outline-secondary" href="@publicUrl" target="_blank" rel="noopener">Open</a>
+                    </div>
+                </td>
+            </tr>
+        }
     }
     </tbody>
 </table>
