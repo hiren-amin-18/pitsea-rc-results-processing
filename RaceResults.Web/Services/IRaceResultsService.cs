@@ -12,6 +12,12 @@ public interface IRaceResultsService
     OperationResult SetCurrentEvent(int eventId);
     OperationResult DeleteEvent(int eventId);
 
+    /// <summary>Mark an event finalised/read-only (US20). Archiving the current event promotes another current event.</summary>
+    OperationResult ArchiveEvent(int eventId);
+
+    /// <summary>Restore normal editing for an archived event (US20).</summary>
+    OperationResult UnarchiveEvent(int eventId);
+
     RaceStatusCounts GetStatusCounts();
 
     Task<OperationResult> UploadEntrantsAsync(IEnumerable<IFormFile> files);
@@ -21,17 +27,22 @@ public interface IRaceResultsService
     IReadOnlyList<ResultRecord> GetCollatedResults();
     IReadOnlyList<ResultRecord> GetCollatedResults(int eventId);
     IReadOnlyList<Entrant> GetDnfEntrants();
+    IReadOnlyList<Entrant> GetDnfEntrants(int eventId);
 
     /// <summary>Did Not Start entrants for the current event (US16).</summary>
     IReadOnlyList<Entrant> GetDnsEntrants();
+    IReadOnlyList<Entrant> GetDnsEntrants(int eventId);
 
     /// <summary>Disqualified finishers for the current event, with their original position and reason (US16).</summary>
     IReadOnlyList<ResultRecord> GetDsqResults();
+    IReadOnlyList<ResultRecord> GetDsqResults(int eventId);
 
     RaceStats GetRaceStats();
+    RaceStats GetRaceStats(int eventId);
 
     /// <summary>Headline race statistics for the current event: completion, gender split, finish-time summary (US23).</summary>
     RaceStatisticsSummary GetRaceStatisticsSummary();
+    RaceStatisticsSummary GetRaceStatisticsSummary(int eventId);
 
     IReadOnlyList<TopTenCategory> GetTopTenByCategory();
     IReadOnlyList<TopTenCategory> GetTopTenByCategory(int eventId);
@@ -48,10 +59,13 @@ public interface IRaceResultsService
     /// <summary>Set a non-finisher's status to DNS or DNF (US16).</summary>
     OperationResult SetNonFinisherStatus(string bibNumber, FinishStatus status);
     byte[] GenerateResultsPdf();
+    byte[] GenerateResultsPdf(int eventId);
 
     /// <summary>Serialise the current event's collated results (and DNF entrants) to Excel-friendly CSV (US18).</summary>
     byte[] GenerateResultsCsv();
+    byte[] GenerateResultsCsv(int eventId);
 
     /// <summary>Descriptive download filename for the results CSV, e.g. <c>crown-to-crown-2026-05-01-results.csv</c> (US18).</summary>
     string GetResultsCsvFileName();
+    string GetResultsCsvFileName(int eventId);
 }

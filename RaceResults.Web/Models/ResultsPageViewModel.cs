@@ -13,4 +13,11 @@ public class ResultsPageViewModel
 
     /// <summary>Category winners whose time beats the stored course record, awaiting confirmation (US22).</summary>
     public List<PendingCourseRecord> PendingCourseRecords { get; set; } = new();
+
+    /// <summary>True when viewing an event other than the current one (e.g. an archived event) — actions are hidden (US20).</summary>
+    public bool IsReadOnly { get; set; }
+
+    public int ViewedEventId { get; set; }
+    public string ViewedEventName { get; set; } = string.Empty;
+    public bool IsArchived { get; set; }
 }

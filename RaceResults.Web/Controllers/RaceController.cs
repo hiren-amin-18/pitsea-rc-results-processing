@@ -80,16 +80,26 @@ public class RaceController : Controller
     }
 
     [HttpGet]
-    public IActionResult Results()
+    public IActionResult Results(int? eventId)
     {
         var currentEvent = _raceResultsService.GetCurrentEvent();
+        var viewed = eventId.HasValue
+            ? _raceResultsService.GetEvents().FirstOrDefault(e => e.Id == eventId.Value) ?? currentEvent
+            : currentEvent;
+        var readOnly = viewed.Id != currentEvent.Id;
+
         var model = new ResultsPageViewModel
         {
-            Results = _raceResultsService.GetCollatedResults().ToList(),
-            DnfEntrants = _raceResultsService.GetDnfEntrants().ToList(),
-            DnsEntrants = _raceResultsService.GetDnsEntrants().ToList(),
-            DsqResults = _raceResultsService.GetDsqResults().ToList(),
-            PendingCourseRecords = _courseRecordService.GetPendingRecords(currentEvent.Id).ToList()
+            Results = _raceResultsService.GetCollatedResults(viewed.Id).ToList(),
+            DnfEntrants = _raceResultsService.GetDnfEntrants(viewed.Id).ToList(),
+            DnsEntrants = _raceResultsService.GetDnsEntrants(viewed.Id).ToList(),
+            DsqResults = _raceResultsService.GetDsqResults(viewed.Id).ToList(),
+            // Course-record confirmation only applies to the current (editable) event.
+            PendingCourseRecords = readOnly ? new() : _courseRecordService.GetPendingRecords(currentEvent.Id).ToList(),
+            IsReadOnly = readOnly,
+            ViewedEventId = viewed.Id,
+            ViewedEventName = viewed.EventName,
+            IsArchived = viewed.IsArchived
         };
 
         return View(model);
@@ -226,10 +236,11 @@ public class RaceController : Controller
     }
 
     [HttpGet]
-    public IActionResult Stats()
+    public IActionResult Stats(int? eventId)
     {
-        var stats = _raceResultsService.GetRaceStats();
-        var results = _raceResultsService.GetCollatedResults();
+        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent().Id;
+        var stats = _raceResultsService.GetRaceStats(viewedId);
+        var results = _raceResultsService.GetCollatedResults(viewedId);
 
         var clubBreakdown = results
             .GroupBy(r => string.IsNullOrWhiteSpace(r.Club) ? "Unaffiliated" : r.Club, StringComparer.OrdinalIgnoreCase)
@@ -250,7 +261,7 @@ public class RaceController : Controller
         var model = new RaceStatsDashboardViewModel
         {
             Stats = stats,
-            Summary = _raceResultsService.GetRaceStatisticsSummary(),
+            Summary = _raceResultsService.GetRaceStatisticsSummary(viewedId),
             ClubBreakdown = clubBreakdown,
             FinishersPerMinute = finishersPerMinute
         };
@@ -259,24 +270,27 @@ public class RaceController : Controller
     }
 
     [HttpGet]
-    public IActionResult Top10()
+    public IActionResult Top10(int? eventId)
     {
-        var model = _raceResultsService.GetTopTenByCategory();
+        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent().Id;
+        var model = _raceResultsService.GetTopTenByCategory(viewedId);
         return View(model);
     }
 
     [HttpGet]
-    public IActionResult ExportPdf()
+    public IActionResult ExportPdf(int? eventId)
     {
-        var bytes = _raceResultsService.GenerateResultsPdf();
+        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent().Id;
+        var bytes = _raceResultsService.GenerateResultsPdf(viewedId);
         return File(bytes, "application/pdf", "race-results.pdf");
     }
 
     [HttpGet]
-    public IActionResult ExportCsv()
+    public IActionResult ExportCsv(int? eventId)
     {
-        var bytes = _raceResultsService.GenerateResultsCsv();
-        return File(bytes, "text/csv", _raceResultsService.GetResultsCsvFileName());
+        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent().Id;
+        var bytes = _raceResultsService.GenerateResultsCsv(viewedId);
+        return File(bytes, "text/csv", _raceResultsService.GetResultsCsvFileName(viewedId));
     }
 
     private void StoreFeedback(OperationResult result)

@@ -95,6 +95,17 @@
 **Summary**: `aidlc-docs/construction/US24/US24-implementation-summary.md`
 **Build Status**: Success (no schema change)
 **Test Status**: Pass (132 unit + 22 integration = 154)
-**Notes**: Brownfield. SeasonStatisticsService: per-year dashboard (attendance/ever-present, clubs, fastest per category per type, most improved, participation, DNF rate) + runner season profile (races, season bests per type, average position, streak, Champions progression). Keyed on RunnerId; typed same-type time stats; derived/read-only. Depends on US15 + US17. Awaiting user review.
+**Notes**: Brownfield. SeasonStatisticsService: per-year dashboard (attendance/ever-present, clubs, fastest per category per type, most improved, participation, DNF rate) + runner season profile (races, season bests per type, average position, streak, Champions progression). Keyed on RunnerId; typed same-type time stats; derived/read-only. Depends on US15 + US17. Reviewed and committed (296bb8a).
+
+---
+
+## US20 — Archive Completed Events
+**Timestamp**: 2026-06-13
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US20-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US20/US20-implementation-summary.md`
+**Build Status**: Success (new EF migration AddEventArchiving)
+**Test Status**: Pass (136 unit + 22 integration = 158)
+**Notes**: Brownfield + schema change. RaceEvent.IsArchived; archived events reject uploads/edits/detail-edits/set-current/delete; archiving the current event promotes another; read-only eventId viewing added across Results/Stats/Top10/exports; Champions untouched. Awaiting user review.
 
 ---

@@ -1,6 +1,6 @@
 # US20 - Archive Completed Events
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

@@ -9,10 +9,17 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1>Collated Results</h1>
     <div class="btn-group">
-        <a class="btn btn-outline-primary" asp-action="ExportPdf">Export PDF</a>
-        <a class="btn btn-outline-primary" asp-action="ExportCsv">Export CSV</a>
+        <a class="btn btn-outline-primary" asp-action="ExportPdf" asp-route-eventId="@Model.ViewedEventId">Export PDF</a>
+        <a class="btn btn-outline-primary" asp-action="ExportCsv" asp-route-eventId="@Model.ViewedEventId">Export CSV</a>
     </div>
 </div>
+
+@if (Model.IsReadOnly)
+{
+    <div class="alert alert-secondary" role="alert">
+        Viewing <strong>@Model.ViewedEventName</strong>@(Model.IsArchived ? " (archived)" : " (not the current event)") — read-only.
+    </div>
+}
 
 @if (TempData["FeedbackText"] is string feedback)
 {
@@ -96,10 +103,13 @@ else
                     <td class="text-center">@row.Gender</td>
                     <td>@(row.Age?.ToString() ?? "-")</td>
                     <td class="text-nowrap">
-                        <a class="btn btn-sm btn-outline-secondary" asp-action="EditResult" asp-route-position="@row.Position">Edit</a>
-                        @if (!row.IsUnmatched)
+                        @if (!Model.IsReadOnly)
                         {
-                            <a class="btn btn-sm btn-outline-danger" asp-action="Disqualify" asp-route-position="@row.Position">DSQ</a>
+                            <a class="btn btn-sm btn-outline-secondary" asp-action="EditResult" asp-route-position="@row.Position">Edit</a>
+                            @if (!row.IsUnmatched)
+                            {
+                                <a class="btn btn-sm btn-outline-danger" asp-action="Disqualify" asp-route-position="@row.Position">DSQ</a>
+                            }
                         }
                     </td>
                 </tr>
@@ -123,10 +133,13 @@ else
             {
                 <span class="text-muted">— @dsq.StatusReason</span>
             }
-            <form method="post" asp-action="Reinstate" asp-route-position="@dsq.Position" class="d-inline ms-2">
-                @Html.AntiForgeryToken()
-                <button class="btn btn-sm btn-outline-success" type="submit">Reinstate</button>
-            </form>
+            @if (!Model.IsReadOnly)
+            {
+                <form method="post" asp-action="Reinstate" asp-route-position="@dsq.Position" class="d-inline ms-2">
+                    @Html.AntiForgeryToken()
+                    <button class="btn btn-sm btn-outline-success" type="submit">Reinstate</button>
+                </form>
+            }
         </li>
     }
     </ul>
@@ -145,12 +158,15 @@ else
         var clubSuffix = string.IsNullOrWhiteSpace(dnf.Club) ? string.Empty : $" ({dnf.Club})";
         <li class="mb-1">
             @dnf.BibNumber - @dnf.Name@clubSuffix
-            <form method="post" asp-action="SetStatus" class="d-inline ms-2">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="bibNumber" value="@dnf.BibNumber" />
-                <input type="hidden" name="status" value="@RaceResults.Web.Models.FinishStatus.DidNotStart" />
-                <button class="btn btn-sm btn-outline-secondary" type="submit" title="They never started">Mark DNS</button>
-            </form>
+            @if (!Model.IsReadOnly)
+            {
+                <form method="post" asp-action="SetStatus" class="d-inline ms-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="bibNumber" value="@dnf.BibNumber" />
+                    <input type="hidden" name="status" value="@RaceResults.Web.Models.FinishStatus.DidNotStart" />
+                    <button class="btn btn-sm btn-outline-secondary" type="submit" title="They never started">Mark DNS</button>
+                </form>
+            }
         </li>
     }
     </ul>
@@ -170,12 +186,15 @@ else
         var clubSuffix = string.IsNullOrWhiteSpace(dns.Club) ? string.Empty : $" ({dns.Club})";
         <li class="mb-1">
             @dns.BibNumber - @dns.Name@clubSuffix
-            <form method="post" asp-action="SetStatus" class="d-inline ms-2">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="bibNumber" value="@dns.BibNumber" />
-                <input type="hidden" name="status" value="@RaceResults.Web.Models.FinishStatus.DidNotFinish" />
-                <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move back to DNF">Mark DNF</button>
-            </form>
+            @if (!Model.IsReadOnly)
+            {
+                <form method="post" asp-action="SetStatus" class="d-inline ms-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="bibNumber" value="@dns.BibNumber" />
+                    <input type="hidden" name="status" value="@RaceResults.Web.Models.FinishStatus.DidNotFinish" />
+                    <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move back to DNF">Mark DNF</button>
+                </form>
+            }
         </li>
     }
     </ul>

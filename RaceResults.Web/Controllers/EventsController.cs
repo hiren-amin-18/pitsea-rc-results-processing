@@ -108,6 +108,24 @@ public class EventsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult Archive(int id)
+    {
+        var result = _raceResultsService.ArchiveEvent(id);
+        StoreFeedback(result);
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult Unarchive(int id)
+    {
+        var result = _raceResultsService.UnarchiveEvent(id);
+        StoreFeedback(result);
+        return RedirectToAction(nameof(Index));
+    }
+
     private void StoreFeedback(OperationResult result)
     {
         var lines = new List<string>();
