@@ -22,6 +22,16 @@
 
 <p class="small text-muted">Volunteer recognition across all event types for @Model.Year. London Marathon ballot entries count one per volunteering instance — <strong>members only</strong>.</p>
 
+@if (Model.TotalInstances == 0)
+{
+    <div class="alert alert-info">
+        No volunteer assignments recorded for @Model.Year yet.
+        Add volunteers to the <a asp-controller="Volunteers" asp-action="Index">register</a>, then build a roster for an event from the <a asp-controller="Events" asp-action="Index">Events</a> page.
+        Stats appear here as soon as the first assignment is added.
+    </div>
+    return;
+}
+
 <div class="row g-3 mb-4">
     <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Total instances</div><div class="fs-3">@Model.TotalInstances</div></div></div></div>
     <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Unique volunteers</div><div class="fs-3">@Model.UniqueVolunteers</div></div></div></div>

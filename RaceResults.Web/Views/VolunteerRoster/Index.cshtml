@@ -41,6 +41,33 @@
     </div>
 }
 
+@{
+    var prePlacedNotYetAssigned = roles
+        .Where(r => r.PrePlacedVolunteerId.HasValue && r.PrePlacedVolunteer != null)
+        .Where(r => !Model.ByCategory.Values
+            .SelectMany(rows => rows)
+            .Where(row => row.Role.Id == r.Id)
+            .SelectMany(row => row.Assignments)
+            .Any(a => a.Volunteer.Id == r.PrePlacedVolunteerId!.Value))
+        .ToList();
+}
+@if (prePlacedNotYetAssigned.Any())
+{
+    <div class="alert alert-info small mb-3">
+        <strong>Pre-placed but not yet on the roster:</strong>
+        @string.Join(", ", prePlacedNotYetAssigned.Select(r => $"{r.PrePlacedVolunteer!.Name} @ {r.Name}"))
+        — the allocator pins these automatically; for a hand-built roster add them via the form below.
+    </div>
+}
+
+@if (!volunteers.Any())
+{
+    <div class="alert alert-warning small">
+        No active volunteers in the register yet.
+        <a asp-controller="Volunteers" asp-action="Create">Add the first volunteer</a> before building a roster.
+    </div>
+}
+
 @if (Model.PerEventStats is { } pes)
 {
     <div class="row g-2 mb-3">
@@ -71,7 +98,12 @@
                 <select name="VolunteerRoleId" class="form-select form-select-sm" required>
                     <option value="">—</option>
                     @foreach (var r in roles) {
-                        <option value="@r.Id">@r.Category — @r.Name</option>
+                        var hints = new List<string>();
+                        if (r.RequiresFirstAid) hints.Add("first aid only");
+                        if (r.HasEligibilityRestriction) hints.Add("restricted");
+                        if (r.RunAfterCapacity > 0) hints.Add($"{r.RunAfterCapacity} can run after");
+                        var suffix = hints.Any() ? $" — {string.Join(", ", hints)}" : "";
+                        <option value="@r.Id">@r.Category — @r.Name@suffix</option>
                     }
                 </select>
             </div>

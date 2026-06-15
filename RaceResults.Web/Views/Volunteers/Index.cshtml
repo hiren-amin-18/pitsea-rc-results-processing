@@ -11,6 +11,16 @@
 
 <p class="small text-muted">The volunteer register. Deactivate, never delete — past assignments stay counted in stats. London Marathon ballot entries (US29) count only for club members.</p>
 
+@if (Model.Any())
+{
+    var active = Model.Count(i => i.Volunteer.IsActive);
+    var members = Model.Count(i => i.Volunteer.IsActive && i.Volunteer.IsClubMember);
+    var firstAid = Model.Count(i => i.Volunteer.IsActive && i.Volunteer.IsFirstAidTrained);
+    <p class="small text-muted">
+        <strong>@active active</strong> · @members member(s) · @firstAid first-aid trained · @(active - members) non-member(s)
+    </p>
+}
+
 @if (TempData["FeedbackText"] is string feedback)
 {
     var ftype = TempData["FeedbackType"] as string ?? "info";

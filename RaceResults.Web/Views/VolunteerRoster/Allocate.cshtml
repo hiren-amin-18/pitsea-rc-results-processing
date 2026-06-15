@@ -16,6 +16,12 @@
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="EventId" />
 
+    <div class="d-flex gap-2 mb-2">
+        <button type="button" class="btn btn-link btn-sm p-0" onclick="document.querySelectorAll('input.candidate-tick').forEach(c => c.checked = true);">Select all</button>
+        <span class="text-muted">·</span>
+        <button type="button" class="btn btn-link btn-sm p-0" onclick="document.querySelectorAll('input.candidate-tick').forEach(c => c.checked = false);">Clear all</button>
+    </div>
+
     <div class="table-responsive">
         <table class="table table-sm align-middle">
             <thead>
@@ -36,7 +42,7 @@
                     var v = volunteers[i].Volunteer;
                     <tr>
                         <td>
-                            <input type="checkbox" name="Candidates[@i].VolunteerId" value="@v.Id" />
+                            <input type="checkbox" name="Candidates[@i].VolunteerId" value="@v.Id" class="candidate-tick" />
                         </td>
                         <td>
                             @v.Name

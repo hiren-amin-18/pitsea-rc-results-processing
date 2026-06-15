@@ -20,7 +20,11 @@ public class VolunteerRolesController : Controller
     {
         ViewBag.EventType = eventType;
         ViewBag.IncludeInactive = includeInactive;
-        return View(_roles.GetRoles(eventType, includeInactive));
+        var roles = _roles.GetRoles(eventType, includeInactive);
+        ViewBag.AllowListCounts = roles
+            .Where(r => r.HasEligibilityRestriction)
+            .ToDictionary(r => r.Id, r => _roles.GetEligibleVolunteerIds(r.Id).Count);
+        return View(roles);
     }
 
     [HttpGet]

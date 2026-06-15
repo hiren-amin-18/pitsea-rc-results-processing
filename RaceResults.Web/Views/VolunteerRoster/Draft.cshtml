@@ -8,12 +8,18 @@
 <p class="text-muted">@Model.EventName — @Model.EventDate.ToString("dd MMM yyyy")</p>
 <p class="small text-muted">Review the proposed allocation. Click Apply to add these assignments to the roster (existing assignments are kept; nothing is deleted). After applying you can adjust the roster freely.</p>
 
-<form method="post" asp-action="Apply" asp-route-eventId="@Model.EventId" class="mb-3">
+<form method="post" asp-action="Apply" asp-route-eventId="@Model.EventId" class="mb-3"
+      onsubmit="return confirm('Apply @Model.Proposals.Count proposed assignment(s) to the roster? Existing assignments are kept; this only adds.');">
     @Html.AntiForgeryToken()
     <input type="hidden" name="draftJson" value="@draftJson" />
-    <button type="submit" class="btn btn-primary">Apply draft</button>
+    <button type="submit" class="btn btn-primary" @(Model.Proposals.Count == 0 ? "disabled" : "")>Apply draft (@Model.Proposals.Count)</button>
     <a class="btn btn-link" asp-action="Allocate" asp-route-eventId="@Model.EventId">Back</a>
 </form>
+
+@if (Model.Proposals.Count == 0)
+{
+    <div class="alert alert-info">The allocator produced no proposals. Either no candidates were selected on the previous page, or every selected candidate was rejected by a hard constraint (see the report below).</div>
+}
 
 <h3>Proposed assignments (@Model.Proposals.Count)</h3>
 <div class="table-responsive">

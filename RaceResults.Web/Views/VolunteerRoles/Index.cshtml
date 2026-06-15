@@ -4,6 +4,7 @@
     ViewData["Title"] = "Volunteer Roles";
     var eventType = (EventType)(ViewBag.EventType ?? EventType.CrownToCrown);
     var includeInactive = ViewBag.IncludeInactive == true;
+    var allowListCounts = ViewBag.AllowListCounts as IDictionary<int, int> ?? new Dictionary<int, int>();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -58,7 +59,13 @@
                 <td>
                     @if (role.IsOptional) { <span class="badge bg-secondary me-1">Optional</span> }
                     @if (role.RequiresFirstAid) { <span class="badge bg-danger me-1">First Aid</span> }
-                    @if (role.HasEligibilityRestriction) { <span class="badge bg-warning text-dark me-1">Restricted</span> }
+                    @if (role.HasEligibilityRestriction)
+                    {
+                        var allowed = allowListCounts.TryGetValue(role.Id, out var c) ? c : 0;
+                        var label = allowed == 0 ? "Restricted (allow-list empty)" : $"Restricted ({allowed} allowed)";
+                        var cls = allowed == 0 ? "bg-warning text-dark" : "bg-warning text-dark";
+                        <span class="badge @cls me-1" title="Only people on the allow-list can be assigned to this role.">@label</span>
+                    }
                 </td>
                 <td>@(role.PrePlacedVolunteer?.Name ?? "")</td>
                 <td class="d-flex gap-2 flex-wrap">
