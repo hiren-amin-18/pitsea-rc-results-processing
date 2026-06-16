@@ -21,8 +21,14 @@ From the repository root:
 
 The script publishes `RaceResults.Web` with the `win-x64-installer` profile
 (self-contained, single-file, ready-to-run), then either compiles the Inno
-Setup installer (if `ISCC.exe` is on PATH) or produces a zip with the
-launcher next to the exe. Both artefacts land in `dist/`.
+Setup installer or produces a zip with the launcher next to the exe. Both
+artefacts land in `dist/`.
+
+To compile the installer, install [Inno Setup](https://jrsoftware.org/isdl.php)
+(v6 or v7). The script finds `ISCC.exe` on PATH, or by probing the standard
+install locations (`%ProgramFiles%\Inno Setup 6|7\` and the `(x86)` variants),
+so no PATH edit is needed. If `ISCC.exe` isn't found anywhere, the script
+produces the zip fallback only.
 
 ## Installing (non-technical user)
 
