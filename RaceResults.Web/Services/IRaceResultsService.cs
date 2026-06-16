@@ -5,7 +5,7 @@ namespace RaceResults.Web.Services;
 
 public interface IRaceResultsService
 {
-    RaceEvent GetCurrentEvent();
+    RaceEvent? GetCurrentEvent();
     IReadOnlyList<RaceEvent> GetEvents();
     OperationResult CreateEvent(CreateEventInput input);
     OperationResult UpdateEvent(EditEventInput input);

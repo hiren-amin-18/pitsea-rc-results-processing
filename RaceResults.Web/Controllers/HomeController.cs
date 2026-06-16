@@ -22,8 +22,9 @@ public class HomeController : Controller
         var currentEvent = _raceResultsService.GetCurrentEvent();
         var model = new HomeDashboardViewModel
         {
-            CurrentEventName = currentEvent.EventName,
-            CurrentEventDate = currentEvent.EventDate,
+            HasCurrentEvent = currentEvent is not null,
+            CurrentEventName = currentEvent?.EventName ?? string.Empty,
+            CurrentEventDate = currentEvent?.EventDate,
             Entrants = counts.EntrantCount,
             FinishBibRows = counts.FinishBibCount,
             TimingRows = counts.TimingCount,

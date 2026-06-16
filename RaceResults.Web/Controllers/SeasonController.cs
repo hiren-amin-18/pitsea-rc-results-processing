@@ -19,14 +19,14 @@ public class SeasonController : Controller
     [HttpGet]
     public IActionResult Review(int? year)
     {
-        var seasonYear = year ?? _raceResultsService.GetCurrentEvent().EventDate.Year;
+        var seasonYear = year ?? _raceResultsService.GetCurrentEvent()?.EventDate.Year ?? DateTime.Today.Year;
         return View(_review.Build(seasonYear));
     }
 
     [HttpGet]
     public IActionResult ReviewPdf(int? year)
     {
-        var seasonYear = year ?? _raceResultsService.GetCurrentEvent().EventDate.Year;
+        var seasonYear = year ?? _raceResultsService.GetCurrentEvent()?.EventDate.Year ?? DateTime.Today.Year;
         var bytes = _review.GeneratePdf(seasonYear);
         return File(bytes, "application/pdf", $"season-review-{seasonYear}.pdf");
     }
@@ -34,14 +34,14 @@ public class SeasonController : Controller
     [HttpGet]
     public IActionResult Dashboard(int? year)
     {
-        var seasonYear = year ?? _raceResultsService.GetCurrentEvent().EventDate.Year;
+        var seasonYear = year ?? _raceResultsService.GetCurrentEvent()?.EventDate.Year ?? DateTime.Today.Year;
         return View(_season.GetSeasonDashboard(seasonYear));
     }
 
     [HttpGet]
     public IActionResult Runner(int id, int? year)
     {
-        var seasonYear = year ?? _raceResultsService.GetCurrentEvent().EventDate.Year;
+        var seasonYear = year ?? _raceResultsService.GetCurrentEvent()?.EventDate.Year ?? DateTime.Today.Year;
         var profile = _season.GetRunnerSeasonProfile(id, seasonYear);
         if (profile is null)
         {

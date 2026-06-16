@@ -26,7 +26,7 @@ public class RaceResultsService : IRaceResultsService
         _logger = logger;
     }
 
-    public RaceEvent GetCurrentEvent()
+    public RaceEvent? GetCurrentEvent()
     {
         using var db = _dbContextFactory.CreateDbContext();
         return EnsureCurrentEvent(db);
@@ -51,7 +51,10 @@ public class RaceResultsService : IRaceResultsService
 
         using var db = _dbContextFactory.CreateDbContext();
         var existingCurrent = EnsureCurrentEvent(db);
-        existingCurrent.IsCurrent = false;
+        if (existingCurrent is not null)
+        {
+            existingCurrent.IsCurrent = false;
+        }
 
         var entity = new RaceEvent
         {
@@ -144,12 +147,10 @@ public class RaceResultsService : IRaceResultsService
 
         if (!db.Events.Any(e => e.IsCurrent))
         {
-            var next = db.Events.OrderByDescending(e => e.EventDate).FirstOrDefault();
-            if (next is null)
-            {
-                EnsureCurrentEvent(db);
-            }
-            else
+            // Promote the next-most-recent event if any remain; otherwise leave the DB empty
+            // and let the app's empty-events state take over.
+            var next = db.Events.Where(e => !e.IsArchived).OrderByDescending(e => e.EventDate).FirstOrDefault();
+            if (next is not null)
             {
                 next.IsCurrent = true;
                 db.SaveChanges();
@@ -191,11 +192,7 @@ public class RaceResultsService : IRaceResultsService
 
         db.SaveChanges();
 
-        // If no non-archived event remained to be current, create a fresh default current event.
-        if (!db.Events.Any(e => e.IsCurrent))
-        {
-            EnsureCurrentEvent(db);
-        }
+        // If no non-archived event remained, leave the DB without a current event — the empty state covers it.
 
         _logger.LogInformation("Archived event {EventId} ('{Name}').", eventId, target.EventName);
         return OperationResult.Ok($"'{target.EventName}' archived and is now read-only.");
@@ -272,7 +269,12 @@ public class RaceResultsService : IRaceResultsService
     public RaceStatusCounts GetStatusCounts()
     {
         using var db = _dbContextFactory.CreateDbContext();
-        var currentEventId = EnsureCurrentEvent(db).Id;
+        var current = EnsureCurrentEvent(db);
+        if (current is null)
+        {
+            return new RaceStatusCounts(0, 0, 0);
+        }
+        var currentEventId = current.Id;
         return new RaceStatusCounts(
             db.Entrants.Count(e => e.EventId == currentEventId),
             db.FinishBibRecords.Count(r => r.EventId == currentEventId),
@@ -339,6 +341,10 @@ public class RaceResultsService : IRaceResultsService
 
         await using var db = _dbContextFactory.CreateDbContext();
         var currentEvent = await EnsureCurrentEventAsync(db);
+        if (currentEvent is null)
+        {
+            return OperationResult.Fail(new[] { "Create an event first before uploading entrants." });
+        }
         if (currentEvent.IsArchived)
         {
             return OperationResult.Fail(new[] { ArchivedMessage });
@@ -475,6 +481,10 @@ public class RaceResultsService : IRaceResultsService
 
         await using var checkDb = _dbContextFactory.CreateDbContext();
         var currentEvent = await EnsureCurrentEventAsync(checkDb);
+        if (currentEvent is null)
+        {
+            return OperationResult.Fail(new[] { "Create an event first before uploading finish positions." });
+        }
         if (currentEvent.IsArchived)
         {
             return OperationResult.Fail(new[] { ArchivedMessage });
@@ -546,6 +556,10 @@ public class RaceResultsService : IRaceResultsService
 
         await using var db = _dbContextFactory.CreateDbContext();
         var currentEvent = await EnsureCurrentEventAsync(db);
+        if (currentEvent is null)
+        {
+            return OperationResult.Fail(new[] { "Create an event first before uploading timings." });
+        }
         if (currentEvent.IsArchived)
         {
             return OperationResult.Fail(new[] { ArchivedMessage });
@@ -658,8 +672,8 @@ public class RaceResultsService : IRaceResultsService
     public IReadOnlyList<ResultRecord> GetCollatedResults()
     {
         using var db = _dbContextFactory.CreateDbContext();
-        var currentEventId = EnsureCurrentEvent(db).Id;
-        return GetCollatedResultsForEvent(db, currentEventId);
+        var current = EnsureCurrentEvent(db);
+        return current is null ? Array.Empty<ResultRecord>() : GetCollatedResultsForEvent(db, current.Id);
     }
 
     public IReadOnlyList<ResultRecord> GetCollatedResults(int eventId)
@@ -718,7 +732,11 @@ public class RaceResultsService : IRaceResultsService
             .ToList();
     }
 
-    public IReadOnlyList<ResultRecord> GetDsqResults() => GetDsqResults(CurrentEventId());
+    public IReadOnlyList<ResultRecord> GetDsqResults()
+    {
+        var id = CurrentEventId();
+        return id is null ? Array.Empty<ResultRecord>() : GetDsqResults(id.Value);
+    }
 
     public IReadOnlyList<ResultRecord> GetDsqResults(int eventId)
     {
@@ -728,7 +746,11 @@ public class RaceResultsService : IRaceResultsService
             .ToList();
     }
 
-    public IReadOnlyList<Entrant> GetDnfEntrants() => GetDnfEntrants(CurrentEventId());
+    public IReadOnlyList<Entrant> GetDnfEntrants()
+    {
+        var id = CurrentEventId();
+        return id is null ? Array.Empty<Entrant>() : GetDnfEntrants(id.Value);
+    }
 
     public IReadOnlyList<Entrant> GetDnfEntrants(int eventId)
     {
@@ -743,7 +765,11 @@ public class RaceResultsService : IRaceResultsService
             .ToList();
     }
 
-    public IReadOnlyList<Entrant> GetDnsEntrants() => GetDnsEntrants(CurrentEventId());
+    public IReadOnlyList<Entrant> GetDnsEntrants()
+    {
+        var id = CurrentEventId();
+        return id is null ? Array.Empty<Entrant>() : GetDnsEntrants(id.Value);
+    }
 
     public IReadOnlyList<Entrant> GetDnsEntrants(int eventId)
     {
@@ -757,7 +783,11 @@ public class RaceResultsService : IRaceResultsService
             .ToList();
     }
 
-    public RaceStats GetRaceStats() => GetRaceStats(CurrentEventId());
+    public RaceStats GetRaceStats()
+    {
+        var id = CurrentEventId();
+        return id is null ? new RaceStats() : GetRaceStats(id.Value);
+    }
 
     public RaceStats GetRaceStats(int eventId)
     {
@@ -780,19 +810,23 @@ public class RaceResultsService : IRaceResultsService
         };
     }
 
-    private int CurrentEventId()
+    private int? CurrentEventId()
     {
         using var db = _dbContextFactory.CreateDbContext();
-        return EnsureCurrentEvent(db).Id;
+        return EnsureCurrentEvent(db)?.Id;
     }
 
-    private RaceEvent GetEventById(int eventId)
+    private RaceEvent? GetEventById(int eventId)
     {
         using var db = _dbContextFactory.CreateDbContext();
         return db.Events.FirstOrDefault(e => e.Id == eventId) ?? EnsureCurrentEvent(db);
     }
 
-    public RaceStatisticsSummary GetRaceStatisticsSummary() => GetRaceStatisticsSummary(CurrentEventId());
+    public RaceStatisticsSummary GetRaceStatisticsSummary()
+    {
+        var id = CurrentEventId();
+        return id is null ? new RaceStatisticsSummary() : GetRaceStatisticsSummary(id.Value);
+    }
 
     public RaceStatisticsSummary GetRaceStatisticsSummary(int eventId)
     {
@@ -910,7 +944,13 @@ public class RaceResultsService : IRaceResultsService
     public bool TryGetEditableResult(int position, out EditResultInput editInput)
     {
         using var db = _dbContextFactory.CreateDbContext();
-        var currentEventId = EnsureCurrentEvent(db).Id;
+        var current = EnsureCurrentEvent(db);
+        if (current is null)
+        {
+            editInput = new EditResultInput();
+            return false;
+        }
+        var currentEventId = current.Id;
         var row = db.FinishBibRecords.FirstOrDefault(r => r.EventId == currentEventId && r.Position == position);
         if (row is null)
         {
@@ -974,7 +1014,12 @@ public class RaceResultsService : IRaceResultsService
         }
 
         using var db = _dbContextFactory.CreateDbContext();
-        var currentEventId = EnsureCurrentEvent(db).Id;
+        var currentForUpdate = EnsureCurrentEvent(db);
+        if (currentForUpdate is null)
+        {
+            return OperationResult.Fail(new[] { "No current event." });
+        }
+        var currentEventId = currentForUpdate.Id;
         if (RejectIfArchived(db, currentEventId) is { } archived)
         {
             return archived;
@@ -1071,7 +1116,12 @@ public class RaceResultsService : IRaceResultsService
         }
 
         using var db = _dbContextFactory.CreateDbContext();
-        var currentEventId = EnsureCurrentEvent(db).Id;
+        var currentForDsq = EnsureCurrentEvent(db);
+        if (currentForDsq is null)
+        {
+            return OperationResult.Fail(new[] { "No current event." });
+        }
+        var currentEventId = currentForDsq.Id;
         if (RejectIfArchived(db, currentEventId) is { } archived)
         {
             return archived;
@@ -1100,7 +1150,12 @@ public class RaceResultsService : IRaceResultsService
     public OperationResult ReinstateResult(int position)
     {
         using var db = _dbContextFactory.CreateDbContext();
-        var currentEventId = EnsureCurrentEvent(db).Id;
+        var currentForReinstate = EnsureCurrentEvent(db);
+        if (currentForReinstate is null)
+        {
+            return OperationResult.Fail(new[] { "No current event." });
+        }
+        var currentEventId = currentForReinstate.Id;
         if (RejectIfArchived(db, currentEventId) is { } archived)
         {
             return archived;
@@ -1134,7 +1189,12 @@ public class RaceResultsService : IRaceResultsService
         }
 
         using var db = _dbContextFactory.CreateDbContext();
-        var currentEventId = EnsureCurrentEvent(db).Id;
+        var currentForStatus = EnsureCurrentEvent(db);
+        if (currentForStatus is null)
+        {
+            return OperationResult.Fail(new[] { "No current event." });
+        }
+        var currentEventId = currentForStatus.Id;
         if (RejectIfArchived(db, currentEventId) is { } archived)
         {
             return archived;
@@ -1160,14 +1220,14 @@ public class RaceResultsService : IRaceResultsService
         return OperationResult.Ok($"Marked {entrant.Name} as {label}.");
     }
 
-    public byte[] GenerateResultsPdf() => GenerateResultsPdf(CurrentEventId());
+    public byte[] GenerateResultsPdf() => GenerateResultsPdf(CurrentEventId() ?? throw new InvalidOperationException("No current event."));
 
     public byte[] GenerateResultsPdf(int eventId)
     {
         var collated = GetCollatedResults(eventId);
         var dnfEntrants = GetDnfEntrants(eventId);
         var dsqResults = GetDsqResults(eventId);
-        var currentEvent = GetEventById(eventId);
+        var currentEvent = GetEventById(eventId) ?? throw new InvalidOperationException("Event not found.");
         var courseRecords = LoadCurrentCourseRecords(currentEvent.EventType);
         var logoBytes = TryLoadPdfLogo();
 
@@ -1263,7 +1323,7 @@ public class RaceResultsService : IRaceResultsService
         return document.GeneratePdf();
     }
 
-    public byte[] GenerateResultsCsv() => GenerateResultsCsv(CurrentEventId());
+    public byte[] GenerateResultsCsv() => GenerateResultsCsv(CurrentEventId() ?? throw new InvalidOperationException("No current event."));
 
     public byte[] GenerateResultsCsv(int eventId)
     {
@@ -1339,9 +1399,9 @@ public class RaceResultsService : IRaceResultsService
         return memory.ToArray();
     }
 
-    public string GetResultsCsvFileName() => $"{BuildEventSlug(GetCurrentEvent())}-results.csv";
+    public string GetResultsCsvFileName() => $"{BuildEventSlug(GetCurrentEvent() ?? throw new InvalidOperationException("No current event."))}-results.csv";
 
-    public string GetResultsCsvFileName(int eventId) => $"{BuildEventSlug(GetEventById(eventId))}-results.csv";
+    public string GetResultsCsvFileName(int eventId) => $"{BuildEventSlug(GetEventById(eventId) ?? throw new InvalidOperationException("Event not found."))}-results.csv";
 
     private static string BuildEventSlug(RaceEvent raceEvent)
     {
@@ -1526,7 +1586,7 @@ public class RaceResultsService : IRaceResultsService
             .PaddingHorizontal(6);
     }
 
-    private static async Task<RaceEvent> EnsureCurrentEventAsync(RaceResultsDbContext db)
+    private static async Task<RaceEvent?> EnsureCurrentEventAsync(RaceResultsDbContext db)
     {
         var current = await db.Events.FirstOrDefaultAsync(e => e.IsCurrent);
         if (current is not null)
@@ -1534,8 +1594,8 @@ public class RaceResultsService : IRaceResultsService
             return current;
         }
 
-        // An archived event must never become current (US20); only a non-archived event can be promoted,
-        // otherwise fall through and create a fresh default current event.
+        // Promote-only: an archived event must never become current (US20); only a non-archived event can be promoted.
+        // When no events exist at all, return null — the app's empty state takes over (no auto-seeding).
         var existing = await db.Events.Where(e => !e.IsArchived).OrderByDescending(e => e.EventDate).FirstOrDefaultAsync();
         if (existing is not null)
         {
@@ -1544,20 +1604,10 @@ public class RaceResultsService : IRaceResultsService
             return existing;
         }
 
-        var created = new RaceEvent
-        {
-            EventName = "Crown to Crown",
-            EventDate = new DateTime(2026, 4, 3), // Good Friday 2026, the series' first race
-            EventType = EventType.CrownToCrown,
-            IsCurrent = true
-        };
-
-        db.Events.Add(created);
-        await db.SaveChangesAsync();
-        return created;
+        return null;
     }
 
-    private static RaceEvent EnsureCurrentEvent(RaceResultsDbContext db)
+    private static RaceEvent? EnsureCurrentEvent(RaceResultsDbContext db)
     {
         var current = db.Events.FirstOrDefault(e => e.IsCurrent);
         if (current is not null)
@@ -1565,7 +1615,6 @@ public class RaceResultsService : IRaceResultsService
             return current;
         }
 
-        // Prefer a non-archived event when promoting; archived events can never be current (US20).
         var existing = db.Events.Where(e => !e.IsArchived).OrderByDescending(e => e.EventDate).FirstOrDefault();
         if (existing is not null)
         {
@@ -1574,17 +1623,7 @@ public class RaceResultsService : IRaceResultsService
             return existing;
         }
 
-        var created = new RaceEvent
-        {
-            EventName = "Crown to Crown",
-            EventDate = new DateTime(2026, 4, 3), // Good Friday 2026, the series' first race
-            EventType = EventType.CrownToCrown,
-            IsCurrent = true
-        };
-
-        db.Events.Add(created);
-        db.SaveChanges();
-        return created;
+        return null;
     }
 
 

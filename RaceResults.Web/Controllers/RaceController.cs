@@ -63,7 +63,7 @@ public class RaceController : Controller
         if (result.Success)
         {
             var currentEvent = _raceResultsService.GetCurrentEvent();
-            if (currentEvent.EventType == EventType.CrownToCrown)
+            if (currentEvent is not null && currentEvent.EventType == EventType.CrownToCrown)
             {
                 try
                 {
@@ -83,10 +83,18 @@ public class RaceController : Controller
     public IActionResult Results(int? eventId)
     {
         var currentEvent = _raceResultsService.GetCurrentEvent();
+        if (currentEvent is null && !eventId.HasValue)
+        {
+            return RedirectToAction("Index", "Events");
+        }
         var viewed = eventId.HasValue
             ? _raceResultsService.GetEvents().FirstOrDefault(e => e.Id == eventId.Value) ?? currentEvent
             : currentEvent;
-        var readOnly = viewed.Id != currentEvent.Id;
+        if (viewed is null)
+        {
+            return RedirectToAction("Index", "Events");
+        }
+        var readOnly = currentEvent is null || viewed.Id != currentEvent.Id;
 
         var model = new ResultsPageViewModel
         {
@@ -95,7 +103,7 @@ public class RaceController : Controller
             DnsEntrants = _raceResultsService.GetDnsEntrants(viewed.Id).ToList(),
             DsqResults = _raceResultsService.GetDsqResults(viewed.Id).ToList(),
             // Course-record confirmation only applies to the current (editable) event.
-            PendingCourseRecords = readOnly ? new() : _courseRecordService.GetPendingRecords(currentEvent.Id).ToList(),
+            PendingCourseRecords = readOnly ? new() : _courseRecordService.GetPendingRecords(currentEvent!.Id).ToList(),
             IsReadOnly = readOnly,
             ViewedEventId = viewed.Id,
             ViewedEventName = viewed.EventName,
@@ -110,6 +118,10 @@ public class RaceController : Controller
     public IActionResult ConfirmCourseRecord(string category)
     {
         var currentEvent = _raceResultsService.GetCurrentEvent();
+        if (currentEvent is null)
+        {
+            return RedirectToAction("Index", "Events");
+        }
         var result = _courseRecordService.ConfirmRecord(currentEvent.Id, category);
         StoreFeedback(result);
         return RedirectToAction(nameof(Results));
@@ -138,7 +150,7 @@ public class RaceController : Controller
         }
 
         var currentEvent = _raceResultsService.GetCurrentEvent();
-        if (currentEvent.EventType == EventType.CrownToCrown)
+        if (currentEvent is not null && currentEvent.EventType == EventType.CrownToCrown)
         {
             try
             {
@@ -163,7 +175,7 @@ public class RaceController : Controller
         if (result.Success)
         {
             var currentEvent = _raceResultsService.GetCurrentEvent();
-            if (currentEvent.EventType == EventType.CrownToCrown)
+            if (currentEvent is not null && currentEvent.EventType == EventType.CrownToCrown)
             {
                 try
                 {
@@ -220,7 +232,7 @@ public class RaceController : Controller
 
         // Recalculate Champions of Champions if this is a Crown to Crown event
         var currentEvent = _raceResultsService.GetCurrentEvent();
-        if (currentEvent.EventType == EventType.CrownToCrown)
+        if (currentEvent is not null && currentEvent.EventType == EventType.CrownToCrown)
         {
             try
             {
@@ -238,9 +250,13 @@ public class RaceController : Controller
     [HttpGet]
     public IActionResult Stats(int? eventId)
     {
-        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent().Id;
-        var stats = _raceResultsService.GetRaceStats(viewedId);
-        var results = _raceResultsService.GetCollatedResults(viewedId);
+        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent()?.Id;
+        if (viewedId is null)
+        {
+            return RedirectToAction("Index", "Events");
+        }
+        var stats = _raceResultsService.GetRaceStats(viewedId.Value);
+        var results = _raceResultsService.GetCollatedResults(viewedId.Value);
 
         var clubBreakdown = results
             .GroupBy(r => string.IsNullOrWhiteSpace(r.Club) ? "Unaffiliated" : r.Club, StringComparer.OrdinalIgnoreCase)
@@ -261,7 +277,7 @@ public class RaceController : Controller
         var model = new RaceStatsDashboardViewModel
         {
             Stats = stats,
-            Summary = _raceResultsService.GetRaceStatisticsSummary(viewedId),
+            Summary = _raceResultsService.GetRaceStatisticsSummary(viewedId.Value),
             ClubBreakdown = clubBreakdown,
             FinishersPerMinute = finishersPerMinute
         };
@@ -272,25 +288,37 @@ public class RaceController : Controller
     [HttpGet]
     public IActionResult Top10(int? eventId)
     {
-        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent().Id;
-        var model = _raceResultsService.GetTopTenByCategory(viewedId);
+        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent()?.Id;
+        if (viewedId is null)
+        {
+            return RedirectToAction("Index", "Events");
+        }
+        var model = _raceResultsService.GetTopTenByCategory(viewedId.Value);
         return View(model);
     }
 
     [HttpGet]
     public IActionResult ExportPdf(int? eventId)
     {
-        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent().Id;
-        var bytes = _raceResultsService.GenerateResultsPdf(viewedId);
+        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent()?.Id;
+        if (viewedId is null)
+        {
+            return RedirectToAction("Index", "Events");
+        }
+        var bytes = _raceResultsService.GenerateResultsPdf(viewedId.Value);
         return File(bytes, "application/pdf", "race-results.pdf");
     }
 
     [HttpGet]
     public IActionResult ExportCsv(int? eventId)
     {
-        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent().Id;
-        var bytes = _raceResultsService.GenerateResultsCsv(viewedId);
-        return File(bytes, "text/csv", _raceResultsService.GetResultsCsvFileName(viewedId));
+        var viewedId = eventId ?? _raceResultsService.GetCurrentEvent()?.Id;
+        if (viewedId is null)
+        {
+            return RedirectToAction("Index", "Events");
+        }
+        var bytes = _raceResultsService.GenerateResultsCsv(viewedId.Value);
+        return File(bytes, "text/csv", _raceResultsService.GetResultsCsvFileName(viewedId.Value));
     }
 
     private void StoreFeedback(OperationResult result)

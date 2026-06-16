@@ -20,6 +20,14 @@
     <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
 }
 
+@if (!Model.Events.Any())
+{
+    <div class="alert alert-info">
+        No events yet. Use <strong>Create Event</strong> or <strong>Generate Season</strong> above to get started.
+    </div>
+    return;
+}
+
 <table class="table table-striped align-middle">
     <thead>
         <tr>

@@ -135,7 +135,12 @@ public class ChampionsOfChampionsService : IChampionsOfChampionsService
     {
         // The season is determined by the current event's date, not wall-clock time, so the
         // leaderboard stays correct when viewing historical data or across a calendar boundary.
-        var currentSeasonYear = _raceResultsService.GetCurrentEvent().EventDate.Year;
+        var currentEvent = _raceResultsService.GetCurrentEvent();
+        if (currentEvent is null)
+        {
+            return Array.Empty<ChampionsLeaderboardEntry>();
+        }
+        var currentSeasonYear = currentEvent.EventDate.Year;
         return await GetLeaderboardAsync(currentSeasonYear, asOfEventId);
     }
 

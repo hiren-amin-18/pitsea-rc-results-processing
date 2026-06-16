@@ -27,6 +27,12 @@ public class ChampionsController : Controller
     public async Task<IActionResult> Leaderboard(int? eventId, int? year)
     {
         var currentEvent = _raceResultsService.GetCurrentEvent();
+        if (currentEvent is null)
+        {
+            TempData["FeedbackType"] = "warning";
+            TempData["FeedbackText"] = "Create an event first to view the leaderboard.";
+            return RedirectToAction("Index", "Events");
+        }
         int seasonYear = year ?? currentEvent.EventDate.Year;
         var leaderboard = await _championsService.GetLeaderboardAsync(seasonYear, eventId);
 
@@ -62,6 +68,10 @@ public class ChampionsController : Controller
     public async Task<IActionResult> ExportPdf(int? eventId, int? year)
     {
         var currentEvent = _raceResultsService.GetCurrentEvent();
+        if (currentEvent is null)
+        {
+            return RedirectToAction("Index", "Events");
+        }
         int seasonYear = year ?? currentEvent.EventDate.Year;
         var leaderboard = await _championsService.GetLeaderboardAsync(seasonYear, eventId);
 
@@ -76,6 +86,10 @@ public class ChampionsController : Controller
     public async Task<IActionResult> ExportCsv(int? eventId, int? year)
     {
         var currentEvent = _raceResultsService.GetCurrentEvent();
+        if (currentEvent is null)
+        {
+            return RedirectToAction("Index", "Events");
+        }
         int seasonYear = year ?? currentEvent.EventDate.Year;
         var leaderboard = await _championsService.GetLeaderboardAsync(seasonYear, eventId);
 

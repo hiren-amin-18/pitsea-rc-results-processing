@@ -31,6 +31,20 @@ public class EventManagementTests : RaceResultsServiceTestBase
     }
 
     [Fact]
+    public void DeleteEvent_OnLastEvent_LeavesDbEmpty()
+    {
+        // Delete the seeded default event so nothing remains.
+        var only = Service.GetCurrentEvent();
+        Assert.NotNull(only);
+
+        var deleteResult = Service.DeleteEvent(only!.Id);
+
+        Assert.True(deleteResult.Success);
+        Assert.Empty(Service.GetEvents());
+        Assert.Null(Service.GetCurrentEvent());
+    }
+
+    [Fact]
     public void DeleteEvent_RemovesItAndKeepsCurrentEvent()
     {
         Service.CreateEvent(new Web.Models.CreateEventInput

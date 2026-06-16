@@ -6,7 +6,14 @@
 <div class="p-4 mb-4 bg-light rounded-3">
     <h1>Pitsea RC Race Result Processor</h1>
     <p class="lead mb-0">Upload race files, validate data, collate results, edit rows, view stats, and export PDF.</p>
-    <p class="mb-0 mt-2"><strong>Current event:</strong> @Model.CurrentEventName (@Model.CurrentEventDate.ToString("dd MMM yyyy"))</p>
+    @if (Model.HasCurrentEvent)
+    {
+        <p class="mb-0 mt-2"><strong>Current event:</strong> @Model.CurrentEventName (@Model.CurrentEventDate!.Value.ToString("dd MMM yyyy"))</p>
+    }
+    else
+    {
+        <p class="mb-0 mt-2 text-muted">No events yet — <a asp-controller="Events" asp-action="Create">create the first event</a> to get started.</p>
+    }
 </div>
 
 <div class="row g-3 mb-4">

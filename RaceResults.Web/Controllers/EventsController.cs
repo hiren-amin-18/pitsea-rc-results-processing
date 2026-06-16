@@ -48,8 +48,8 @@ public class EventsController : Controller
         var current = _raceResultsService.GetCurrentEvent();
         var model = new EventsPageViewModel
         {
-            CurrentEventId = current.Id,
-            Events = _raceResultsService.GetEvents().ToList()
+            CurrentEventId = current?.Id,
+            Events = _raceResultsService.GetEvents().OrderBy(e => e.EventDate).ThenBy(e => e.EventName).ToList()
         };
 
         return View(model);
