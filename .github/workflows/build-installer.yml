@@ -1,0 +1,56 @@
+name: Build Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to build
+        required: true
+        default: 1.0.0
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup -y
+
+      - name: Determine version
+        id: version
+        shell: powershell
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $v = "${{ github.event.inputs.version }}"
+          } else {
+            $v = "${{ github.ref_name }}".TrimStart("v")
+          }
+          "value=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Build installer
+        shell: powershell
+        run: .\installer\build-installer.ps1 -Version "${{ steps.version.outputs.value }}"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ steps.version.outputs.value }}
+          path: dist/*
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
