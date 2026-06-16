@@ -38,10 +38,25 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed." }
 # Copy the launcher into the publish output so a zip fallback is self-sufficient.
 Copy-Item (Join-Path $PSScriptRoot "PitseaRaceResults.cmd") -Destination $publishDir -Force
 
-$iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue)
-if ($iscc) {
-    Write-Host "==> Inno Setup found at $($iscc.Source); compiling installer..."
-    & $iscc.Source "/DAppVersion=$Version" (Join-Path $PSScriptRoot "PitseaRaceResults.iss")
+$isccPath = $null
+$onPath = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+if ($onPath) {
+    $isccPath = $onPath.Source
+} else {
+    # Inno Setup's installer does not put ISCC.exe on PATH by default; probe the
+    # standard install locations for v6/v7 in both Program Files trees.
+    $candidates = @(
+        "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+        "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
+        "${env:ProgramFiles(x86)}\Inno Setup 7\ISCC.exe",
+        "${env:ProgramFiles}\Inno Setup 7\ISCC.exe"
+    )
+    $isccPath = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+}
+
+if ($isccPath) {
+    Write-Host "==> Inno Setup found at $isccPath; compiling installer..."
+    & $isccPath "/DAppVersion=$Version" (Join-Path $PSScriptRoot "PitseaRaceResults.iss")
     if ($LASTEXITCODE -ne 0) { throw "ISCC failed." }
     Write-Host "==> Installer written to $distDir"
 } else {
