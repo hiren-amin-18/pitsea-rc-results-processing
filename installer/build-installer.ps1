@@ -46,7 +46,7 @@ if ($iscc) {
     Write-Host "==> Installer written to $distDir"
 } else {
     $zipPath = Join-Path $distDir "PitseaRaceResults-$Version-win-x64.zip"
-    Write-Host "==> Inno Setup not on PATH — producing zip fallback at $zipPath"
+    Write-Host "==> Inno Setup not on PATH - producing zip fallback at $zipPath"
     if (Test-Path $zipPath) { Remove-Item $zipPath }
     Compress-Archive -Path (Join-Path $publishDir "*") -DestinationPath $zipPath
     Write-Host "==> Zip written. To install: unzip, then run PitseaRaceResults.cmd."

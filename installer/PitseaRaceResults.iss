@@ -1,4 +1,4 @@
-; US25 — Pitsea RC Race Results installer (Inno Setup).
+; US25 - Pitsea RC Race Results installer (Inno Setup).
 ; Build the publish output first:
 ;   dotnet publish RaceResults.Web/RaceResults.Web.csproj -c Release -p:PublishProfile=win-x64-installer
 ; Then compile:
