@@ -293,16 +293,37 @@ public class RaceResultsService : IRaceResultsService
         var errors = new List<string>();
         var parsedEntrants = new List<Entrant>();
 
-        foreach (var file in uploaded)
+        // Resolve current event up-front so the parser can dispatch on EventType (US33).
+        await using (var lookupDb = await _dbContextFactory.CreateDbContextAsync())
         {
-            if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+            var lookupEvent = await EnsureCurrentEventAsync(lookupDb);
+            if (lookupEvent is null)
             {
-                errors.Add($"{file.FileName}: only .xlsx files are supported for entrants.");
-                continue;
+                return OperationResult.Fail(new[] { "Create an event first before uploading entrants." });
+            }
+            if (lookupEvent.IsArchived)
+            {
+                return OperationResult.Fail(new[] { ArchivedMessage });
             }
 
-            await using var stream = file.OpenReadStream();
-            ParseEntrantsWorkbook(stream, file.FileName, parsedEntrants, errors);
+            foreach (var file in uploaded)
+            {
+                if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add($"{file.FileName}: only .xlsx files are supported for entrants.");
+                    continue;
+                }
+
+                await using var stream = file.OpenReadStream();
+                if (lookupEvent.EventType == EventType.Bluebell5)
+                {
+                    ParseEntrantsWorkbookBluebell(stream, file.FileName, parsedEntrants, errors);
+                }
+                else
+                {
+                    ParseEntrantsWorkbookCrownToCrown(stream, file.FileName, parsedEntrants, errors);
+                }
+            }
         }
 
         var duplicateBibs = parsedEntrants
@@ -920,18 +941,31 @@ public class RaceResultsService : IRaceResultsService
 
     public IReadOnlyList<TopTenCategory> GetTopTenByCategory()
     {
-        var collated = GetCollatedResults();
-        return BuildTopTenFromCollated(collated);
+        var id = CurrentEventId();
+        return id is null ? Array.Empty<TopTenCategory>() : GetTopTenByCategory(id.Value);
     }
 
     public IReadOnlyList<TopTenCategory> GetTopTenByCategory(int eventId)
     {
         var collated = GetCollatedResults(eventId);
-        return BuildTopTenFromCollated(collated);
+        var eventType = GetEventById(eventId)?.EventType ?? EventType.CrownToCrown;
+        return BuildTopTenFromCollated(collated, eventType);
     }
 
-    private static IReadOnlyList<TopTenCategory> BuildTopTenFromCollated(IReadOnlyList<ResultRecord> collated)
+    private static IReadOnlyList<TopTenCategory> BuildTopTenFromCollated(IReadOnlyList<ResultRecord> collated, EventType eventType)
     {
+        // Bluebell 5 has no U18 category; Vet (M40+, F35+) replaces Youth (US33 AC9).
+        if (eventType == EventType.Bluebell5)
+        {
+            return new List<TopTenCategory>
+            {
+                BuildTopTen("Male", collated, e => IsMale(e.Gender)),
+                BuildTopTen("Female", collated, e => IsFemale(e.Gender)),
+                BuildTopTen("Vet Male", collated, e => IsMale(e.Gender) && e.IsVet),
+                BuildTopTen("Vet Female", collated, e => IsFemale(e.Gender) && e.IsVet)
+            };
+        }
+
         return new List<TopTenCategory>
         {
             BuildTopTen("Male", collated, e => IsMale(e.Gender) && !e.IsU18),
@@ -969,7 +1003,9 @@ public class RaceResultsService : IRaceResultsService
             Club = entrant?.Club,
             Gender = entrant?.Gender ?? string.Empty,
             Age = entrant?.Age,
-            Time = timing?.Time ?? string.Empty
+            Time = timing?.Time ?? string.Empty,
+            IsVet = entrant?.IsVet ?? false,
+            IsBluebell = current.EventType == EventType.Bluebell5
         };
 
         return true;
@@ -1231,10 +1267,18 @@ public class RaceResultsService : IRaceResultsService
         var courseRecords = LoadCurrentCourseRecords(currentEvent.EventType);
         var logoBytes = TryLoadPdfLogo();
 
+        var isBluebell = currentEvent.EventType == EventType.Bluebell5;
+
+        // C2C winners (overall + youth). For Bluebell these slots are unused.
         var maleWinner = FindWinner(collated, e => IsMale(e.Gender) && !e.IsU18);
         var femaleWinner = FindWinner(collated, e => IsFemale(e.Gender) && !e.IsU18);
         var maleYouthWinner = FindWinner(collated, e => IsMale(e.Gender) && e.IsU18);
         var femaleYouthWinner = FindWinner(collated, e => IsFemale(e.Gender) && e.IsU18);
+
+        // Bluebell winners — top 3 M/F by finish time, plus the first vet of each gender outside the top 3 (US33 AC6).
+        var bluebellWinners = isBluebell
+            ? BluebellWinnerSelection.Select(collated)
+            : new BluebellWinners(Array.Empty<ResultRecord>(), Array.Empty<ResultRecord>(), null, null);
 
         var document = Document.Create(container =>
         {
@@ -1250,14 +1294,28 @@ public class RaceResultsService : IRaceResultsService
                 {
                     column.Spacing(6);
 
-                    column.Item().ShowOnce().Element(x => BuildPdfWinnersBlock(
-                        x,
-                        maleWinner,
-                        femaleWinner,
-                        maleYouthWinner,
-                        femaleYouthWinner,
-                        courseRecords,
-                        currentEvent.Id));
+                    if (isBluebell)
+                    {
+                        column.Item().ShowOnce().Element(x => BuildPdfWinnersBlockBluebell(
+                            x,
+                            bluebellWinners.MaleTop3,
+                            bluebellWinners.FemaleTop3,
+                            bluebellWinners.VetMale,
+                            bluebellWinners.VetFemale,
+                            courseRecords,
+                            currentEvent.Id));
+                    }
+                    else
+                    {
+                        column.Item().ShowOnce().Element(x => BuildPdfWinnersBlock(
+                            x,
+                            maleWinner,
+                            femaleWinner,
+                            maleYouthWinner,
+                            femaleYouthWinner,
+                            courseRecords,
+                            currentEvent.Id));
+                    }
 
                     column.Item().Border(1).BorderColor(Colors.Black).Table(table =>
                     {
@@ -1566,6 +1624,65 @@ public class RaceResultsService : IRaceResultsService
         });
     }
 
+    /// <summary>Bluebell 5 winners block (US33 AC12) — 2 columns, 4 rows: 1st/2nd/3rd M&amp;F + 1st Vet M/F.</summary>
+    private static void BuildPdfWinnersBlockBluebell(
+        IContainer container,
+        IReadOnlyList<ResultRecord> maleTop3,
+        IReadOnlyList<ResultRecord> femaleTop3,
+        ResultRecord? maleVetWinner,
+        ResultRecord? femaleVetWinner,
+        IReadOnlyList<CourseRecord> courseRecords,
+        int currentEventId)
+    {
+        string MalePlace(int index) => index < maleTop3.Count ? WinnerText(maleTop3[index]) : "-";
+        string FemalePlace(int index) => index < femaleTop3.Count ? WinnerText(femaleTop3[index]) : "-";
+
+        container.PaddingTop(8).PaddingBottom(8).Column(column =>
+        {
+            column.Spacing(3);
+
+            column.Item().Row(row =>
+            {
+                row.RelativeItem().Text($"1st Male = {MalePlace(0)}").FontSize(11);
+                row.RelativeItem().AlignRight().Text($"1st Female = {FemalePlace(0)}").FontSize(11);
+            });
+            column.Item().Row(row =>
+            {
+                row.RelativeItem().Text($"2nd Male = {MalePlace(1)}").FontSize(11);
+                row.RelativeItem().AlignRight().Text($"2nd Female = {FemalePlace(1)}").FontSize(11);
+            });
+            column.Item().Row(row =>
+            {
+                row.RelativeItem().Text($"3rd Male = {MalePlace(2)}").FontSize(11);
+                row.RelativeItem().AlignRight().Text($"3rd Female = {FemalePlace(2)}").FontSize(11);
+            });
+            column.Item().Row(row =>
+            {
+                row.RelativeItem().Text($"1st Vet Male = {WinnerText(maleVetWinner)}").FontSize(11);
+                row.RelativeItem().AlignRight().Text($"1st Vet Female = {WinnerText(femaleVetWinner)}").FontSize(11);
+            });
+
+            if (courseRecords.Count > 0)
+            {
+                var parts = courseRecords.Select(r =>
+                    $"{RaceTime.Format(r.Duration)} {r.RunnerName} ({r.EventDate:MMMM yyyy})");
+                column.Item().PaddingTop(3).Text($"Course records - {string.Join("  ", parts)}")
+                    .SemiBold()
+                    .FontSize(11);
+
+                var newRecords = courseRecords.Where(r => r.SourceEventId == currentEventId).ToList();
+                if (newRecords.Count > 0)
+                {
+                    var newParts = newRecords.Select(r => $"{r.Category}: {RaceTime.Format(r.Duration)} {r.RunnerName}");
+                    column.Item().PaddingTop(2).Text($"NEW COURSE RECORD — {string.Join("; ", newParts)}")
+                        .Bold()
+                        .FontSize(11)
+                        .FontColor(Colors.Red.Darken2);
+                }
+            }
+        });
+    }
+
     private static IContainer HeaderCellStyle(IContainer container)
     {
         return container
@@ -1649,7 +1766,7 @@ public class RaceResultsService : IRaceResultsService
         return Normalize(gender).StartsWith("f", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void ParseEntrantsWorkbook(Stream stream, string fileName, List<Entrant> entrants, List<string> errors)
+    private static void ParseEntrantsWorkbookCrownToCrown(Stream stream, string fileName, List<Entrant> entrants, List<string> errors)
     {
         using var workbook = new XLWorkbook(stream);
         var sheet = workbook.Worksheets.First();
@@ -1714,6 +1831,106 @@ public class RaceResultsService : IRaceResultsService
                 Club = club.Trim(),
                 Gender = NormalizeGender(gender),
                 Age = age
+            });
+        }
+    }
+
+    /// <summary>
+    /// Bluebell 5 entry parser (US33). Expects an <c>Age</c> column whose value is either
+    /// <c>Male U40</c>, <c>Female U35</c>, or blank. Blank means the runner is at/over the vet
+    /// threshold for their gender (M40+, F35+) and is awarded <c>IsVet = true</c>. Any other value
+    /// (e.g. <c>Male U18</c>) is rejected with a row-specific error.
+    /// </summary>
+    private static void ParseEntrantsWorkbookBluebell(Stream stream, string fileName, List<Entrant> entrants, List<string> errors)
+    {
+        using var workbook = new XLWorkbook(stream);
+        var sheet = workbook.Worksheets.First();
+
+        var headerMap = GetHeaderMap(sheet.Row(1));
+        var required = new[]
+        {
+            new[] { "bib", "bibnumber", "bibno", "bibnum", "number", "racenumber", "raceno", "runnernumber" },
+            new[] { "name", "fullname", "runnername" },
+            new[] { "gender", "sex", "mf" }
+        };
+
+        foreach (var requiredSet in required)
+        {
+            if (FindColumnIndex(headerMap, requiredSet) is null)
+            {
+                errors.Add($"{fileName} row 1: missing required column ({requiredSet[0]}).");
+            }
+        }
+
+        if (errors.Count > 0)
+        {
+            return;
+        }
+
+        var lastRow = sheet.LastRowUsed()?.RowNumber() ?? 1;
+        for (var rowNumber = 2; rowNumber <= lastRow; rowNumber++)
+        {
+            var row = sheet.Row(rowNumber);
+            if (row.IsEmpty())
+            {
+                continue;
+            }
+
+            var bib = ReadCell(row, headerMap, new[] { "bib", "bibnumber", "bibno", "bibnum", "number", "racenumber", "raceno", "runnernumber" });
+            var name = ReadCell(row, headerMap, new[] { "name", "fullname", "runnername" });
+            var club = ReadCell(row, headerMap, new[] { "club", "team", "clubname" });
+            var gender = ReadCell(row, headerMap, new[] { "gender", "sex", "mf" });
+            var ageRaw = ReadCell(row, headerMap, new[] { "age" });
+
+            if (string.IsNullOrWhiteSpace(bib) || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(gender))
+            {
+                errors.Add($"{fileName} row {rowNumber}: bib, name, and gender are required.");
+                continue;
+            }
+
+            var normalisedGender = NormalizeGender(gender);
+            var ageToken = (ageRaw ?? string.Empty).Trim();
+            var ageKey = new string(ageToken.Where(c => !char.IsWhiteSpace(c)).ToArray()).ToLowerInvariant();
+
+            bool isVet;
+            if (string.IsNullOrEmpty(ageKey))
+            {
+                // Blank = at/over the vet threshold for their gender.
+                isVet = true;
+            }
+            else if (ageKey == "maleu40")
+            {
+                if (!IsMale(normalisedGender))
+                {
+                    errors.Add($"{fileName} row {rowNumber}: age '{ageRaw}' does not match gender '{gender}'.");
+                    continue;
+                }
+                isVet = false;
+            }
+            else if (ageKey == "femaleu35")
+            {
+                if (!IsFemale(normalisedGender))
+                {
+                    errors.Add($"{fileName} row {rowNumber}: age '{ageRaw}' does not match gender '{gender}'.");
+                    continue;
+                }
+                isVet = false;
+            }
+            else
+            {
+                // U18 or any other unsupported value: Bluebell does not have under-18 categories.
+                errors.Add($"{fileName} row {rowNumber}: age '{ageRaw}' is not supported for Bluebell 5 (expected blank, 'Male U40', or 'Female U35').");
+                continue;
+            }
+
+            entrants.Add(new Entrant
+            {
+                BibNumber = bib.Trim(),
+                Name = name.Trim(),
+                Club = club.Trim(),
+                Gender = normalisedGender,
+                Age = null,
+                IsVet = isVet
             });
         }
     }

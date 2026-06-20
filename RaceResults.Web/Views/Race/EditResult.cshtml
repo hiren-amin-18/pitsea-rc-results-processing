@@ -46,11 +46,31 @@
         <span asp-validation-for="Gender" class="text-danger"></span>
     </div>
 
-    <div class="col-md-4">
-        <label asp-for="Age" class="form-label"></label>
-        <input asp-for="Age" class="form-control" />
-        <span asp-validation-for="Age" class="text-danger"></span>
-    </div>
+    @if (Model.IsBluebell)
+    {
+        <div class="col-md-4">
+            <label class="form-label">Age category</label>
+            <div>
+                @if (Model.IsVet)
+                {
+                    <span class="badge bg-warning text-dark">Vet</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">Senior</span>
+                }
+                <div class="form-text">Re-upload the entry sheet to change vet status.</div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="col-md-4">
+            <label asp-for="Age" class="form-label"></label>
+            <input asp-for="Age" class="form-control" />
+            <span asp-validation-for="Age" class="text-danger"></span>
+        </div>
+    }
 
     <div class="col-md-4">
         <label asp-for="Time" class="form-label"></label>

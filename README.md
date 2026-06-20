@@ -61,6 +61,7 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Volunteer roster** | Per-event roster page grouped by Leadership / Finish Area / Course, with the 23 Crown to Crown roles seeded by default. Restricted roles (Lead, Results) honour an allow-list; Marshal Point 7 supports a standing pre-placement (Ian + dog Shane); first-aid roles require a trained volunteer; min/max overrides and double-booking warnings supported. Edit retrospectively for past events, copy from the previous event, export to PDF and Excel (US28) |
 | **Volunteer statistics** | Per-event panel on the roster page; season page with total volunteering instances, unique volunteers, role coverage trend, most-active leaderboard, and per-volunteer profile including the "ran X, volunteered Y, involved in Z" combined recognition. CSV export. London Marathon ballot entries counted one per volunteering instance, members only (US29) |
 | **Automated roster allocation** | Pick attendees + per-volunteer preferences (specific role, run-after, near-finish, can't-walk-far, seated, any-role) and have the app propose a draft. Greedy seven-step rules engine: pre-place fixtures → eligibility → run-after rotation across the season → preferences → role mix-up across the season → marshal gender mix → fill remainder. Review and apply; Apply re-validates through the roster service (US32) |
+| **Bluebell 5 results processing** | Entry upload, Top 10 view, and PDF branch by event type. Bluebell registration sheet's `Age` column (`Male U40` / `Female U35` / blank=vet) drives an `IsVet` flag; U18 entries are rejected. PDF first page shows 1st/2nd/3rd Male & Female + 1st Vet M/F, with the vet prize skipping the overall top 3. Top 10 swaps the U18 categories for Vet Male / Vet Female on Bluebell events (US33) |
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
 | **Theme-aware branding** | App logo switches by theme (light uses white logo, dark uses black logo) at a fixed size |
 | **Persistent storage** | All data saved to a SQLite database and survives app restarts |
@@ -228,7 +229,7 @@ pitsea-rc-results-processing/
 │   └── construction/USxx/              # USxx-implementation-summary.md (one per story)
 │
 └── user-stories/
-    ├── US01-US32 *.md                  # One file per user story, each with a Status line
+    ├── US01-US33 *.md                  # One file per user story, each with a Status line
     └── example-files/                  # Real-format sample upload files (canonical copies)
         ├── online-registration.xlsx    # Pre-registration entrants
         ├── on-the-day-1.xlsx           # On-the-day entrants (file 1)
@@ -286,13 +287,27 @@ To use a custom database path, add a connection string to `appsettings.json`:
 
 ### Entrant files (`.xlsx`)
 
+The expected sheet layout depends on the current event's type (US33).
+
+**Crown to Crown:**
+
 | Column | Required | Accepted header names |
 |---|---|---|
 | Bib number | ✅ | `Bib`, `BibNumber`, `BibNo`, `Bib Num`, `Number`, `Race Number`, `Race No`, `Runner Number` |
 | Name | ✅ | `Name`, `FullName`, `RunnerName` |
 | Gender | ✅ | `Gender`, `Sex`, `M/F` |
-| Age | ❌ | `Age` |
+| Age | ❌ | `Age` — integer; only recorded for U18 |
 | Club | ❌ | `Club`, `Team`, `Club Name` |
+
+**Bluebell 5:**
+
+| Column | Required | Accepted header names |
+|---|---|---|
+| Bib number | ✅ | (same as above) |
+| Name | ✅ | (same as above) |
+| Gender | ✅ | (same as above) |
+| Age | ❌ | `Age` — must be `Male U40`, `Female U35`, or blank (blank = Vet: M40+ / F35+). U18 values are rejected. |
+| Club | ❌ | (same as above) |
 
 - Multiple files can be uploaded at once (e.g. online pre-registration + on-the-day sign-ups)
 - Duplicate bib numbers across files are rejected

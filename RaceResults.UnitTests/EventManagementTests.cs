@@ -86,10 +86,11 @@ public class EventManagementTests : RaceResultsServiceTestBase
 
         Assert.Equal(0, Service.GetStatusCounts().EntrantCount);
 
+        // Second event is Bluebell5, so the upload uses the Bluebell sheet format (US33).
         await Service.UploadEntrantsAsync([Helpers.FormFileHelpers.CreateXlsx("e2.xlsx",
         [
             EntrantHeader,
-            ["2", "Bob", "Club B", "Male", "31"],
+            ["2", "Bob", "Club B", "Male", "Male U40"],
         ])]);
 
         Assert.Equal(1, Service.GetStatusCounts().EntrantCount);

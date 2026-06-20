@@ -10,6 +10,9 @@ public class Entrant
     public string Gender { get; set; } = string.Empty;
     public int? Age { get; set; }
 
+    /// <summary>Veteran flag (US33). For Bluebell entrants: true when the runner is at/over the vet threshold (M40+, F35+). Always false for Crown to Crown entrants.</summary>
+    public bool IsVet { get; set; }
+
     /// <summary>Links this per-event entry to a persistent <see cref="Runner"/> (US15). Nullable for legacy rows pre-migration.</summary>
     public int? RunnerId { get; set; }
     public Runner? Runner { get; set; }

@@ -1,5 +1,16 @@
 # AI-DLC Audit Log
 
+## US33 — Bluebell 5 Results Processing
+**Timestamp**: 2026-06-20T00:00:00Z
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US33-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US33/US33-implementation-summary.md`
+**Build Status**: Success
+**Test Status**: Pass (215 unit + 26 integration = 241)
+**Notes**: Added `Entrant.IsVet` + EF migration `AddEntrantIsVet`. `UploadEntrantsAsync` dispatches by `RaceEvent.EventType`: new `ParseEntrantsWorkbookBluebell` accepts `Male U40`/`Female U35`/blank in the `Age` column, derives `IsVet` (blank=vet), rejects U18 and gender/age mismatches. Top 10 swaps U18 categories for Vet on Bluebell events. PDF branches: new 2-column 8-name winners block with `BluebellWinnerSelection.Select` enforcing the skip-top-3 vet rule. Edit view shows a read-only Senior/Vet badge for Bluebell entrants. One existing event-scoping test updated to use the Bluebell Age format after switching events. User clarifying answers driving this: vet derived from Age column; vet prize skips top 3; Top10 swaps U18 for Vet on Bluebell; U18 rejected on Bluebell upload; `IsVet` stored as bool; parser dispatched by event type; course records still rendered if stored for Bluebell5; edit UI shows vet read-only.
+
+---
+
 ## US30 — End of Season Review (volunteer section wired up to US29)
 **Timestamp**: 2026-06-14
 **Stage**: Construction (Code Generation + Build & Test)
