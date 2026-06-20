@@ -207,3 +207,13 @@
 **Notes**: Brownfield deployment story. Added DatabasePathResolver (per-user %LOCALAPPDATA%\PitseaRaceResults default when no connection string configured), win-x64 self-contained publish profile, Inno Setup installer with opt-in uninstall data removal, launcher .cmd, build script with zip fallback, and installer README. Awaiting user review.
 
 ---
+## US34 — Bluebell 5 Volunteer Roster & Allocation
+**Timestamp**: 2026-06-20
+**Stage**: Construction (Code Generation + Build & Test)
+**Plan**: `aidlc-docs/construction/plans/US34-code-generation-plan.md`
+**Summary**: `aidlc-docs/construction/US34/US34-implementation-summary.md`
+**Build Status**: Success
+**Test Status**: Pass (221 unit + 26 integration = 247)
+**Notes**: Brownfield extension of US28/US32 for Bluebell 5. Two new RoleCategory enum values (RaceHq, Transport); FinishArea reused for Bluebell Start/Finish. New VolunteerAssignment.WantsRaceHq column. Seeded 15 Bluebell roles (IDs 24-38). Allocator now pools season history across event types (US34 AC6) and matches roles by name for cross-event mix-up (US34 AC7). Allocate.cshtml branches column set by event type. Six new RosterAllocator tests cover the Bluebell preference set, cross-event rotation, match-by-name mix-up, and the new column round-trip.
+
+---

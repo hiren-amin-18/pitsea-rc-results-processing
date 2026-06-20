@@ -30,6 +30,7 @@ public class RosterDraftApplier : IRosterDraftApplier
                 WantsNearFinish = p.WantsNearFinish,
                 CantWalkFar = p.CantWalkFar,
                 WantsSeated = p.WantsSeated,
+                WantsRaceHq = p.WantsRaceHq,
                 AnyRole = p.AnyRole
             });
             if (result.Success) applied++;

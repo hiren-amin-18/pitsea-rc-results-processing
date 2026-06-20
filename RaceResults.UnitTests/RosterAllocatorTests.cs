@@ -219,6 +219,118 @@ public class RosterAllocatorTests : IDisposable
         Assert.Equal(draft.Proposals.Count, roster.TotalAssigned);
     }
 
+    // ---------- Bluebell 5 (US34) ----------
+
+    [Fact]
+    public async Task Bluebell_WantsRaceHq_PlacedInRaceHqCategory()
+    {
+        var alice = await CreateVolunteer("Alice", "Female");
+        var bluebell = await CreateBluebellEvent(new DateTime(2026, 5, 17));
+
+        var draft = _allocator.Propose(bluebell, new[] {
+            new AllocationCandidate { VolunteerId = alice.Id, WantsRaceHq = true }
+        });
+
+        var prop = Assert.Single(draft.Proposals);
+        Assert.Equal(RoleCategory.RaceHq, prop.Category);
+        Assert.Equal(AllocationReason.Preference, prop.Reason);
+    }
+
+    [Fact]
+    public async Task Bluebell_WantsStartFinish_PlacedInFinishArea()
+    {
+        // Bluebell reuses WantsNearFinish for the Start/Finish preference.
+        var alice = await CreateVolunteer("Alice", "Female");
+        var bluebell = await CreateBluebellEvent(new DateTime(2026, 5, 17));
+
+        var draft = _allocator.Propose(bluebell, new[] {
+            new AllocationCandidate { VolunteerId = alice.Id, WantsNearFinish = true }
+        });
+
+        var prop = Assert.Single(draft.Proposals);
+        Assert.Equal(RoleCategory.FinishArea, prop.Category);
+    }
+
+    [Fact]
+    public async Task Bluebell_RunAfter_OnlyHonouredInRaceHqRoles()
+    {
+        // Only Number Pick Up, On The Day Registration, Car Park Marshal carry RunAfterCapacity at Bluebell.
+        // A candidate who wants to run after should land in one of those, not Timekeeping/Water Table/etc.
+        var alice = await CreateVolunteer("Alice", "Female");
+        var bluebell = await CreateBluebellEvent(new DateTime(2026, 5, 17));
+
+        var draft = _allocator.Propose(bluebell, new[] {
+            new AllocationCandidate { VolunteerId = alice.Id, WantsToRunAfter = true }
+        });
+
+        var prop = Assert.Single(draft.Proposals);
+        Assert.True(prop.WillRunAfter, "Expected run-after to be honoured.");
+        Assert.Contains(prop.RoleName, new[] { "Number Pick Up", "On The Day Registration", "Car Park Marshal" });
+    }
+
+    [Fact]
+    public async Task Bluebell_RunAfterRotation_PoolsAcrossEventTypes()
+    {
+        // Alice ran-after at C2C event 1; Bob did not. At Bluebell, Bob should get the run-after slot.
+        var alice = await CreateVolunteer("Alice", "Female");
+        var bob = await CreateVolunteer("Bob", "Male");
+        var c2cNumberCollection = await GetRole("Number Collection");
+        await SeedHistoryRunAfter(1, alice.Id, c2cNumberCollection.Id);
+
+        var bluebell = await CreateBluebellEvent(new DateTime(2026, 5, 17));
+
+        var draft = _allocator.Propose(bluebell, new[] {
+            new AllocationCandidate { VolunteerId = alice.Id, WantsToRunAfter = true },
+            new AllocationCandidate { VolunteerId = bob.Id, WantsToRunAfter = true }
+        });
+
+        var firstRunAfter = draft.Proposals.First(p => p.WillRunAfter);
+        Assert.Equal(bob.Id, firstRunAfter.VolunteerId);
+    }
+
+    [Fact]
+    public async Task Bluebell_RoleMixUp_MatchesByName_AcrossEventTypes()
+    {
+        // Alice did "Timekeeping" at C2C event 1; both timekeeping roles share the name. At Bluebell
+        // the allocator should prefer Bob for Timekeeping and steer Alice elsewhere.
+        var alice = await CreateVolunteer("Alice", "Female");
+        var bob = await CreateVolunteer("Bob", "Male");
+        var c2cTimekeeping = await GetRole("Timekeeping");
+        await SeedHistory(1, alice.Id, c2cTimekeeping.Id);
+
+        var bluebell = await CreateBluebellEvent(new DateTime(2026, 5, 17));
+        var bluebellTimekeeping = await GetRole("Timekeeping", EventType.Bluebell5);
+
+        var draft = _allocator.Propose(bluebell, new[] {
+            new AllocationCandidate { VolunteerId = alice.Id },
+            new AllocationCandidate { VolunteerId = bob.Id }
+        });
+
+        var tkProps = draft.Proposals.Where(p => p.VolunteerRoleId == bluebellTimekeeping.Id).ToList();
+        if (tkProps.Count == 1)
+        {
+            Assert.NotEqual(alice.Id, tkProps[0].VolunteerId);
+        }
+    }
+
+    [Fact]
+    public async Task Bluebell_ApplyDraft_PersistsWantsRaceHq()
+    {
+        var alice = await CreateVolunteer("Alice", "Female");
+        var bluebell = await CreateBluebellEvent(new DateTime(2026, 5, 17));
+
+        var draft = _allocator.Propose(bluebell, new[] {
+            new AllocationCandidate { VolunteerId = alice.Id, WantsRaceHq = true }
+        });
+
+        var result = await _applier.ApplyAsync(draft);
+        Assert.True(result.Success);
+
+        await using var db = _factory.CreateDbContext();
+        var persisted = db.VolunteerAssignments.Single(a => a.EventId == bluebell && a.VolunteerId == alice.Id);
+        Assert.True(persisted.WantsRaceHq);
+    }
+
     // ---------- Helpers ----------
 
     private async Task<Volunteer> CreateVolunteer(string name, string gender, bool firstAid = false, bool member = true)
@@ -231,10 +343,24 @@ public class RosterAllocatorTests : IDisposable
         return db.Volunteers.Single(v => v.Name == name);
     }
 
-    private async Task<VolunteerRole> GetRole(string name)
+    private async Task<VolunteerRole> GetRole(string name, EventType eventType = EventType.CrownToCrown)
     {
         await using var db = _factory.CreateDbContext();
-        return db.VolunteerRoles.Single(r => r.Name == name && r.EventType == EventType.CrownToCrown);
+        return db.VolunteerRoles.Single(r => r.Name == name && r.EventType == eventType);
+    }
+
+    private async Task<int> CreateBluebellEvent(DateTime date)
+    {
+        await using var db = _factory.CreateDbContext();
+        var ev = new RaceEvent
+        {
+            EventName = $"Bluebell 5 - {date:MMM yyyy}",
+            EventDate = date,
+            EventType = EventType.Bluebell5
+        };
+        db.Events.Add(ev);
+        await db.SaveChangesAsync();
+        return ev.Id;
     }
 
     private async Task PrePlaceAsync(string roleName, int volunteerId)

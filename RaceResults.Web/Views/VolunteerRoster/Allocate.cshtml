@@ -5,6 +5,7 @@
     var roles = ViewBag.Roles as IReadOnlyList<RaceResults.Web.Models.VolunteerRole>
         ?? new List<RaceResults.Web.Models.VolunteerRole>();
     var raceEvent = (RaceResults.Web.Models.RaceEvent)ViewBag.Event;
+    var isBluebell = raceEvent.EventType == RaceResults.Web.Models.EventType.Bluebell5;
     ViewData["Title"] = $"Allocate Roster - {raceEvent.EventName}";
 }
 
@@ -28,12 +29,22 @@
                 <tr>
                     <th style="width: 30px;">✓</th>
                     <th>Name</th>
-                    <th>Preferred role</th>
-                    <th class="small text-muted text-nowrap">Run after</th>
-                    <th class="small text-muted text-nowrap">Near finish</th>
-                    <th class="small text-muted text-nowrap">Can't walk far</th>
-                    <th class="small text-muted text-nowrap">Seated</th>
-                    <th class="small text-muted text-nowrap">Any role</th>
+                    @if (isBluebell)
+                    {
+                        <th class="small text-muted text-nowrap">Run after</th>
+                        <th class="small text-muted text-nowrap">Start/Finish</th>
+                        <th class="small text-muted text-nowrap">Race HQ</th>
+                        <th class="small text-muted text-nowrap">Any role</th>
+                    }
+                    else
+                    {
+                        <th>Preferred role</th>
+                        <th class="small text-muted text-nowrap">Run after</th>
+                        <th class="small text-muted text-nowrap">Near finish</th>
+                        <th class="small text-muted text-nowrap">Can't walk far</th>
+                        <th class="small text-muted text-nowrap">Seated</th>
+                        <th class="small text-muted text-nowrap">Any role</th>
+                    }
                 </tr>
             </thead>
             <tbody>
@@ -49,20 +60,30 @@
                             @if (v.IsFirstAidTrained) { <span class="badge bg-danger ms-1">FA</span> }
                             @if (!v.IsClubMember) { <span class="badge bg-secondary ms-1">Non-member</span> }
                         </td>
-                        <td>
-                            <select name="Candidates[@i].PreferredRoleId" class="form-select form-select-sm">
-                                <option value="">-</option>
-                                @foreach (var r in roles)
-                                {
-                                    <option value="@r.Id">@r.Name</option>
-                                }
-                            </select>
-                        </td>
-                        <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsToRunAfter" value="true" /></td>
-                        <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsNearFinish" value="true" /></td>
-                        <td class="text-center"><input type="checkbox" name="Candidates[@i].CantWalkFar" value="true" /></td>
-                        <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsSeated" value="true" /></td>
-                        <td class="text-center"><input type="checkbox" name="Candidates[@i].AnyRole" value="true" /></td>
+                        @if (isBluebell)
+                        {
+                            <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsToRunAfter" value="true" /></td>
+                            <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsNearFinish" value="true" /></td>
+                            <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsRaceHq" value="true" /></td>
+                            <td class="text-center"><input type="checkbox" name="Candidates[@i].AnyRole" value="true" /></td>
+                        }
+                        else
+                        {
+                            <td>
+                                <select name="Candidates[@i].PreferredRoleId" class="form-select form-select-sm">
+                                    <option value="">-</option>
+                                    @foreach (var r in roles)
+                                    {
+                                        <option value="@r.Id">@r.Name</option>
+                                    }
+                                </select>
+                            </td>
+                            <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsToRunAfter" value="true" /></td>
+                            <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsNearFinish" value="true" /></td>
+                            <td class="text-center"><input type="checkbox" name="Candidates[@i].CantWalkFar" value="true" /></td>
+                            <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsSeated" value="true" /></td>
+                            <td class="text-center"><input type="checkbox" name="Candidates[@i].AnyRole" value="true" /></td>
+                        }
                     </tr>
                 }
             </tbody>

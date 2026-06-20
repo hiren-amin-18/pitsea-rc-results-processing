@@ -97,6 +97,7 @@ public class VolunteerRosterService : IVolunteerRosterService
             WantsNearFinish = input.WantsNearFinish,
             CantWalkFar = input.CantWalkFar,
             WantsSeated = input.WantsSeated,
+            WantsRaceHq = input.WantsRaceHq,
             AnyRole = input.AnyRole
         };
         db.VolunteerAssignments.Add(assignment);
@@ -126,6 +127,7 @@ public class VolunteerRosterService : IVolunteerRosterService
         existing.WantsNearFinish = input.WantsNearFinish;
         existing.CantWalkFar = input.CantWalkFar;
         existing.WantsSeated = input.WantsSeated;
+        existing.WantsRaceHq = input.WantsRaceHq;
         existing.AnyRole = input.AnyRole;
         await db.SaveChangesAsync();
 

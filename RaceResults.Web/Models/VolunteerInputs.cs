@@ -71,6 +71,7 @@ public class VolunteerAssignmentInput
     public bool WantsNearFinish { get; set; }
     public bool CantWalkFar { get; set; }
     public bool WantsSeated { get; set; }
+    public bool WantsRaceHq { get; set; }
     public bool AnyRole { get; set; }
 }
 

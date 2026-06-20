@@ -13,6 +13,8 @@ public class RosterAllocator : IRosterAllocator
         _dbContextFactory = dbContextFactory;
     }
 
+    private static string Normalise(string roleName) => (roleName ?? string.Empty).Trim().ToLowerInvariant();
+
     public AllocationDraft Propose(int eventId, IReadOnlyList<AllocationCandidate> candidates)
     {
         using var db = _dbContextFactory.CreateDbContext();
@@ -47,14 +49,15 @@ public class RosterAllocator : IRosterAllocator
             .GroupBy(e => e.VolunteerRoleId)
             .ToDictionary(g => g.Key, g => g.Select(x => x.VolunteerId).ToHashSet());
 
+        // Season history pools across event types (US34 AC6 — Bluebell + C2C in the same year are
+        // treated as one fairness pool).
         var seasonHistory = db.VolunteerAssignments
             .Where(a => candidates.Select(c => c.VolunteerId).Contains(a.VolunteerId))
             .Join(db.Events,
                 a => a.EventId,
                 e => e.Id,
                 (a, e) => new { a.VolunteerId, a.VolunteerRoleId, a.WillRunAfter, EventDate = e.EventDate, EventType = e.EventType })
-            .Where(x => x.EventType == raceEvent.EventType
-                && x.EventDate.Year == raceEvent.EventDate.Year
+            .Where(x => x.EventDate.Year == raceEvent.EventDate.Year
                 && x.EventDate < raceEvent.EventDate)
             .ToList();
 
@@ -62,12 +65,23 @@ public class RosterAllocator : IRosterAllocator
             c => c.VolunteerId,
             c => seasonHistory.Count(h => h.VolunteerId == c.VolunteerId && h.WillRunAfter));
 
-        var recentRoleByVolunteer = seasonHistory
+        // Role-name lookup so "Timekeeping at C2C" and "Timekeeping at Bluebell" collapse for mix-up
+        // purposes (US34 AC7). Built once from all roles referenced in season history.
+        var historyRoleIds = seasonHistory.Select(h => h.VolunteerRoleId).Distinct().ToList();
+        var roleNameById = db.VolunteerRoles
+            .Where(r => historyRoleIds.Contains(r.Id))
+            .ToDictionary(r => r.Id, r => Normalise(r.Name));
+
+        var recentRoleNameByVolunteer = seasonHistory
             .GroupBy(h => h.VolunteerId)
             .ToDictionary(
                 g => g.Key,
-                g => g.GroupBy(x => x.VolunteerRoleId)
+                g => g.GroupBy(x => roleNameById.TryGetValue(x.VolunteerRoleId, out var n) ? n : string.Empty)
                       .ToDictionary(x => x.Key, x => x.Max(y => y.EventDate)));
+
+        DateTime MostRecentInRole(int volunteerId, VolunteerRole role) =>
+            recentRoleNameByVolunteer.TryGetValue(volunteerId, out var m)
+                && m.TryGetValue(Normalise(role.Name), out var d) ? d : DateTime.MinValue;
 
         // Track remaining role slots and per-role run-after slots.
         var slots = roles.ToDictionary(r => r.Id, r => r.DefaultCount);
@@ -92,6 +106,7 @@ public class RosterAllocator : IRosterAllocator
                 WantsNearFinish = cand.WantsNearFinish,
                 CantWalkFar = cand.CantWalkFar,
                 WantsSeated = cand.WantsSeated,
+                WantsRaceHq = cand.WantsRaceHq,
                 AnyRole = cand.AnyRole
             });
             slots[role.Id]--;
@@ -141,7 +156,7 @@ public class RosterAllocator : IRosterAllocator
                     .Where(c => !placed.Contains(c.VolunteerId))
                     .Where(c => CanAssign(c, role, c.WantsToRunAfter && runAfterSlots[role.Id] > 0))
                     .OrderByDescending(c => c.PreferredRoleId == role.Id)
-                    .ThenBy(c => recentRoleByVolunteer.TryGetValue(c.VolunteerId, out var m) && m.TryGetValue(role.Id, out var d) ? d : DateTime.MinValue)
+                    .ThenBy(c => MostRecentInRole(c.VolunteerId, role))
                     .FirstOrDefault();
                 if (pick == null) break;
                 var willRunAfter = pick.WantsToRunAfter && runAfterSlots[role.Id] > 0;
@@ -217,6 +232,18 @@ public class RosterAllocator : IRosterAllocator
             }
         }
 
+        // 4e. Race HQ (Bluebell) → any Race HQ role.
+        foreach (var cand in candidates.Where(c => !placed.Contains(c.VolunteerId) && c.WantsRaceHq))
+        {
+            var role = roles.Where(r => r.Category == RoleCategory.RaceHq)
+                .FirstOrDefault(r => CanAssign(cand, r, cand.WantsToRunAfter));
+            if (role != null)
+            {
+                var willRunAfter = cand.WantsToRunAfter && runAfterSlots[role.Id] > 0;
+                Place(cand, role, AllocationReason.Preference, willRunAfter);
+            }
+        }
+
         // ---------- 5. Mix-up across the season ----------
         // For each unplaced candidate (excluding AnyRole, those go last), pick the role they've done least recently.
         var seasonRotation = candidates
@@ -228,7 +255,7 @@ public class RosterAllocator : IRosterAllocator
             var openRoles = roles.Where(r => slots[r.Id] > 0 && CanAssign(cand, r, cand.WantsToRunAfter)).ToList();
             if (openRoles.Count == 0) continue;
             var ordered = openRoles
-                .OrderBy(r => recentRoleByVolunteer.TryGetValue(cand.VolunteerId, out var m) && m.TryGetValue(r.Id, out var d) ? d : DateTime.MinValue)
+                .OrderBy(r => MostRecentInRole(cand.VolunteerId, r))
                 .ThenBy(r => r.Category).ThenBy(r => r.SortOrder)
                 .ToList();
             var role = ordered.First();
@@ -285,7 +312,7 @@ public class RosterAllocator : IRosterAllocator
                 continue;
             }
             var role = openRoles
-                .OrderBy(r => recentRoleByVolunteer.TryGetValue(cand.VolunteerId, out var m) && m.TryGetValue(r.Id, out var d) ? d : DateTime.MinValue)
+                .OrderBy(r => MostRecentInRole(cand.VolunteerId, r))
                 .First();
             var willRunAfter = cand.WantsToRunAfter && runAfterSlots[role.Id] > 0;
             Place(cand, role, AllocationReason.Fill, willRunAfter);

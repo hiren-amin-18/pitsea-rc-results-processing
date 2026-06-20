@@ -5,5 +5,7 @@ public enum RoleCategory
 {
     Leadership = 0,
     FinishArea = 1,
-    Course = 2
+    Course = 2,
+    RaceHq = 3,
+    Transport = 4
 }

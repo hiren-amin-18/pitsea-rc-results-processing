@@ -37,6 +37,9 @@ public class VolunteerAssignment
     /// <summary>Volunteer wants a seated role — Number Collection or On The Day Registration.</summary>
     public bool WantsSeated { get; set; }
 
+    /// <summary>Bluebell 5: volunteer prefers a Race HQ role (Number Pick Up, On The Day Registration, Refreshments, Bag Drop, Car Park Marshal).</summary>
+    public bool WantsRaceHq { get; set; }
+
     /// <summary>Volunteer has no preference; placed once specific requests are settled.</summary>
     public bool AnyRole { get; set; }
 }

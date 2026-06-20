@@ -62,6 +62,7 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Volunteer statistics** | Per-event panel on the roster page; season page with total volunteering instances, unique volunteers, role coverage trend, most-active leaderboard, and per-volunteer profile including the "ran X, volunteered Y, involved in Z" combined recognition. CSV export. London Marathon ballot entries counted one per volunteering instance, members only (US29) |
 | **Automated roster allocation** | Pick attendees + per-volunteer preferences (specific role, run-after, near-finish, can't-walk-far, seated, any-role) and have the app propose a draft. Greedy seven-step rules engine: pre-place fixtures → eligibility → run-after rotation across the season → preferences → role mix-up across the season → marshal gender mix → fill remainder. Review and apply; Apply re-validates through the roster service (US32) |
 | **Bluebell 5 results processing** | Entry upload, Top 10 view, and PDF branch by event type. Bluebell registration sheet's `Age` column (`Male U40` / `Female U35` / blank=vet) drives an `IsVet` flag; U18 entries are rejected. PDF first page shows 1st/2nd/3rd Male & Female + 1st Vet M/F, with the vet prize skipping the overall top 3. Top 10 swaps the U18 categories for Vet Male / Vet Female on Bluebell events (US33) |
+| **Bluebell 5 volunteer roster** | Same roster + auto-allocation workflow as C2C, with Bluebell's own role catalogue (Race HQ, Start/Finish, Transport — 15 roles seeded) and a smaller preference set (Run after / Start-Finish / Race HQ / Any role). Run-after capacity only on the three Race HQ roles. Run-after rotation and role mix-up pool Bluebell + C2C history as one season fairness picture; roles match by name across event types so a C2C timekeeper rotates off Bluebell timekeeping (US34) |
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
 | **Theme-aware branding** | App logo switches by theme (light uses white logo, dark uses black logo) at a fixed size |
 | **Persistent storage** | All data saved to a SQLite database and survives app restarts |
@@ -229,7 +230,7 @@ pitsea-rc-results-processing/
 │   └── construction/USxx/              # USxx-implementation-summary.md (one per story)
 │
 └── user-stories/
-    ├── US01-US33 *.md                  # One file per user story, each with a Status line
+    ├── US01-US34 *.md                  # One file per user story, each with a Status line
     └── example-files/                  # Real-format sample upload files (canonical copies)
         ├── online-registration.xlsx    # Pre-registration entrants
         ├── on-the-day-1.xlsx           # On-the-day entrants (file 1)
@@ -618,7 +619,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 ## User Stories
 
-All user stories are implemented — US01–US25, US27, US28, US29, US30, US31, and US32 (US26 cloud hosting was dropped as not required). Each story file carries a **Status** line (✅ Complete) for tracking. Individual story files are in [`user-stories/`](user-stories/):
+All user stories are implemented — US01–US25, US27, US28, US29, US30, US31, US32, US33, and US34 (US26 cloud hosting was dropped as not required). Each story file carries a **Status** line (✅ Complete) for tracking. Individual story files are in [`user-stories/`](user-stories/):
 
 ### Implemented
 
@@ -655,6 +656,8 @@ All user stories are implemented — US01–US25, US27, US28, US29, US30, US31, 
 | [US28](user-stories/US28-volunteer-roster.md) | Volunteer Roster Builder |
 | [US29](user-stories/US29-volunteer-stats.md) | Volunteer Statistics |
 | [US32](user-stories/US32-roster-auto-allocation.md) | Automated Roster Allocation |
+| [US33](user-stories/US33-bluebell-results-processing.md) | Bluebell 5 Results Processing |
+| [US34](user-stories/US34-bluebell-volunteer-roster.md) | Bluebell 5 Volunteer Roster & Allocation |
 
 ### Story dependencies (for context)
 
@@ -666,6 +669,7 @@ Most stories are independent; these are the non-obvious dependencies the impleme
 - **US21 (Public Results)** pairs naturally with **US20 (Archiving)** so published pages never change underneath readers
 - **US29 (Volunteer Stats)** depends on **US28 (Volunteer Roster)**; the combined run+volunteer recognition stat also benefits from US15
 - **US32 (Automated Roster Allocation)** depends on **US28** for the register, role complement, and editable roster, and on the season history **US29** reports on to drive rotation/mix-up; it hands a draft back to US28's roster
+- **US34 (Bluebell 5 Volunteer Roster)** extends **US28** and **US32** with the Bluebell role catalogue and preference set; reuses the same volunteer register, allocator engine, applier, and exports; pools season history with C2C and matches roles by name for cross-event rotation
 - **US30 (End of Season Review)** is the capstone: it depends on **US24** and **US29**, and degrades gracefully where US16/US17/US22 are absent. The volunteer recognition section is now wired up to US29 (Volunteer of the Season + ever-present volunteers + ran-and-volunteered double commitment); if no volunteer assignments exist for the year, the section is omitted gracefully.
 - **US31 (Season Calendar Generator)** is independent (it encodes the C2C date rules in the Domain Conventions section) and pairs with US20 for season turnover
 

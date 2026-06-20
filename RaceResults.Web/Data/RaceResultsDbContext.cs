@@ -158,6 +158,7 @@ public class RaceResultsDbContext : DbContext
             e.Property(x => x.Name).IsRequired();
             e.HasOne(x => x.PrePlacedVolunteer).WithMany().HasForeignKey(x => x.PrePlacedVolunteerId).OnDelete(DeleteBehavior.SetNull);
             e.HasData(SeedC2CRoles());
+            e.HasData(SeedBluebellRoles());
         });
 
         modelBuilder.Entity<VolunteerRoleEligibility>(e =>
@@ -237,6 +238,50 @@ public class RaceResultsDbContext : DbContext
             R(21, RoleCategory.Course,     "Marshal Point 7",        2, 2, 2),
             R(22, RoleCategory.Course,     "Metal Gate",             1, 0, 1, optional: true),
             R(23, RoleCategory.Course,     "First Aid On Course",    1, 1, 1, firstAid: true)
+        };
+    }
+
+    /// <summary>Seeds the 15 Bluebell 5 volunteer roles (US34). Lead and Results are restricted with an empty
+    /// allow-list, matching the C2C approach — the organiser populates the eligible names via the roles UI.</summary>
+    private static VolunteerRole[] SeedBluebellRoles()
+    {
+        VolunteerRole R(int id, RoleCategory cat, string name, int def, int min, int max,
+            bool optional = false, int runAfter = 0, bool restricted = false) =>
+            new()
+            {
+                Id = id,
+                Name = name,
+                Category = cat,
+                EventType = EventType.Bluebell5,
+                DefaultCount = def,
+                MinCount = min,
+                MaxCount = max,
+                IsOptional = optional,
+                RunAfterCapacity = runAfter,
+                RequiresFirstAid = false,
+                HasEligibilityRestriction = restricted,
+                PrePlacedVolunteerId = null,
+                SortOrder = id,
+                IsActive = true
+            };
+
+        return new[]
+        {
+            R(24, RoleCategory.RaceHq,     "Number Pick Up",          6, 4, 6, runAfter: 3),
+            R(25, RoleCategory.RaceHq,     "On The Day Registration", 2, 1, 2, runAfter: 1),
+            R(26, RoleCategory.RaceHq,     "Refreshments",            3, 2, 3),
+            R(27, RoleCategory.RaceHq,     "Bag Drop",                1, 0, 1, optional: true),
+            R(28, RoleCategory.RaceHq,     "Car Park Marshal",        4, 3, 4, runAfter: 2),
+            R(29, RoleCategory.Leadership, "Lead",                    1, 1, 1, restricted: true),
+            R(30, RoleCategory.Leadership, "Results",                 1, 1, 1, restricted: true),
+            R(31, RoleCategory.FinishArea, "Timekeeping",             2, 2, 2),
+            R(32, RoleCategory.FinishArea, "Finish Line Funnel",      2, 1, 2),
+            R(33, RoleCategory.FinishArea, "Finish Line Results",     2, 2, 2),
+            R(34, RoleCategory.FinishArea, "Tail Walker",             2, 2, 2),
+            R(35, RoleCategory.FinishArea, "Water Table",             4, 4, 4),
+            R(36, RoleCategory.FinishArea, "Photographer",            1, 0, 1, optional: true),
+            R(37, RoleCategory.FinishArea, "Finish Help",             1, 1, 1),
+            R(38, RoleCategory.Transport,  "Van Driver",              1, 1, 1)
         };
     }
 }
