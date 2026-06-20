@@ -274,12 +274,14 @@ public class RaceController : Controller
             .OrderBy(x => int.Parse(x.Label))
             .ToList();
 
+        var viewedEvent = _raceResultsService.GetEvents().FirstOrDefault(e => e.Id == viewedId.Value);
         var model = new RaceStatsDashboardViewModel
         {
             Stats = stats,
             Summary = _raceResultsService.GetRaceStatisticsSummary(viewedId.Value),
             ClubBreakdown = clubBreakdown,
-            FinishersPerMinute = finishersPerMinute
+            FinishersPerMinute = finishersPerMinute,
+            IsBluebell = viewedEvent?.EventType == RaceResults.Web.Models.EventType.Bluebell5
         };
 
         return View(model);

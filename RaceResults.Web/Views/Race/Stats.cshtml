@@ -56,10 +56,22 @@
 <div class="row g-3 mt-1">
     <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Males</h5><p class="display-6">@Model.Stats.TotalMales</p></div></div></div>
     <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Females</h5><p class="display-6">@Model.Stats.TotalFemales</p></div></div></div>
-    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Males (U18)</h5><p class="display-6">@Model.Stats.TotalMalesU18</p></div></div></div>
-    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Females (U18)</h5><p class="display-6">@Model.Stats.TotalFemalesU18</p></div></div></div>
-    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Males Unaffiliated (Excl U18)</h5><p class="display-6">@Model.Stats.TotalMalesUnaffiliatedExcludingU18</p></div></div></div>
-    <div class="col-md-4"><div class="card"><div class="card-body"><h5>Females Unaffiliated (Excl U18)</h5><p class="display-6">@Model.Stats.TotalFemalesUnaffiliatedExcludingU18</p></div></div></div>
+    @if (Model.IsBluebell)
+    {
+        <div class="col-md-4"><div class="card"><div class="card-body"><h5>Vet Males (40+)</h5><p class="display-6">@Model.Stats.TotalMalesVet</p></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><h5>Vet Females (35+)</h5><p class="display-6">@Model.Stats.TotalFemalesVet</p></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><h5>Senior Males (U40)</h5><p class="display-6">@Model.Stats.TotalMalesNonVet</p></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><h5>Senior Females (U35)</h5><p class="display-6">@Model.Stats.TotalFemalesNonVet</p></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><h5>Males Unaffiliated</h5><p class="display-6">@Model.Stats.TotalMalesUnaffiliatedExcludingU18</p></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><h5>Females Unaffiliated</h5><p class="display-6">@Model.Stats.TotalFemalesUnaffiliatedExcludingU18</p></div></div></div>
+    }
+    else
+    {
+        <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Males (U18)</h5><p class="display-6">@Model.Stats.TotalMalesU18</p></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><h5>Total Females (U18)</h5><p class="display-6">@Model.Stats.TotalFemalesU18</p></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><h5>Males Unaffiliated (Excl U18)</h5><p class="display-6">@Model.Stats.TotalMalesUnaffiliatedExcludingU18</p></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><h5>Females Unaffiliated (Excl U18)</h5><p class="display-6">@Model.Stats.TotalFemalesUnaffiliatedExcludingU18</p></div></div></div>
+    }
 </div>
 
 <div class="row g-3 mt-2">
@@ -124,7 +136,13 @@
             const gridColor = isDark ? "#2f4359" : "#dbe2ec";
 
             const genderValues = [@Model.Stats.TotalMales, @Model.Stats.TotalFemales];
-            const categoryValues = [@Model.Stats.TotalMales, @Model.Stats.TotalFemales, @Model.Stats.TotalMalesU18, @Model.Stats.TotalFemalesU18];
+            const isBluebell = @(Model.IsBluebell ? "true" : "false");
+            const categoryLabels = isBluebell
+                ? ["Male (Senior)", "Female (Senior)", "Male (Vet)", "Female (Vet)"]
+                : ["Male", "Female", "Male (U18)", "Female (U18)"];
+            const categoryValues = isBluebell
+                ? [@Model.Stats.TotalMalesNonVet, @Model.Stats.TotalFemalesNonVet, @Model.Stats.TotalMalesVet, @Model.Stats.TotalFemalesVet]
+                : [@Model.Stats.TotalMales, @Model.Stats.TotalFemales, @Model.Stats.TotalMalesU18, @Model.Stats.TotalFemalesU18];
             const affiliationValues = [@Model.Summary.AffiliatedCount, @Model.Summary.UnaffiliatedCount];
 
             const clubLabels = @Html.Raw(JsonSerializer.Serialize(Model.ClubBreakdown.Select(x => x.Label)));
@@ -179,7 +197,7 @@
             new Chart(document.getElementById("categoryChart"), {
                 type: "bar",
                 data: {
-                    labels: ["Male", "Female", "Male (U18)", "Female (U18)"],
+                    labels: categoryLabels,
                     datasets: [{
                         label: "Count",
                         data: categoryValues,

@@ -38,6 +38,8 @@ public class PublicController : Controller
             FemaleWinner = WinnerFor("Female"),
             MaleU18Winner = WinnerFor("Male U18"),
             FemaleU18Winner = WinnerFor("Female U18"),
+            MaleVetWinner = WinnerFor("Vet Male"),
+            FemaleVetWinner = WinnerFor("Vet Female"),
             SeasonYear = raceEvent.EventDate.Year
         };
 

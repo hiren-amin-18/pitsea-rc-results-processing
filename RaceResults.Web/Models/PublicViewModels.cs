@@ -12,6 +12,11 @@ public class PublicResultsViewModel
     public ResultRecord? FemaleWinner { get; init; }
     public ResultRecord? MaleU18Winner { get; init; }
     public ResultRecord? FemaleU18Winner { get; init; }
+
+    /// <summary>1st vet male (M40+) for Bluebell events (US33). Selected from the Vet Male Top 10 (no skip-top-3 here, since this is just the leading vet).</summary>
+    public ResultRecord? MaleVetWinner { get; init; }
+    public ResultRecord? FemaleVetWinner { get; init; }
+
     public int SeasonYear { get; init; }
 }
 

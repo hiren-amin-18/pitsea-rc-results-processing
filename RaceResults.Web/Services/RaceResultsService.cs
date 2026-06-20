@@ -827,7 +827,11 @@ public class RaceResultsService : IRaceResultsService
             TotalMalesU18 = males.Count(e => e.IsU18),
             TotalFemalesU18 = females.Count(e => e.IsU18),
             TotalMalesUnaffiliatedExcludingU18 = males.Count(e => !e.IsU18 && e.IsUnaffiliated),
-            TotalFemalesUnaffiliatedExcludingU18 = females.Count(e => !e.IsU18 && e.IsUnaffiliated)
+            TotalFemalesUnaffiliatedExcludingU18 = females.Count(e => !e.IsU18 && e.IsUnaffiliated),
+            TotalMalesVet = males.Count(e => e.IsVet),
+            TotalFemalesVet = females.Count(e => e.IsVet),
+            TotalMalesNonVet = males.Count(e => !e.IsVet),
+            TotalFemalesNonVet = females.Count(e => !e.IsVet)
         };
     }
 

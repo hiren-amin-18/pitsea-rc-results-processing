@@ -24,8 +24,16 @@
         <div class="row">
             <div class="col-sm-6">1st Male: <strong>@WinnerName(Model.MaleWinner)</strong></div>
             <div class="col-sm-6">1st Female: <strong>@WinnerName(Model.FemaleWinner)</strong></div>
-            <div class="col-sm-6">1st Male U18: <strong>@WinnerName(Model.MaleU18Winner)</strong></div>
-            <div class="col-sm-6">1st Female U18: <strong>@WinnerName(Model.FemaleU18Winner)</strong></div>
+            @if (Model.Event.EventType == RaceResults.Web.Models.EventType.Bluebell5)
+            {
+                <div class="col-sm-6">1st Vet Male: <strong>@WinnerName(Model.MaleVetWinner)</strong></div>
+                <div class="col-sm-6">1st Vet Female: <strong>@WinnerName(Model.FemaleVetWinner)</strong></div>
+            }
+            else
+            {
+                <div class="col-sm-6">1st Male U18: <strong>@WinnerName(Model.MaleU18Winner)</strong></div>
+                <div class="col-sm-6">1st Female U18: <strong>@WinnerName(Model.FemaleU18Winner)</strong></div>
+            }
         </div>
     </div>
 </div>
