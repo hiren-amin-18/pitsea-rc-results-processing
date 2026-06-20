@@ -1889,6 +1889,11 @@ public class RaceResultsService : IRaceResultsService
                 continue;
             }
 
+            if (csv.Parser.Count < 3)
+            {
+                continue;
+            }
+
             var time = csv.GetField(2)?.Trim();
 
             if (!int.TryParse(col0, out var position))

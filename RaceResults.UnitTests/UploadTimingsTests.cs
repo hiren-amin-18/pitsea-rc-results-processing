@@ -52,6 +52,24 @@ public class UploadTimingsTests : RaceResultsServiceTestBase
     }
 
     [Fact]
+    public async Task VirtualVolunteerCsv_WithTwoColumnGunRow_LoadsTimings()
+    {
+        await SeedEntrantsAndFinishBib();
+        // Virtual Volunteer writes the position-0 gun-start row with no duration column.
+        var csv = "STARTOFEVENT,10/06/2026 19:31:59,virtual_volunteer_ios_2.3.0_85\n"
+            + "0,10/06/2026 19:31:59\n"
+            + "1,10/06/2026 19:49:57, 00:17:58\n"
+            + "2,10/06/2026 19:50:18, 00:18:19\n"
+            + "ENDOFEVENT,10/06/2026 20:16:20\n";
+        var file = FormFileHelpers.CreateCsv("timings.csv", csv);
+
+        var result = await Service.UploadTimingsAsync(file);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, Service.GetStatusCounts().TimingCount);
+    }
+
+    [Fact]
     public async Task CsvWithZeroBasedPositions_RemappedToOneBased()
     {
         // Seed with only 1 finish bib row so single position maps cleanly
