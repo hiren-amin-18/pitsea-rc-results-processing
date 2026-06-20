@@ -81,7 +81,7 @@
 <div class="card mb-4">
     <div class="card-body">
         <h5 class="card-title">Add assignment</h5>
-        <form method="post" asp-action="Add" class="row g-2 align-items-end">
+        <form method="post" asp-action="Add" asp-route-eventId="@Model.Event.Id" class="row g-2 align-items-end">
             @Html.AntiForgeryToken()
             <input type="hidden" name="EventId" value="@Model.Event.Id" />
             <div class="col-md-3">
@@ -144,10 +144,16 @@
     </div>
 </div>
 
-@foreach (var category in new[] { RoleCategory.Leadership, RoleCategory.FinishArea, RoleCategory.Course })
+@foreach (var category in Enum.GetValues<RoleCategory>())
 {
     if (!Model.ByCategory.TryGetValue(category, out var rows) || rows.Count == 0) { continue; }
-    <h3 class="mt-4">@(category == RoleCategory.FinishArea ? "Finish Area" : category.ToString())</h3>
+    var categoryLabel = category switch
+    {
+        RoleCategory.FinishArea => "Finish Area",
+        RoleCategory.RaceHq => "Race HQ",
+        _ => category.ToString()
+    };
+    <h3 class="mt-4">@categoryLabel</h3>
     <div class="table-responsive">
         <table class="table table-sm align-middle">
             <thead>
@@ -187,7 +193,7 @@
                                     @if (a.Assignment.WillRunAfter) { <em class="text-primary">(running after)</em> }
                                     @if (!a.Volunteer.IsClubMember) { <em class="text-muted">*</em> }
                                     @if (!string.IsNullOrWhiteSpace(a.Assignment.Note)) { <span class="text-muted"> - @a.Assignment.Note</span> }
-                                    <form method="post" asp-action="Remove" class="d-inline ms-1" onsubmit="return confirm('Remove this assignment?');">
+                                    <form method="post" asp-action="Remove" asp-route-eventId="@Model.Event.Id" class="d-inline ms-1" onsubmit="return confirm('Remove this assignment?');">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="eventId" value="@Model.Event.Id" />
                                         <input type="hidden" name="assignmentId" value="@a.Assignment.Id" />

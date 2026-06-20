@@ -49,15 +49,6 @@ public class VolunteerRosterController : Controller
         return RedirectToAction(nameof(Index), new { eventId = input.EventId });
     }
 
-    [HttpPost("Update")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Update(VolunteerAssignmentInput input)
-    {
-        var result = await _roster.UpdateAssignmentAsync(input);
-        StoreFeedback(result);
-        return RedirectToAction(nameof(Index), new { eventId = input.EventId });
-    }
-
     [HttpPost("Remove")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Remove(int eventId, int assignmentId)

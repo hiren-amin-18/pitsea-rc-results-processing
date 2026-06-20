@@ -28,7 +28,7 @@ public class RosterAllocatorTests : IDisposable
         _stats = new VolunteerStatsService(factory);
         _rosterService = new VolunteerRosterService(factory, NullLogger<VolunteerRosterService>.Instance, _stats);
         _allocator = new RosterAllocator(factory);
-        _applier = new RosterDraftApplier(_rosterService);
+        _applier = new RosterDraftApplier(factory);
     }
 
     public void Dispose() => _connection.Dispose();

@@ -13,7 +13,7 @@
 <p class="text-muted">@raceEvent.EventName - @raceEvent.EventDate.ToString("dd MMM yyyy")</p>
 <p class="small text-muted">Tick the volunteers attending this event and any preferences. The allocator drafts a roster honouring the priority rules from US32; you then review and apply.</p>
 
-<form method="post" asp-action="Allocate">
+<form method="post" asp-action="Allocate" asp-route-eventId="@Model.EventId">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="EventId" />
 

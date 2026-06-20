@@ -87,7 +87,6 @@ public class RosterAllocator : IRosterAllocator
         var slots = roles.ToDictionary(r => r.Id, r => r.DefaultCount);
         var runAfterSlots = roles.ToDictionary(r => r.Id, r => r.RunAfterCapacity);
         var placed = new HashSet<int>();
-        var unplaced = candidates.Select(c => c.VolunteerId).ToHashSet();
 
         void Place(AllocationCandidate cand, VolunteerRole role, AllocationReason reason, bool willRunAfter = false)
         {
@@ -112,7 +111,6 @@ public class RosterAllocator : IRosterAllocator
             slots[role.Id]--;
             if (willRunAfter) runAfterSlots[role.Id]--;
             placed.Add(v.Id);
-            unplaced.Remove(v.Id);
         }
 
         bool CanAssign(AllocationCandidate cand, VolunteerRole role, bool wantsRunAfter)
@@ -285,13 +283,28 @@ public class RosterAllocator : IRosterAllocator
                 .Where(c => EligibleIgnoringSlots(c, marshalRole))
                 .FirstOrDefault();
             if (swap == null) continue;
-            // Swap: drop the second assigned, place the new candidate.
+            // True swap: drop one of the same-gender assignees, place the opposite-gender candidate at this
+            // marshal point, and re-home the dropped person in their best remaining role. Skip the swap
+            // entirely if there is nowhere left for the dropped person — otherwise they would be lost.
             var dropped = assigned.Last();
+            var droppedCand = candidatesById[dropped.VolunteerId];
+            var droppedAltRole = roles
+                .Where(r => r.Id != marshalRole.Id
+                            && slots[r.Id] > 0
+                            && CanAssign(droppedCand, r, droppedCand.WantsToRunAfter))
+                .OrderBy(r => MostRecentInRole(droppedCand.VolunteerId, r))
+                .ThenBy(r => r.Category).ThenBy(r => r.SortOrder)
+                .FirstOrDefault();
+            if (droppedAltRole == null) continue;
+
             draft.Proposals.Remove(dropped);
             slots[marshalRole.Id]++;
             if (dropped.WillRunAfter) runAfterSlots[marshalRole.Id]++;
             placed.Remove(dropped.VolunteerId);
-            unplaced.Add(dropped.VolunteerId);
+
+            var droppedWillRunAfter = droppedCand.WantsToRunAfter && runAfterSlots[droppedAltRole.Id] > 0;
+            Place(droppedCand, droppedAltRole, AllocationReason.Mix, droppedWillRunAfter);
+
             var swapCand = candidatesById[swap.VolunteerId];
             var willRunAfter = swapCand.WantsToRunAfter && runAfterSlots[marshalRole.Id] > 0;
             Place(swapCand, marshalRole, AllocationReason.Mix, willRunAfter);

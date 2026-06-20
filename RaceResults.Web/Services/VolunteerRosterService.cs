@@ -38,7 +38,7 @@ public class VolunteerRosterService : IVolunteerRosterService
             .ToList();
 
         var byCategory = new Dictionary<RoleCategory, List<RosterRoleRow>>();
-        foreach (var category in new[] { RoleCategory.Leadership, RoleCategory.FinishArea, RoleCategory.Course })
+        foreach (var category in Enum.GetValues<RoleCategory>())
         {
             byCategory[category] = roles
                 .Where(r => r.Category == category)
@@ -106,33 +106,6 @@ public class VolunteerRosterService : IVolunteerRosterService
         var result = OperationResult.Ok($"Assignment added.");
         foreach (var warning in validation.Warnings) result.Warnings.Add(warning);
         _logger.LogInformation("Assignment {Id} created for event {EventId} role {RoleId}.", assignment.Id, input.EventId, input.VolunteerRoleId);
-        return result;
-    }
-
-    public async Task<OperationResult> UpdateAssignmentAsync(VolunteerAssignmentInput input)
-    {
-        await using var db = _dbContextFactory.CreateDbContext();
-        var existing = await db.VolunteerAssignments.FirstOrDefaultAsync(a => a.Id == input.Id);
-        if (existing is null) return OperationResult.Fail(new[] { "Assignment not found." });
-
-        var validation = await ValidateAssignmentAsync(db, input, existingId: input.Id);
-        if (validation.Errors.Count > 0) return OperationResult.Fail(validation.Errors);
-
-        existing.VolunteerId = input.VolunteerId;
-        existing.VolunteerRoleId = input.VolunteerRoleId;
-        existing.WillRunAfter = input.WillRunAfter;
-        existing.Note = string.IsNullOrWhiteSpace(input.Note) ? null : input.Note.Trim();
-        existing.PreferredRoleId = input.PreferredRoleId;
-        existing.WantsToRunAfter = input.WantsToRunAfter;
-        existing.WantsNearFinish = input.WantsNearFinish;
-        existing.CantWalkFar = input.CantWalkFar;
-        existing.WantsSeated = input.WantsSeated;
-        existing.WantsRaceHq = input.WantsRaceHq;
-        existing.AnyRole = input.AnyRole;
-        await db.SaveChangesAsync();
-
-        var result = OperationResult.Ok($"Assignment updated.");
-        foreach (var warning in validation.Warnings) result.Warnings.Add(warning);
         return result;
     }
 
