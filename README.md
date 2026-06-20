@@ -32,12 +32,13 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Entrant validation** | Required fields checked; duplicate bib numbers rejected; duplicate names reported as a warning for review |
 | **Finish bib upload** | Upload a finish-position-to-bib `.xlsx` file; duplicate positions and bibs rejected |
 | **Unmatched bib flagging** | Bibs in the finish file with no matching entrant are warned at upload and highlighted on the Results page with a badge and warning banner |
-| **Timing upload** | Upload a timing file as `.csv` or `.xlsx`; zero-based positions auto-remapped; `STARTOFEVENT`/`ENDOFEVENT` device rows ignored |
+| **Timing upload** | Upload a timing file as `.csv` or `.xlsx`; zero-based positions auto-remapped; `STARTOFEVENT`/`ENDOFEVENT` device rows and the Virtual Volunteer gun-start row (position 0 with no duration) are ignored |
 | **Example file links** | The Uploads page shows the expected columns and offers downloadable example files for each upload format |
 | **Timing consistency check** | Timing positions must exactly match finish bib positions; missing and unexpected positions are itemised |
 | **Collated results view** | All results in finish order, with name, club, gender, age, time, and gap to winner |
 | **Validated finish times** | Finish times are validated at upload, stored as typed durations, normalised for display, and checked for out-of-order anomalies |
 | **Runner registry** | Persistent runners that per-event entrants link to; upload auto-matches by name+club with near-match warnings; a Runners page lists race counts and supports editing and merging duplicates |
+| **Possible-duplicates filter** | Toggle on the Runners page that clusters likely-duplicate runners (same name across clubs, or fuzzy name match within the same gender), with a single batched merge across clusters and a per-pair "Not a duplicate" dismissal that persists across sessions |
 | **Finish status (DNS/DNF/DSQ)** | Non-finishers default to DNF and can be set DNS (no-show); finishers can be disqualified with a recorded reason, which removes them from results (positions close up), voids their Champions points, and is reversible |
 | **Edit results** | Correct any result row (position, bib, time, runner details) without re-uploading files; edits to Crown to Crown events trigger a Champions season recalculation |
 | **Race stats + graphs** | Totals plus chart breakdowns for Male/Female, category, club, affiliation, and finishers per minute |
@@ -137,7 +138,7 @@ pitsea-rc-results-processing/
 │   │   ├── RaceController.cs           # Uploads / Results / Stats / Top10 / exports (/Race/*)
 │   │   ├── EventsController.cs         # Event management + season generator (/Events/*)
 │   │   ├── ChampionsController.cs      # Champions leaderboard + exports (/Champions/*)
-│   │   ├── RunnersController.cs        # Runner registry: list, edit, merge (/Runners/*)
+│   │   ├── RunnersController.cs        # Runner registry: list, edit, merge, batch-merge, dismiss similar pairs (/Runners/*)
 │   │   ├── CourseRecordsController.cs  # Course record management (/CourseRecords/*)
 │   │   ├── SeasonController.cs         # Season dashboard + runner profiles + end-of-season review (/Season/*)
 │   │   ├── PublicController.cs         # Read-only published results pages (/public/*)
