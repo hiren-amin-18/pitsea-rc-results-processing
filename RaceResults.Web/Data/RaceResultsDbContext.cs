@@ -19,6 +19,7 @@ public class RaceResultsDbContext : DbContext
     public DbSet<VolunteerRole> VolunteerRoles => Set<VolunteerRole>();
     public DbSet<VolunteerRoleEligibility> VolunteerRoleEligibilities => Set<VolunteerRoleEligibility>();
     public DbSet<VolunteerAssignment> VolunteerAssignments => Set<VolunteerAssignment>();
+    public DbSet<NotDuplicatePair> NotDuplicatePairs => Set<NotDuplicatePair>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -176,6 +177,15 @@ public class RaceResultsDbContext : DbContext
             e.HasOne(x => x.Volunteer).WithMany().HasForeignKey(x => x.VolunteerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.VolunteerRole).WithMany().HasForeignKey(x => x.VolunteerRoleId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.PreferredRole).WithMany().HasForeignKey(x => x.PreferredRoleId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<NotDuplicatePair>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.RunnerAId, x.RunnerBId }).IsUnique();
+            // Deleting a runner clears any pair-dismissals that reference it.
+            e.HasOne<Runner>().WithMany().HasForeignKey(x => x.RunnerAId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Runner>().WithMany().HasForeignKey(x => x.RunnerBId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 

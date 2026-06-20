@@ -14,9 +14,16 @@ public class RunnersController : Controller
     }
 
     [HttpGet]
-    public IActionResult Index()
+    public IActionResult Index(bool duplicates = false)
     {
-        return View(_registry.GetRunners());
+        var model = new RunnersIndexViewModel
+        {
+            Runners = _registry.GetRunners(),
+            ShowDuplicates = duplicates,
+            Clusters = duplicates ? _registry.GetSimilarRunnerClusters() : Array.Empty<RunnerSimilarityCluster>(),
+            DismissedPairCount = duplicates ? _registry.CountDismissedPairs() : 0
+        };
+        return View(model);
     }
 
     [HttpGet]
@@ -58,6 +65,33 @@ public class RunnersController : Controller
         var result = await _registry.MergeRunnersAsync(sourceId, targetId);
         StoreFeedback(result);
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MergeBatch(MergeBatchInput input)
+    {
+        var result = await _registry.MergeRunnersBatchAsync(input.Clusters ?? new List<ClusterMergeInput>());
+        StoreFeedback(result);
+        return RedirectToAction(nameof(Index), new { duplicates = true });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DismissPair(int runnerAId, int runnerBId)
+    {
+        var result = await _registry.DismissPairAsync(runnerAId, runnerBId);
+        StoreFeedback(result);
+        return RedirectToAction(nameof(Index), new { duplicates = true });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearDismissedPairs()
+    {
+        var result = await _registry.ClearDismissedPairsAsync();
+        StoreFeedback(result);
+        return RedirectToAction(nameof(Index), new { duplicates = true });
     }
 
     private void StoreFeedback(OperationResult result)

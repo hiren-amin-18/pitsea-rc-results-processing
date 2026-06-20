@@ -1,4 +1,4 @@
-@model IReadOnlyList<RaceResults.Web.Models.RunnerListItem>
+@model RaceResults.Web.Models.RunnersIndexViewModel
 @{
     ViewData["Title"] = "Runners";
 }
@@ -12,87 +12,273 @@
     <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
 }
 
-@if (!Model.Any())
+@if (!Model.Runners.Any())
 {
     <div class="alert alert-info">No runners yet. Upload entrants to populate the registry.</div>
 }
 else
 {
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">Merge duplicate runners</h5>
-            <p class="small text-muted">Use this to combine two records for the same person (e.g. a typo or a mid-season club change). All race entries move to the runner you keep.</p>
-            <form method="post" asp-action="Merge" class="row g-2 align-items-end"
-                  onsubmit="return confirm('Merge these runners? All race entries from the first runner move to the second, and the first runner is removed. This recalculates affected Champions seasons.');">
-                @Html.AntiForgeryToken()
-                <div class="col-md-5">
-                    <label class="form-label small">Merge this runner…</label>
-                    <select name="sourceId" class="form-select" data-testid="merge-source" required>
-                        <option value="">— select —</option>
-                        @foreach (var item in Model)
-                        {
-                            <option value="@item.Runner.Id">@item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) — @item.RaceCount race(s)</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-md-5">
-                    <label class="form-label small">…into this runner</label>
-                    <select name="targetId" class="form-select" data-testid="merge-target" required>
-                        <option value="">— select —</option>
-                        @foreach (var item in Model)
-                        {
-                            <option value="@item.Runner.Id">@item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) — @item.RaceCount race(s)</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-outline-danger w-100" data-testid="merge-submit">Merge</button>
-                </div>
-            </form>
-        </div>
+    <div class="mb-3">
+        @if (Model.ShowDuplicates)
+        {
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index" data-testid="duplicates-toggle">Show all runners</a>
+            <span class="ms-2 text-muted small">Showing possible duplicates only.</span>
+        }
+        else
+        {
+            <a class="btn btn-sm btn-outline-primary" asp-action="Index" asp-route-duplicates="true" data-testid="duplicates-toggle">Show possible duplicates</a>
+            <span class="ms-2 text-muted small">Group runners with similar names or matching names across clubs.</span>
+        }
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-striped align-middle">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Club</th>
-                    <th class="text-center">Gender</th>
-                    <th>Age</th>
-                    <th class="text-center">Races</th>
-                    <th>EA number</th>
-                    <th class="text-center">Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var item in Model)
-            {
-                <tr class="@(item.Runner.IsActive ? null : "text-muted")">
-                    <td>@item.Runner.Name</td>
-                    <td>@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)</td>
-                    <td class="text-center">@item.Runner.Gender</td>
-                    <td>@(item.Runner.Age?.ToString() ?? "-")</td>
-                    <td class="text-center">@item.RaceCount</td>
-                    <td>@(string.IsNullOrWhiteSpace(item.Runner.ExternalReference) ? "-" : item.Runner.ExternalReference)</td>
-                    <td class="text-center">
-                        @if (item.Runner.IsActive)
-                        {
-                            <span class="badge bg-success">Active</span>
+    @if (Model.ShowDuplicates)
+    {
+        if (Model.DismissedPairCount > 0)
+        {
+            <form method="post" asp-action="ClearDismissedPairs" class="mb-3 d-inline-block"
+                  onsubmit="return confirm('Restore all dismissed pairs so they show up as possible duplicates again?');">
+                @Html.AntiForgeryToken()
+                <span class="small text-muted me-2">@Model.DismissedPairCount pair(s) marked "not a duplicate".</span>
+                <button type="submit" class="btn btn-sm btn-outline-secondary" data-testid="clear-dismissed">Restore dismissed pairs</button>
+            </form>
+        }
+
+        if (!Model.Clusters.Any())
+        {
+            <div class="alert alert-success" data-testid="duplicates-empty">No likely duplicates found.</div>
+        }
+        else
+        {
+            <p class="small text-muted">@Model.Clusters.Count cluster(s) found. For each cluster pick a runner to keep, tick the ones to merge in, then submit at the bottom.</p>
+            <form method="post" asp-action="MergeBatch" id="merge-batch-form">
+                @Html.AntiForgeryToken()
+                @for (var ci = 0; ci < Model.Clusters.Count; ci++)
+                {
+                    var cluster = Model.Clusters[ci];
+                    var reasonLabel = cluster.Reason switch
+                    {
+                        RaceResults.Web.Models.SimilarityReason.SameNameDifferentClub => "Same name, different club",
+                        RaceResults.Web.Models.SimilarityReason.FuzzyNameMatch => "Similar names",
+                        _ => "Possible duplicate"
+                    };
+                    var defaultTargetId = cluster.Runners.OrderByDescending(r => r.RaceCount).First().Runner.Id;
+                    <div class="card mb-3" data-testid="duplicate-cluster">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="card-title mb-0">@cluster.Runners[0].Runner.Name and @(cluster.Runners.Count - 1) other(s)</h6>
+                                <span class="badge bg-info text-dark">@reasonLabel</span>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small">Keep this runner</label>
+                                    <select name="Clusters[@ci].TargetId" class="form-select form-select-sm cluster-target" data-testid="cluster-target">
+                                        @foreach (var item in cluster.Runners)
+                                        {
+                                            <option value="@item.Runner.Id" selected="@(item.Runner.Id == defaultTargetId)">
+                                                @item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) — @item.RaceCount race(s)
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" style="width:6rem;">Merge in</th>
+                                            <th>Name</th>
+                                            <th>Club</th>
+                                            <th class="text-center">Gender</th>
+                                            <th>Age</th>
+                                            <th class="text-center">Races</th>
+                                            <th>EA number</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach (var item in cluster.Runners)
+                                    {
+                                        <tr class="@(item.Runner.IsActive ? null : "text-muted")">
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input cluster-source"
+                                                       name="Clusters[@ci].SourceIds"
+                                                       value="@item.Runner.Id"
+                                                       data-runner-id="@item.Runner.Id"
+                                                       data-testid="cluster-source" />
+                                            </td>
+                                            <td>@item.Runner.Name</td>
+                                            <td>@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)</td>
+                                            <td class="text-center">@item.Runner.Gender</td>
+                                            <td>@(item.Runner.Age?.ToString() ?? "-")</td>
+                                            <td class="text-center">@item.RaceCount</td>
+                                            <td>@(string.IsNullOrWhiteSpace(item.Runner.ExternalReference) ? "-" : item.Runner.ExternalReference)</td>
+                                            <td class="text-nowrap">
+                                                <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@item.Runner.Id">Edit</a>
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-warning dismiss-pair-btn"
+                                                        formaction="@Url.Action("DismissPair")"
+                                                        formnovalidate
+                                                        data-runner-id="@item.Runner.Id"
+                                                        data-testid="dismiss-pair"
+                                                        title="Mark this runner and the 'Keep' runner as not the same person">
+                                                    Not a duplicate
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+                <div class="d-flex justify-content-end mb-4">
+                    <button type="submit" class="btn btn-danger" data-testid="merge-batch-submit">Apply all selected merges</button>
+                </div>
+                <input type="hidden" name="runnerAId" id="dismiss-runnerA" />
+                <input type="hidden" name="runnerBId" id="dismiss-runnerB" />
+            </form>
+
+            <script>
+                (function () {
+                    var batchForm = document.getElementById('merge-batch-form');
+                    if (batchForm) {
+                        batchForm.addEventListener('submit', function (ev) {
+                            var submitter = ev.submitter;
+                            // Only the batch button shows the merge confirmation; other buttons (Not a duplicate)
+                            // override the action via formaction and run their own confirm.
+                            if (submitter && submitter.getAttribute('data-testid') === 'merge-batch-submit') {
+                                if (!confirm('Apply all selected merges? Race entries from each ticked runner move to its keep target, and the ticked runners are removed. This recalculates affected Champions seasons.')) {
+                                    ev.preventDefault();
+                                }
+                            }
+                        });
+                    }
+
+                    document.querySelectorAll('[data-testid="duplicate-cluster"]').forEach(function (card) {
+                        var select = card.querySelector('.cluster-target');
+                        var checkboxes = card.querySelectorAll('.cluster-source');
+                        var dismissButtons = card.querySelectorAll('.dismiss-pair-btn');
+
+                        function sync() {
+                            var keepId = select.value;
+                            checkboxes.forEach(function (cb) {
+                                var isTarget = cb.dataset.runnerId === keepId;
+                                cb.disabled = isTarget;
+                                if (isTarget) { cb.checked = false; }
+                                cb.closest('tr').classList.toggle('table-active', isTarget);
+                            });
+                            dismissButtons.forEach(function (btn) {
+                                var rowId = btn.dataset.runnerId;
+                                var isTarget = rowId === keepId;
+                                btn.disabled = isTarget;
+                                btn.title = isTarget
+                                    ? "Pick a different 'Keep' runner first."
+                                    : "Mark this runner and the 'Keep' runner as not the same person";
+                            });
                         }
-                        else
-                        {
-                            <span class="badge bg-secondary">Inactive</span>
-                        }
-                    </td>
-                    <td class="text-nowrap">
-                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@item.Runner.Id">Edit</a>
-                        <a class="btn btn-sm btn-outline-secondary" asp-controller="Season" asp-action="Runner" asp-route-id="@item.Runner.Id">Season</a>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
+                        select.addEventListener('change', sync);
+                        sync();
+
+                        dismissButtons.forEach(function (btn) {
+                            btn.addEventListener('click', function (ev) {
+                                var keepId = select.value;
+                                var rowId = btn.dataset.runnerId;
+                                if (!keepId || keepId === rowId) {
+                                    ev.preventDefault();
+                                    return;
+                                }
+                                if (!confirm("Mark these two runners as NOT the same person? They won't be flagged as duplicates again until you restore dismissed pairs.")) {
+                                    ev.preventDefault();
+                                    return;
+                                }
+                                document.getElementById('dismiss-runnerA').value = rowId;
+                                document.getElementById('dismiss-runnerB').value = keepId;
+                            });
+                        });
+                    });
+                })();
+            </script>
+        }
+    }
+    else
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Merge duplicate runners</h5>
+                <p class="small text-muted">Use this to combine two records for the same person (e.g. a typo or a mid-season club change). All race entries move to the runner you keep.</p>
+                <form method="post" asp-action="Merge" class="row g-2 align-items-end"
+                      onsubmit="return confirm('Merge these runners? All race entries from the first runner move to the second, and the first runner is removed. This recalculates affected Champions seasons.');">
+                    @Html.AntiForgeryToken()
+                    <div class="col-md-5">
+                        <label class="form-label small">Merge this runner…</label>
+                        <select name="sourceId" class="form-select" data-testid="merge-source" required>
+                            <option value="">— select —</option>
+                            @foreach (var item in Model.Runners)
+                            {
+                                <option value="@item.Runner.Id">@item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) — @item.RaceCount race(s)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label small">…into this runner</label>
+                        <select name="targetId" class="form-select" data-testid="merge-target" required>
+                            <option value="">— select —</option>
+                            @foreach (var item in Model.Runners)
+                            {
+                                <option value="@item.Runner.Id">@item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) — @item.RaceCount race(s)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-outline-danger w-100" data-testid="merge-submit">Merge</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Club</th>
+                        <th class="text-center">Gender</th>
+                        <th>Age</th>
+                        <th class="text-center">Races</th>
+                        <th>EA number</th>
+                        <th class="text-center">Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in Model.Runners)
+                {
+                    <tr class="@(item.Runner.IsActive ? null : "text-muted")">
+                        <td>@item.Runner.Name</td>
+                        <td>@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)</td>
+                        <td class="text-center">@item.Runner.Gender</td>
+                        <td>@(item.Runner.Age?.ToString() ?? "-")</td>
+                        <td class="text-center">@item.RaceCount</td>
+                        <td>@(string.IsNullOrWhiteSpace(item.Runner.ExternalReference) ? "-" : item.Runner.ExternalReference)</td>
+                        <td class="text-center">
+                            @if (item.Runner.IsActive)
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inactive</span>
+                            }
+                        </td>
+                        <td class="text-nowrap">
+                            <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@item.Runner.Id">Edit</a>
+                            <a class="btn btn-sm btn-outline-secondary" asp-controller="Season" asp-action="Runner" asp-route-id="@item.Runner.Id">Season</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
 }
