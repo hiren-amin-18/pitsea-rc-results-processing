@@ -33,7 +33,7 @@
             {
                 <tr>
                     <td>@slot.Category</td>
-                    <td>@(slot.Current is null ? "—" : RaceTime.Format(slot.Current.Duration))</td>
+                    <td>@(slot.Current is null ? "-" : RaceTime.Format(slot.Current.Duration))</td>
                     <td>
                         @if (slot.Current is null)
                         {

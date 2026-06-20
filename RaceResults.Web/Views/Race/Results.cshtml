@@ -17,7 +17,7 @@
 @if (Model.IsReadOnly)
 {
     <div class="alert alert-secondary" role="alert">
-        Viewing <strong>@Model.ViewedEventName</strong>@(Model.IsArchived ? " (archived)" : " (not the current event)") — read-only.
+        Viewing <strong>@Model.ViewedEventName</strong>@(Model.IsArchived ? " (archived)" : " (not the current event)") - read-only.
     </div>
 }
 
@@ -36,7 +36,7 @@
         {
             <div class="d-flex align-items-center gap-2 mb-1">
                 <span>
-                    <strong>@pending.Category:</strong> @pending.Time — @pending.RunnerName
+                    <strong>@pending.Category:</strong> @pending.Time - @pending.RunnerName
                     @if (string.IsNullOrEmpty(pending.PreviousTime))
                     {
                         <span class="text-muted">(first record for this category)</span>
@@ -131,7 +131,7 @@ else
             <strong>@dsq.BibNumber - @dsq.Name</strong>@clubSuffix
             @if (!string.IsNullOrWhiteSpace(dsq.StatusReason))
             {
-                <span class="text-muted">— @dsq.StatusReason</span>
+                <span class="text-muted">- @dsq.StatusReason</span>
             }
             @if (!Model.IsReadOnly)
             {
@@ -173,7 +173,7 @@ else
 }
 
 <h2 class="mt-4">DNS</h2>
-<p class="small text-muted">Registered but never started — excluded from results, statistics, and the PDF.</p>
+<p class="small text-muted">Registered but never started - excluded from results, statistics, and the PDF.</p>
 @if (!Model.DnsEntrants.Any())
 {
     <p>None</p>

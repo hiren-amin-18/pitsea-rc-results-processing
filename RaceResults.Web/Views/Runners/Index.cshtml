@@ -75,7 +75,7 @@ else
                                         @foreach (var item in cluster.Runners)
                                         {
                                             <option value="@item.Runner.Id" selected="@(item.Runner.Id == defaultTargetId)">
-                                                @item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) — @item.RaceCount race(s)
+                                                @item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) - @item.RaceCount race(s)
                                             </option>
                                         }
                                     </select>
@@ -213,20 +213,20 @@ else
                     <div class="col-md-5">
                         <label class="form-label small">Merge this runner…</label>
                         <select name="sourceId" class="form-select" data-testid="merge-source" required>
-                            <option value="">— select —</option>
+                            <option value="">- select -</option>
                             @foreach (var item in Model.Runners)
                             {
-                                <option value="@item.Runner.Id">@item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) — @item.RaceCount race(s)</option>
+                                <option value="@item.Runner.Id">@item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) - @item.RaceCount race(s)</option>
                             }
                         </select>
                     </div>
                     <div class="col-md-5">
                         <label class="form-label small">…into this runner</label>
                         <select name="targetId" class="form-select" data-testid="merge-target" required>
-                            <option value="">— select —</option>
+                            <option value="">- select -</option>
                             @foreach (var item in Model.Runners)
                             {
-                                <option value="@item.Runner.Id">@item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) — @item.RaceCount race(s)</option>
+                                <option value="@item.Runner.Id">@item.Runner.Name (@(string.IsNullOrWhiteSpace(item.Runner.Club) ? "Unaffiliated" : item.Runner.Club)) - @item.RaceCount race(s)</option>
                             }
                         </select>
                     </div>

@@ -5,7 +5,7 @@
     ViewData["Title"] = "Race Stats";
     var clubChartHeight = Math.Max(320, Model.ClubBreakdown.Count * 30);
     var summary = Model.Summary;
-    string Fmt(TimeSpan? t) => t.HasValue ? RaceTime.Format(t.Value) : "—";
+    string Fmt(TimeSpan? t) => t.HasValue ? RaceTime.Format(t.Value) : "-";
 }
 
 <h1>Race Statistics</h1>
@@ -38,7 +38,7 @@
                 {
                     <p class="mb-1">Winner: <strong>@Fmt(summary.WinnerTime)</strong> &middot; Median: <strong>@Fmt(summary.MedianTime)</strong> &middot; Average: <strong>@Fmt(summary.AverageTime)</strong></p>
                     <p class="mb-1 small text-muted">Winner→median spread: @Fmt(summary.WinnerToMedianSpread)</p>
-                    <p class="mb-0 small text-muted">Cut-offs — top 25%: @Fmt(summary.Percentile25) &middot; 50%: @Fmt(summary.Percentile50) &middot; 75%: @Fmt(summary.Percentile75)</p>
+                    <p class="mb-0 small text-muted">Cut-offs - top 25%: @Fmt(summary.Percentile25) &middot; 50%: @Fmt(summary.Percentile50) &middot; 75%: @Fmt(summary.Percentile75)</p>
                 }
                 else
                 {

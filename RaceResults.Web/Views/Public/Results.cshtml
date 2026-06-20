@@ -3,7 +3,7 @@
     Layout = "_PublicLayout";
     ViewData["Title"] = Model.Event.EventName + " Results";
     string Name(RaceResults.Web.Models.ResultRecord r) => r.IsUnmatched ? "Unknown runner" : r.Name;
-    string WinnerName(RaceResults.Web.Models.ResultRecord? r) => r is null ? "—" : (r.IsUnmatched ? "Unknown runner" : r.Name);
+    string WinnerName(RaceResults.Web.Models.ResultRecord? r) => r is null ? "-" : (r.IsUnmatched ? "Unknown runner" : r.Name);
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">

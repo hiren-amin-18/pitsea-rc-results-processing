@@ -1,7 +1,7 @@
 @model RaceResults.Web.Models.RosterViewModel
 @using RaceResults.Web.Models
 @{
-    ViewData["Title"] = $"Roster — {Model.Event.EventName}";
+    ViewData["Title"] = $"Roster - {Model.Event.EventName}";
     var volunteers = ViewBag.Volunteers as IReadOnlyList<RaceResults.Web.Models.VolunteerListItem> ?? new List<RaceResults.Web.Models.VolunteerListItem>();
     var roles = ViewBag.Roles as IReadOnlyList<RaceResults.Web.Models.VolunteerRole> ?? new List<RaceResults.Web.Models.VolunteerRole>();
 }
@@ -10,7 +10,7 @@
     <div>
         <h1>Volunteer Roster</h1>
         <p class="text-muted mb-0">
-            @Model.Event.EventName — @Model.Event.EventDate.ToString("dd MMM yyyy")
+            @Model.Event.EventName - @Model.Event.EventDate.ToString("dd MMM yyyy")
             @if (Model.Event.StartTime.HasValue) { <span>(start @Model.Event.StartTime.Value.ToString(@"hh\:mm"))</span> }
         </p>
         <p class="small text-muted mb-0">@Model.TotalAssigned assignment(s) across @Model.DistinctVolunteers volunteer(s).</p>
@@ -56,7 +56,7 @@
     <div class="alert alert-info small mb-3">
         <strong>Pre-placed but not yet on the roster:</strong>
         @string.Join(", ", prePlacedNotYetAssigned.Select(r => $"{r.PrePlacedVolunteer!.Name} @ {r.Name}"))
-        — the allocator pins these automatically; for a hand-built roster add them via the form below.
+        - the allocator pins these automatically; for a hand-built roster add them via the form below.
     </div>
 }
 
@@ -87,7 +87,7 @@
             <div class="col-md-3">
                 <label class="form-label small">Volunteer</label>
                 <select name="VolunteerId" class="form-select form-select-sm" required>
-                    <option value="">—</option>
+                    <option value="">-</option>
                     @foreach (var v in volunteers) {
                         <option value="@v.Volunteer.Id">@v.Volunteer.Name @(v.Volunteer.IsFirstAidTrained ? "(FA)" : "")</option>
                     }
@@ -96,14 +96,14 @@
             <div class="col-md-3">
                 <label class="form-label small">Role</label>
                 <select name="VolunteerRoleId" class="form-select form-select-sm" required>
-                    <option value="">—</option>
+                    <option value="">-</option>
                     @foreach (var r in roles) {
                         var hints = new List<string>();
                         if (r.RequiresFirstAid) hints.Add("first aid only");
                         if (r.HasEligibilityRestriction) hints.Add("restricted");
                         if (r.RunAfterCapacity > 0) hints.Add($"{r.RunAfterCapacity} can run after");
-                        var suffix = hints.Any() ? $" — {string.Join(", ", hints)}" : "";
-                        <option value="@r.Id">@r.Category — @r.Name@suffix</option>
+                        var suffix = hints.Any() ? $" - {string.Join(", ", hints)}" : "";
+                        <option value="@r.Id">@r.Category - @r.Name@suffix</option>
                     }
                 </select>
             </div>
@@ -125,7 +125,7 @@
                     <div class="col-md-3">
                         <label class="form-label small">Preferred role</label>
                         <select name="PreferredRoleId" class="form-select form-select-sm">
-                            <option value="">—</option>
+                            <option value="">-</option>
                             @foreach (var r in roles) {
                                 <option value="@r.Id">@r.Name</option>
                             }
@@ -176,7 +176,7 @@
                     <td>
                         @if (!row.Assignments.Any())
                         {
-                            <span class="text-muted small">—</span>
+                            <span class="text-muted small">-</span>
                         }
                         else
                         {
@@ -186,7 +186,7 @@
                                     @a.Volunteer.Name
                                     @if (a.Assignment.WillRunAfter) { <em class="text-primary">(running after)</em> }
                                     @if (!a.Volunteer.IsClubMember) { <em class="text-muted">*</em> }
-                                    @if (!string.IsNullOrWhiteSpace(a.Assignment.Note)) { <span class="text-muted"> — @a.Assignment.Note</span> }
+                                    @if (!string.IsNullOrWhiteSpace(a.Assignment.Note)) { <span class="text-muted"> - @a.Assignment.Note</span> }
                                     <form method="post" asp-action="Remove" class="d-inline ms-1" onsubmit="return confirm('Remove this assignment?');">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="eventId" value="@Model.Event.Id" />

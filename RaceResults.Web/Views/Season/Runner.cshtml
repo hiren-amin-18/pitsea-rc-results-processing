@@ -7,14 +7,14 @@
 
 <h1>@Model.Runner.Name</h1>
 <p class="text-muted">
-    @(string.IsNullOrWhiteSpace(Model.Runner.Club) ? "Unaffiliated" : Model.Runner.Club) — @Model.Year season
+    @(string.IsNullOrWhiteSpace(Model.Runner.Club) ? "Unaffiliated" : Model.Runner.Club) - @Model.Year season
     <a asp-action="Dashboard" asp-route-year="@Model.Year" class="ms-2">← Season dashboard</a>
 </p>
 
 <div class="row g-3 mb-2">
     <div class="col-md-3"><div class="card"><div class="card-body"><h6>Races completed</h6><p class="display-6 mb-0">@Model.Races.Count<span class="fs-6 text-muted"> / @Model.EventsHeld held</span></p></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Avg position</h6><p class="display-6 mb-0">@(Model.AverageFinishPosition?.ToString() ?? "—")</p></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Avg in category</h6><p class="display-6 mb-0">@(Model.AverageCategoryPosition?.ToString() ?? "—")</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Avg position</h6><p class="display-6 mb-0">@(Model.AverageFinishPosition?.ToString() ?? "-")</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Avg in category</h6><p class="display-6 mb-0">@(Model.AverageCategoryPosition?.ToString() ?? "-")</p></div></div></div>
     <div class="col-md-3"><div class="card"><div class="card-body"><h6>Current streak</h6><p class="display-6 mb-0">@Model.CurrentStreak</p></div></div></div>
 </div>
 
@@ -34,7 +34,7 @@
                     <tbody>
                     @foreach (var r in Model.Races)
                     {
-                        <tr><td>@r.EventName</td><td>@r.EventDate.ToString("dd MMM")</td><td>@TypeLabel(r.EventType)</td><td>@r.Position</td><td>@r.Category</td><td>@(r.Time ?? "—")</td></tr>
+                        <tr><td>@r.EventName</td><td>@r.EventDate.ToString("dd MMM")</td><td>@TypeLabel(r.EventType)</td><td>@r.Position</td><td>@r.Category</td><td>@(r.Time ?? "-")</td></tr>
                     }
                     </tbody>
                 </table>

@@ -40,7 +40,7 @@
     <div class="col-md-6">
         <label asp-for="PrePlacedVolunteerId" class="form-label">Pre-placed volunteer (e.g. Ian at Marshal 7)</label>
         <select asp-for="PrePlacedVolunteerId" class="form-select">
-            <option value="">— none —</option>
+            <option value="">- none -</option>
             @if (volunteers != null)
             {
                 @foreach (var v in volunteers)

@@ -2,12 +2,12 @@
 @using RaceResults.Web.Models
 @using RaceResults.Web.Services
 @{
-    ViewData["Title"] = $"Season Review — {Model.Year}";
+    ViewData["Title"] = $"Season Review - {Model.Year}";
     string TypeLabel(EventType t) => t == EventType.CrownToCrown ? "Crown to Crown" : "Bluebell 5";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <h1>End of Season Review — @Model.Year</h1>
+    <h1>End of Season Review - @Model.Year</h1>
     <div class="d-flex gap-2 align-items-center">
         @if (Model.AvailableYears.Any())
         {
@@ -70,7 +70,7 @@ else
             @foreach (var entry in category.OrderBy(e => e.Rank).Take(3))
             {
                 var medal = entry.Rank switch { 1 => "🥇", 2 => "🥈", 3 => "🥉", _ => "" };
-                <li>@medal @entry.Entrant.Name — <strong>@entry.TotalPoints pts</strong> (@entry.RaceCount races)</li>
+                <li>@medal @entry.Entrant.Name - <strong>@entry.TotalPoints pts</strong> (@entry.RaceCount races)</li>
             }
         </ol>
     }
@@ -79,7 +79,7 @@ else
 <h2 class="h4 mt-4">Runner recognition <small class="text-muted">full series</small></h2>
 @if (Model.SeasonDashboard.MostAttendedRunners.Any())
 {
-    <p class="mb-1"><strong>Most attended:</strong> @string.Join(", ", Model.SeasonDashboard.MostAttendedRunners.Select(r => $"{r.RunnerName} ({r.EventsAttended} events" + (r.EverPresent ? " — ever-present" : "") + ")"))</p>
+    <p class="mb-1"><strong>Most attended:</strong> @string.Join(", ", Model.SeasonDashboard.MostAttendedRunners.Select(r => $"{r.RunnerName} ({r.EventsAttended} events" + (r.EverPresent ? " - ever-present" : "") + ")"))</p>
 }
 @if (Model.SeasonDashboard.TopClubsByEntries.Any())
 {
@@ -106,7 +106,7 @@ else
     <ul class="list-unstyled">
     @foreach (var record in Model.NewCourseRecordsThisYear)
     {
-        <li><strong>@TypeLabel(record.EventType) @record.Category:</strong> @RaceTime.Format(record.Duration) — @record.RunnerName <span class="text-muted">(@record.EventName, @record.EventDate.ToString("MMM yyyy"))</span></li>
+        <li><strong>@TypeLabel(record.EventType) @record.Category:</strong> @RaceTime.Format(record.Duration) - @record.RunnerName <span class="text-muted">(@record.EventName, @record.EventDate.ToString("MMM yyyy"))</span></li>
     }
     </ul>
 }
@@ -130,7 +130,7 @@ else
         @foreach (var v in vols.MostActive.Take(5))
         {
             <li>
-                <strong>@v.Name</strong> — @v.EventsAttended event(s), @v.Assignments assignment(s)
+                <strong>@v.Name</strong> - @v.EventsAttended event(s), @v.Assignments assignment(s)
                 @if (v.IsEverPresent) { <span class="badge bg-success ms-1">Ever-present</span> }
                 @if (!v.IsClubMember) { <span class="badge bg-secondary ms-1">Non-member</span> }
             </li>
@@ -145,7 +145,7 @@ else
         @foreach (var v in vols.RanAndVolunteered.Take(5))
         {
             var rv = v.RunAndVolunteer!;
-            <li><strong>@v.Name</strong> — ran @rv.RunCount, volunteered @rv.VolunteerCount, involved in @rv.EventsInvolvedIn event(s)</li>
+            <li><strong>@v.Name</strong> - ran @rv.RunCount, volunteered @rv.VolunteerCount, involved in @rv.EventsInvolvedIn event(s)</li>
         }
         </ul>
     }
@@ -180,5 +180,5 @@ else
 
 @if (!Model.HasVolunteerData)
 {
-    <p class="small text-muted">Volunteer recognition section omitted — no volunteer assignments recorded for @Model.Year yet.</p>
+    <p class="small text-muted">Volunteer recognition section omitted - no volunteer assignments recorded for @Model.Year yet.</p>
 }

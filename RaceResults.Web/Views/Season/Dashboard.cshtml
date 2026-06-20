@@ -6,7 +6,7 @@
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <h1>Season Statistics — @Model.Year</h1>
+    <h1>Season Statistics - @Model.Year</h1>
     <div class="d-flex gap-2 align-items-center">
         @if (Model.AvailableYears.Any())
         {
@@ -62,7 +62,7 @@
             {
                 <li>
                     <a asp-action="Runner" asp-route-id="@r.RunnerId" asp-route-year="@Model.Year">@r.RunnerName</a>
-                    — @r.EventsAttended event(s)
+                    - @r.EventsAttended event(s)
                     @if (r.EverPresent)
                     {
                         <span class="badge bg-success">Ever-present</span>
@@ -78,11 +78,11 @@
             <div class="row">
                 <div class="col-6">
                     <p class="small text-muted mb-1">By entries</p>
-                    <ol class="ps-3 mb-0">@foreach (var c in Model.TopClubsByEntries) { <li>@c.Club — @c.Count</li> }</ol>
+                    <ol class="ps-3 mb-0">@foreach (var c in Model.TopClubsByEntries) { <li>@c.Club - @c.Count</li> }</ol>
                 </div>
                 <div class="col-6">
                     <p class="small text-muted mb-1">By unique runners</p>
-                    <ol class="ps-3 mb-0">@foreach (var c in Model.TopClubsByRunners) { <li>@c.Club — @c.Count</li> }</ol>
+                    <ol class="ps-3 mb-0">@foreach (var c in Model.TopClubsByRunners) { <li>@c.Club - @c.Count</li> }</ol>
                 </div>
             </div>
         </div></div>

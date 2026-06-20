@@ -4,7 +4,7 @@
     ViewData["Title"] = "Champions of Champions " + Model.SeasonYear;
 }
 
-<h2 class="h3">Champions of Champions — @Model.SeasonYear</h2>
+<h2 class="h3">Champions of Champions - @Model.SeasonYear</h2>
 <p class="mb-3"><a href="@Url.Action("Results", "Public", new { token = Model.Token })">← Back to @Model.EventName results</a></p>
 
 @if (!Model.Leaderboard.Any())

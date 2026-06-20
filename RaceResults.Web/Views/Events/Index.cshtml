@@ -85,7 +85,7 @@
                         <button class="btn btn-sm btn-outline-secondary" type="submit">Archive</button>
                     </form>
 
-                    <form method="post" asp-action="Delete" asp-route-id="@raceEvent.Id" onsubmit="return confirm('Delete this event and all associated results? This cannot be undone — consider downloading a backup from Settings first.');">
+                    <form method="post" asp-action="Delete" asp-route-id="@raceEvent.Id" onsubmit="return confirm('Delete this event and all associated results? This cannot be undone - consider downloading a backup from Settings first.');">
                         @Html.AntiForgeryToken()
                         <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
                     </form>

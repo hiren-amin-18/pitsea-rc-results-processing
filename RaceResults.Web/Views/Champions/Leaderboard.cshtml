@@ -20,7 +20,7 @@
         <div class="row align-items-center">
             <div class="col-md-8">
                 <h5 class="card-title mb-2">@Model.SeasonYear Season</h5>
-                <p class="text-muted mb-0">As of: <strong>@Model.AsOfDate.ToString("MMMM d, yyyy")</strong> — Event: <strong>@Model.CurrentEventName</strong></p>
+                <p class="text-muted mb-0">As of: <strong>@Model.AsOfDate.ToString("MMMM d, yyyy")</strong> - Event: <strong>@Model.CurrentEventName</strong></p>
             </div>
             <div class="col-md-4 text-end">
                 <form asp-action="CalculatePoints" asp-controller="Champions" method="post" class="d-inline">

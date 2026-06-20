@@ -1,11 +1,11 @@
 @model RaceResults.Web.Models.AllocationDraft
 @{
-    ViewData["Title"] = $"Draft Roster — {Model.EventName}";
+    ViewData["Title"] = $"Draft Roster - {Model.EventName}";
     var draftJson = System.Text.Json.JsonSerializer.Serialize(Model);
 }
 
 <h1>Draft Roster</h1>
-<p class="text-muted">@Model.EventName — @Model.EventDate.ToString("dd MMM yyyy")</p>
+<p class="text-muted">@Model.EventName - @Model.EventDate.ToString("dd MMM yyyy")</p>
 <p class="small text-muted">Review the proposed allocation. Click Apply to add these assignments to the roster (existing assignments are kept; nothing is deleted). After applying you can adjust the roster freely.</p>
 
 <form method="post" asp-action="Apply" asp-route-eventId="@Model.EventId" class="mb-3"
@@ -57,7 +57,7 @@
     <ul class="small text-danger">
         @foreach (var u in Model.Report.UnplacedCandidates)
         {
-            <li>@u.Name — @u.Reason</li>
+            <li>@u.Name - @u.Reason</li>
         }
     </ul>
 }

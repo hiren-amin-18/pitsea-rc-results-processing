@@ -1,6 +1,6 @@
 @model RaceResults.Web.Models.SeasonVolunteerStats
 @{
-    ViewData["Title"] = $"Volunteer Stats — {Model.Year}";
+    ViewData["Title"] = $"Volunteer Stats - {Model.Year}";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -20,7 +20,7 @@
     </div>
 </div>
 
-<p class="small text-muted">Volunteer recognition across all event types for @Model.Year. London Marathon ballot entries count one per volunteering instance — <strong>members only</strong>.</p>
+<p class="small text-muted">Volunteer recognition across all event types for @Model.Year. London Marathon ballot entries count one per volunteering instance - <strong>members only</strong>.</p>
 
 @if (Model.TotalInstances == 0)
 {

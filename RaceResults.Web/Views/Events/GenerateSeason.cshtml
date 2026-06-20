@@ -6,7 +6,7 @@
     var sept = (SeasonCalendar.SeptemberOption)ViewBag.SeptemberOption;
 }
 
-<h1>Generate Crown to Crown season — @year</h1>
+<h1>Generate Crown to Crown season - @year</h1>
 <p class="text-muted">
     The club's fixed date rules build the year's Crown to Crown fixtures.
     Pick the year and the September Wednesday, review the preview, then confirm.
@@ -46,7 +46,7 @@
             <td>@preview.Fixture.EventName</td>
             <td>@preview.Fixture.EventDate.ToString("dddd dd MMM yyyy")</td>
             <td>@preview.Fixture.StartTime.ToString(@"hh\:mm")</td>
-            <td>@(preview.AlreadyExists ? "Already exists — will be skipped" : "Will be created")</td>
+            <td>@(preview.AlreadyExists ? "Already exists - will be skipped" : "Will be created")</td>
         </tr>
     }
     </tbody>
