@@ -4,9 +4,22 @@
     var showInactive = ViewBag.ShowInactive == true;
 }
 
+@{
+    var unusedCount = Model.Count(i => i.AssignmentCount == 0);
+}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1>Volunteers</h1>
-    <a class="btn btn-primary" asp-action="Create">Add Volunteer</a>
+    <div class="d-flex gap-2">
+        @if (unusedCount > 0)
+        {
+            <form method="post" asp-action="DeleteAllUnused" asp-route-showInactive="@showInactive"
+                  onsubmit="return confirm('Permanently delete @unusedCount volunteer(s) with no assignments? This cannot be undone.');">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-outline-danger" type="submit">Delete @unusedCount unused</button>
+            </form>
+        }
+        <a class="btn btn-primary" asp-action="Create">Add Volunteer</a>
+    </div>
 </div>
 
 <p class="small text-muted">The volunteer register. Deactivate, never delete - past assignments stay counted in stats. London Marathon ballot entries (US29) count only for club members.</p>
@@ -71,6 +84,14 @@ else
                                 @(item.Volunteer.IsActive ? "Deactivate" : "Reactivate")
                             </button>
                         </form>
+                        @if (item.AssignmentCount == 0)
+                        {
+                            <form method="post" asp-action="Delete" asp-route-id="@item.Volunteer.Id" asp-route-showInactive="@showInactive"
+                                  onsubmit="return confirm('Permanently delete @item.Volunteer.Name? This cannot be undone.');">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                            </form>
+                        }
                     </td>
                 </tr>
             }

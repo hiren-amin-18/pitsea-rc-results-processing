@@ -73,6 +73,24 @@ public class VolunteersController : Controller
         return RedirectToAction(nameof(Index), new { showInactive = !isActive });
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, bool showInactive = false)
+    {
+        var result = await _registry.DeleteIfUnusedAsync(id);
+        StoreFeedback(result);
+        return RedirectToAction(nameof(Index), new { showInactive });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteAllUnused(bool showInactive = false)
+    {
+        var result = await _registry.DeleteAllUnusedAsync();
+        StoreFeedback(result);
+        return RedirectToAction(nameof(Index), new { showInactive });
+    }
+
     private void StoreFeedback(OperationResult result)
     {
         var lines = new List<string>();

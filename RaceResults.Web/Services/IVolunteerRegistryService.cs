@@ -11,4 +11,11 @@ public interface IVolunteerRegistryService
     Task<OperationResult> CreateAsync(VolunteerInput input);
     Task<OperationResult> UpdateAsync(VolunteerInput input);
     Task<OperationResult> SetActiveAsync(int id, bool isActive);
+
+    /// <summary>Permanently remove a volunteer who has no assignments. Refuses if any assignment exists -
+    /// US28's "deactivate, never delete" rule still stands for anyone who's worked an event.</summary>
+    Task<OperationResult> DeleteIfUnusedAsync(int id);
+
+    /// <summary>Permanently remove every volunteer who has no assignments. Returns how many were removed.</summary>
+    Task<OperationResult> DeleteAllUnusedAsync();
 }

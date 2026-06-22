@@ -68,6 +68,65 @@ public class VolunteerRosterTests : IDisposable
         Assert.Single(_registry.GetVolunteers(includeInactive: true));
     }
 
+    [Fact]
+    public async Task DeleteIfUnused_RemovesVolunteer_WhenNoAssignments()
+    {
+        await _registry.CreateAsync(new VolunteerInput { Name = "Carol", Gender = "Female" });
+        var carol = _registry.GetVolunteers().Single().Volunteer;
+
+        var result = await _registry.DeleteIfUnusedAsync(carol.Id);
+        Assert.True(result.Success);
+        Assert.Empty(_registry.GetVolunteers(includeInactive: true));
+    }
+
+    [Fact]
+    public async Task DeleteIfUnused_RefusesIfVolunteerHasAssignments()
+    {
+        await _registry.CreateAsync(new VolunteerInput { Name = "Dan", Gender = "Male" });
+        var dan = _registry.GetVolunteers().Single().Volunteer;
+        var eventId = SeedEvent();
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        {
+            EventId = eventId,
+            VolunteerId = dan.Id,
+            VolunteerRoleId = _roleService.GetRoles(EventType.CrownToCrown).First(r => r.Name == "Timekeeping").Id
+        });
+
+        var result = await _registry.DeleteIfUnusedAsync(dan.Id);
+        Assert.False(result.Success);
+        Assert.Single(_registry.GetVolunteers());
+    }
+
+    [Fact]
+    public async Task DeleteAllUnused_OnlyRemovesVolunteersWithoutAssignments()
+    {
+        await _registry.CreateAsync(new VolunteerInput { Name = "Eve", Gender = "Female" });   // unused
+        await _registry.CreateAsync(new VolunteerInput { Name = "Frank", Gender = "Male" });   // will be assigned
+        await _registry.CreateAsync(new VolunteerInput { Name = "Gina", Gender = "Female" });  // unused
+        var frank = _registry.GetVolunteers().Single(v => v.Volunteer.Name == "Frank").Volunteer;
+        var eventId = SeedEvent();
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        {
+            EventId = eventId,
+            VolunteerId = frank.Id,
+            VolunteerRoleId = _roleService.GetRoles(EventType.CrownToCrown).First(r => r.Name == "Timekeeping").Id
+        });
+
+        var result = await _registry.DeleteAllUnusedAsync();
+        Assert.True(result.Success);
+        var remaining = _registry.GetVolunteers(includeInactive: true).Select(v => v.Volunteer.Name).ToList();
+        Assert.Equal(new[] { "Frank" }, remaining);
+    }
+
+    private int SeedEvent()
+    {
+        using var db = _factory.CreateDbContext();
+        var ev = new RaceEvent { EventName = "Test Event", EventDate = new DateTime(2026, 4, 3), EventType = EventType.CrownToCrown };
+        db.Events.Add(ev);
+        db.SaveChanges();
+        return ev.Id;
+    }
+
     // ---------- Role catalogue (seed verified) ----------
 
     [Fact]

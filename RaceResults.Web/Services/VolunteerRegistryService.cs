@@ -122,6 +122,39 @@ public class VolunteerRegistryService : IVolunteerRegistryService
         return OperationResult.Ok($"Volunteer '{volunteer.Name}' {(isActive ? "reactivated" : "deactivated")}.");
     }
 
+    public async Task<OperationResult> DeleteIfUnusedAsync(int id)
+    {
+        await using var db = _dbContextFactory.CreateDbContext();
+        var volunteer = await db.Volunteers.FirstOrDefaultAsync(v => v.Id == id);
+        if (volunteer is null) return OperationResult.Fail(new[] { "Volunteer not found." });
+        if (db.VolunteerAssignments.Any(a => a.VolunteerId == id))
+            return OperationResult.Fail(new[] { $"'{volunteer.Name}' has roster assignments and cannot be deleted - deactivate instead." });
+
+        // Also clear any eligibility allow-list entries so we don't leave dangling rows.
+        var eligibility = db.VolunteerRoleEligibilities.Where(e => e.VolunteerId == id);
+        db.VolunteerRoleEligibilities.RemoveRange(eligibility);
+        db.Volunteers.Remove(volunteer);
+        await db.SaveChangesAsync();
+        _logger.LogInformation("Volunteer {Id} deleted: {Name}.", id, volunteer.Name);
+        return OperationResult.Ok($"Volunteer '{volunteer.Name}' deleted.");
+    }
+
+    public async Task<OperationResult> DeleteAllUnusedAsync()
+    {
+        await using var db = _dbContextFactory.CreateDbContext();
+        var usedIds = await db.VolunteerAssignments.Select(a => a.VolunteerId).Distinct().ToListAsync();
+        var unused = await db.Volunteers.Where(v => !usedIds.Contains(v.Id)).ToListAsync();
+        if (unused.Count == 0) return OperationResult.Ok("No unused volunteers to delete.");
+
+        var unusedIds = unused.Select(v => v.Id).ToList();
+        var eligibility = db.VolunteerRoleEligibilities.Where(e => unusedIds.Contains(e.VolunteerId));
+        db.VolunteerRoleEligibilities.RemoveRange(eligibility);
+        db.Volunteers.RemoveRange(unused);
+        await db.SaveChangesAsync();
+        _logger.LogInformation("Bulk-deleted {Count} unused volunteer(s).", unused.Count);
+        return OperationResult.Ok($"Deleted {unused.Count} volunteer(s) with no assignments.");
+    }
+
     private static List<string> Validate(VolunteerInput input)
     {
         var errors = new List<string>();
