@@ -76,6 +76,26 @@ public class VolunteerRosterImportService : IVolunteerRosterImportService
         foreach (var row in parsed)
         {
             var resolvedRoleName = ResolveRoleAlias(row.RawRoleName);
+            var note = row.Note;
+
+            // "First Aid and Prizes" + "(course)" lists the on-course first aider on the same row
+            // as the finish first aider; reroute them to "First Aid On Course" and drop the now-redundant note.
+            // "(finish)" just confirms the default role for that row, so we drop the note too.
+            if (raceEvent.EventType == EventType.CrownToCrown
+                && resolvedRoleName.Equals("First Aid and Prizes", StringComparison.OrdinalIgnoreCase)
+                && note is not null)
+            {
+                if (note.Equals("course", StringComparison.OrdinalIgnoreCase))
+                {
+                    resolvedRoleName = "First Aid On Course";
+                    note = null;
+                }
+                else if (note.Equals("finish", StringComparison.OrdinalIgnoreCase))
+                {
+                    note = null;
+                }
+            }
+
             var roleKey = NormalizeRoleName(resolvedRoleName);
             if (!rolesByName.TryGetValue(roleKey, out var role))
             {
@@ -106,7 +126,7 @@ public class VolunteerRosterImportService : IVolunteerRosterImportService
                 RoleId = role.Id,
                 RoleName = role.Name,
                 WillRunAfter = row.WillRunAfter,
-                Note = row.Note
+                Note = note
             });
         }
 

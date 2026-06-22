@@ -184,9 +184,14 @@ public class VolunteerRosterImportTests : IDisposable
         var sue = assignments.Single(a => a.Volunteer!.Name == "Sue Allen");
         Assert.True(sue.WillRunAfter);
 
-        // Nadine's note preserved.
+        // Nadine stays at "First Aid and Prizes" (finish first aider); "(finish)" annotation is dropped.
         var nadine = assignments.Single(a => a.Volunteer!.Name == "Nadine Baldwin");
-        Assert.Equal("finish", nadine.Note);
+        Assert.Equal("First Aid and Prizes", nadine.VolunteerRole!.Name);
+        Assert.Null(nadine.Note);
+
+        // Beth's "(course)" rerouted her to the on-course first-aid role.
+        var beth_a = assignments.Single(a => a.Volunteer!.Name == "Beth Gadlin");
+        Assert.Equal("First Aid On Course", beth_a.VolunteerRole!.Name);
 
         // Existing volunteer fields untouched.
         var hiren = db2.Volunteers.Single(v => v.Name == "Hiren Amin");
@@ -257,6 +262,24 @@ public class VolunteerRosterImportTests : IDisposable
         using var db2 = _factory.CreateDbContext();
         Assert.Equal(1, db2.Volunteers.Count(v => v.Name == "Alice Newby"));
         Assert.Equal(1, db2.VolunteerAssignments.Count(a => a.EventId == _eventId));
+    }
+
+    [Fact]
+    public void Preview_FirstAidAndPrizesWithCourse_ReroutesToFirstAidOnCourse()
+    {
+        var preview = _import.BuildPreview(_eventId, BuildSheet(
+            ("First Aid and Prizes", "Nadine Baldwin (finish)\nBeth Gadlin (course)")));
+
+        Assert.Empty(preview.UnmatchedRoles);
+        Assert.Equal(2, preview.Assignments.Count);
+
+        var nadine = preview.Assignments.Single(a => a.VolunteerDisplayName == "Nadine Baldwin");
+        Assert.Equal("First Aid and Prizes", nadine.RoleName);
+        Assert.Null(nadine.Note);
+
+        var beth = preview.Assignments.Single(a => a.VolunteerDisplayName == "Beth Gadlin");
+        Assert.Equal("First Aid On Course", beth.RoleName);
+        Assert.Null(beth.Note);
     }
 
     [Fact]
