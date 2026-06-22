@@ -1,0 +1,113 @@
+@model RaceResults.Web.Models.RosterImportPreview
+@{
+    ViewData["Title"] = $"Confirm roster import - {Model.EventName}";
+    var json = System.Text.Json.JsonSerializer.Serialize(Model);
+}
+
+<div class="mb-3">
+    <h1>Confirm import</h1>
+    <p class="text-muted mb-0">@Model.EventName</p>
+</div>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="alert alert-danger">
+        <strong>Cannot import:</strong>
+        <ul class="mb-0">@foreach (var e in Model.Errors) { <li>@e</li> }</ul>
+    </div>
+}
+else if (Model.RosterAlreadyHasAssignments)
+{
+    <div class="alert alert-warning">
+        This event already has roster assignments. Clear the roster first, then re-run the import.
+    </div>
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="text-muted small">New volunteers</div><div class="fs-5">@Model.NewVolunteers.Count</div></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="text-muted small">Reused volunteers</div><div class="fs-5">@Model.MatchedVolunteers.Count</div></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="text-muted small">Assignments</div><div class="fs-5">@Model.Assignments.Count</div></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="text-muted small @(Model.UnmatchedRoles.Count > 0 ? "text-warning" : "")">Unmatched roles</div><div class="fs-5">@Model.UnmatchedRoles.Count</div></div></div></div>
+</div>
+
+@if (Model.UnmatchedRoles.Count > 0)
+{
+    <div class="alert alert-warning small">
+        <strong>Skipped role(s):</strong> @string.Join(", ", Model.UnmatchedRoles).
+        Assignments for these roles will not be created. Rename the role in the file or in the catalogue and re-run.
+    </div>
+}
+
+<form method="post" asp-action="ImportCommit" asp-route-eventId="@Model.EventId">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="EventId" value="@Model.EventId" />
+    <input type="hidden" name="PreviewJson" value="@json" />
+
+    @if (Model.NewVolunteers.Count > 0)
+    {
+        <h3 class="mt-4">New volunteers</h3>
+        <p class="small text-muted mb-2">
+            These names aren't in the register yet. Pick a gender now (used by the auto-allocator). Member flag
+            defaults to <em>Pitsea member</em>; flip the handful of exceptions on the volunteer page after the import.
+        </p>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead><tr><th style="width: 60%;">Name</th><th>Gender</th></tr></thead>
+                <tbody>
+                @foreach (var n in Model.NewVolunteers)
+                {
+                    var field = $"NewVolunteerGenders[{n.NameKey}]";
+                    <tr>
+                        <td>@n.Name</td>
+                        <td>
+                            <select name="@field" class="form-select form-select-sm" style="max-width: 12rem;">
+                                <option value="" selected>Unknown</option>
+                                <option value="Female">Female</option>
+                                <option value="Male">Male</option>
+                            </select>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (Model.MatchedVolunteers.Count > 0)
+    {
+        <h3 class="mt-4">Reused volunteers</h3>
+        <p class="small text-muted mb-2">Already in the register; no fields changed.</p>
+        <p class="small">
+            @foreach (var m in Model.MatchedVolunteers)
+            {
+                <span class="badge bg-light text-dark border me-1 mb-1">@m.Name</span>
+            }
+        </p>
+    }
+
+    @if (Model.Assignments.Count > 0)
+    {
+        <h3 class="mt-4">Assignments to create</h3>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead><tr><th>Role</th><th>Volunteer</th><th>Running after?</th><th>Note</th></tr></thead>
+                <tbody>
+                @foreach (var a in Model.Assignments.OrderBy(a => a.RoleName).ThenBy(a => a.VolunteerDisplayName))
+                {
+                    <tr>
+                        <td>@a.RoleName</td>
+                        <td>@a.VolunteerDisplayName</td>
+                        <td>@(a.WillRunAfter ? "Yes" : "")</td>
+                        <td>@a.Note</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <div class="mt-4">
+        <button class="btn btn-primary" type="submit" @(Model.CanCommit ? "" : "disabled")>Confirm import</button>
+        <a class="btn btn-link" asp-action="Index" asp-route-eventId="@Model.EventId">Cancel</a>
+    </div>
+</form>

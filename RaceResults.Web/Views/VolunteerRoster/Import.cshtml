@@ -1,0 +1,44 @@
+@{
+    var raceEvent = ViewBag.Event as RaceResults.Web.Models.RaceEvent;
+    var hasExisting = (bool)(ViewBag.HasExistingAssignments ?? false);
+    ViewData["Title"] = $"Import roster - {raceEvent?.EventName}";
+}
+
+<div class="mb-3">
+    <h1>Import volunteer roster from spreadsheet</h1>
+    <p class="text-muted mb-0">
+        @raceEvent?.EventName - @raceEvent?.EventDate.ToString("dd MMM yyyy")
+    </p>
+</div>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var ftype = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
+}
+
+@if (hasExisting)
+{
+    <div class="alert alert-warning">
+        This event already has roster assignments. Import requires an empty roster - clear it first from the
+        <a asp-action="Index" asp-route-eventId="@raceEvent?.Id">roster page</a>.
+    </div>
+}
+
+<div class="card">
+    <div class="card-body">
+        <p class="small text-muted">
+            Two-column .xlsx: <strong>Role</strong> in column A, <strong>Volunteer(s)</strong> in column B
+            (one name per line within the cell). Inline annotations <code>(to run)</code>, <code>(finish)</code>,
+            <code>(course)</code> are read from the cell.
+        </p>
+        <form method="post" asp-action="Import" asp-route-eventId="@raceEvent?.Id" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <div class="mb-3">
+                <input type="file" name="file" accept=".xlsx" class="form-control" required />
+            </div>
+            <button class="btn btn-primary" type="submit" @(hasExisting ? "disabled" : "")>Preview import</button>
+            <a class="btn btn-link" asp-action="Index" asp-route-eventId="@raceEvent?.Id">Cancel</a>
+        </form>
+    </div>
+</div>

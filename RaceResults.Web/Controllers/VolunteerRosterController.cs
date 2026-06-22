@@ -14,6 +14,7 @@ public class VolunteerRosterController : Controller
     private readonly IVolunteerRoleService _roles;
     private readonly IRosterAllocator _allocator;
     private readonly IRosterDraftApplier _applier;
+    private readonly IVolunteerRosterImportService _import;
 
     public VolunteerRosterController(
         IVolunteerRosterService roster,
@@ -21,7 +22,8 @@ public class VolunteerRosterController : Controller
         IVolunteerRegistryService volunteers,
         IVolunteerRoleService roles,
         IRosterAllocator allocator,
-        IRosterDraftApplier applier)
+        IRosterDraftApplier applier,
+        IVolunteerRosterImportService import)
     {
         _roster = roster;
         _export = export;
@@ -29,6 +31,7 @@ public class VolunteerRosterController : Controller
         _roles = roles;
         _allocator = allocator;
         _applier = applier;
+        _import = import;
     }
 
     [HttpGet("")]
@@ -114,6 +117,40 @@ public class VolunteerRosterController : Controller
         var result = await _applier.ApplyAsync(draft);
         StoreFeedback(result);
         return RedirectToAction(nameof(Index), new { eventId });
+    }
+
+    [HttpGet("Import")]
+    public IActionResult Import(int eventId)
+    {
+        var roster = _roster.GetRoster(eventId);
+        ViewBag.Event = roster.Event;
+        ViewBag.HasExistingAssignments = roster.TotalAssigned > 0;
+        return View();
+    }
+
+    [HttpPost("Import")]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(8 * 1024 * 1024)]
+    public IActionResult Import(int eventId, IFormFile file)
+    {
+        if (file is null || file.Length == 0)
+        {
+            TempData["FeedbackType"] = "danger";
+            TempData["FeedbackText"] = "Pick a spreadsheet to upload.";
+            return RedirectToAction(nameof(Import), new { eventId });
+        }
+        using var stream = file.OpenReadStream();
+        var preview = _import.BuildPreview(eventId, stream);
+        return View("ImportPreview", preview);
+    }
+
+    [HttpPost("ImportCommit")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ImportCommit(RosterImportCommitInput input)
+    {
+        var result = await _import.CommitAsync(input);
+        StoreFeedback(result);
+        return RedirectToAction(nameof(Index), new { eventId = input.EventId });
     }
 
     [HttpGet("Pdf")]
