@@ -57,12 +57,13 @@ An ASP.NET Core MVC web application for processing race results, built for Pitse
 | **Season calendar generator** | One-click "Generate Season" creates the year's Crown to Crown fixtures from the club's fixed date rules (Good Friday, second Wednesdays May–Aug, first-or-second Wednesday Sep, Boxing Day) with start times; preview before generating; skips dates that already have a C2C event (US31) |
 | **Event archiving** | Mark a finalised event as archived to make it read-only: uploads, edits, and detail changes are rejected; it can't be current or deleted until unarchived; results remain viewable and exportable, and it still counts toward Champions (US20) |
 | **Public results page** | Publish an event from the Events page to expose a shareable read-only URL (`/public/results/{token}`) with the collated results, category winners, DNF list, and a public Champions of Champions leaderboard. Tokens are unguessable per event; unpublished events return 404 (US21) |
-| **Volunteer register** | Persistent volunteers with gender, first-aid-trained flag, club-member flag, and an optional link to a runner. Deactivate to preserve history without losing past assignments (US28) |
+| **Volunteer register** | Persistent volunteers with gender, first-aid-trained flag, club-member flag, and an optional link to a runner. Deactivate to preserve history without losing past assignments; per-row Delete (and a "Delete N unused" bulk button) permanently removes volunteers with zero assignments (US28) |
 | **Volunteer roster** | Per-event roster page grouped by Leadership / Finish Area / Course, with the 23 Crown to Crown roles seeded by default. Restricted roles (Lead, Results) honour an allow-list; Marshal Point 7 supports a standing pre-placement (Ian + dog Shane); first-aid roles require a trained volunteer; min/max overrides and double-booking warnings supported. Edit retrospectively for past events, copy from the previous event, export to PDF and Excel (US28) |
 | **Volunteer statistics** | Per-event panel on the roster page; season page with total volunteering instances, unique volunteers, role coverage trend, most-active leaderboard, and per-volunteer profile including the "ran X, volunteered Y, involved in Z" combined recognition. CSV export. London Marathon ballot entries counted one per event volunteered at (not per assignment), members only (US29) |
 | **Automated roster allocation** | Pick attendees + per-volunteer preferences (specific role, run-after, near-finish, can't-walk-far, seated, any-role) and have the app propose a draft. Greedy seven-step rules engine: pre-place fixtures → eligibility → run-after rotation across the season → preferences → role mix-up across the season → marshal gender mix → fill remainder. Review and apply; Apply re-validates through the roster service (US32) |
 | **Bluebell 5 results processing** | Entry upload, Top 10 view, and PDF branch by event type. Bluebell registration sheet's `Age` column (`Male U40` / `Female U35` / blank=vet) drives an `IsVet` flag; U18 entries are rejected. PDF first page shows 1st/2nd/3rd Male & Female + 1st Vet M/F, with the vet prize skipping the overall top 3. Top 10 swaps the U18 categories for Vet Male / Vet Female on Bluebell events (US33) |
 | **Bluebell 5 volunteer roster** | Same roster + auto-allocation workflow as C2C, with Bluebell's own role catalogue (Race HQ, Start/Finish, Transport — 15 roles seeded) and a smaller preference set (Run after / Start-Finish / Race HQ / Any role). Run-after capacity only on the three Race HQ roles. Run-after rotation and role mix-up pool Bluebell + C2C history as one season fairness picture; roles match by name across event types so a C2C timekeeper rotates off Bluebell timekeeping (US34) |
+| **Volunteer roster import** | Upload a previous-event volunteer `.xlsx` (two-column: Role / Volunteer(s), one name per line, inline `(to run)` / `(finish)` / `(course)` annotations) and pre-populate an event's roster in one preview/confirm step. Existing volunteers matched by case-insensitive name and reused as-is; unknown names become new volunteers (member=true default, gender picked inline). `Marshal (n)` aliased to `Marshal Point n`; on C2C, `(course)` next to a `First Aid and Prizes` row routes that volunteer to `First Aid On Course`. Refuses if the target event already has any assignments. Works for both C2C and Bluebell 5 (US35) |
 | **Settings + dark mode** | Theme toggle in Settings and navbar; preference persisted in browser local storage |
 | **Theme-aware branding** | App logo switches by theme (light uses white logo, dark uses black logo) at a fixed size |
 | **Persistent storage** | All data saved to a SQLite database and survives app restarts |
@@ -181,6 +182,7 @@ pitsea-rc-results-processing/
 │   │   ├── IVolunteerStatsService.cs + VolunteerStatsService.cs    # US29
 │   │   ├── IRosterAllocator.cs + RosterAllocator.cs                # US32 rules engine
 │   │   ├── IRosterDraftApplier.cs + RosterDraftApplier.cs          # US32 persist via roster service
+│   │   ├── IVolunteerRosterImportService.cs + VolunteerRosterImportService.cs # US35 xlsx import → preview → commit
 │   │   ├── RaceTime.cs                 # Time parsing/formatting (US17)
 │   │   ├── RunnerIdentity.cs           # Normalised name/club key (US15)
 │   │   └── DatabasePathResolver.cs     # Per-user DB location for installed builds (US25)
@@ -196,7 +198,7 @@ pitsea-rc-results-processing/
 │   │   ├── Public/                     # Read-only published results (US21)
 │   │   ├── Volunteers/                 # Index, Create, Edit, _Form (US28)
 │   │   ├── VolunteerRoles/             # Index, Create, Edit, _Form (US28)
-│   │   ├── VolunteerRoster/            # Index, Allocate, Draft (US28, US32)
+│   │   ├── VolunteerRoster/            # Index, Allocate, Draft (US28, US32), Import + ImportPreview (US35)
 │   │   └── VolunteerStats/             # Index (US29)
 │   └── Program.cs                      # App bootstrap, DI, middleware, runtime backfills
 │
@@ -230,7 +232,7 @@ pitsea-rc-results-processing/
 │   └── construction/USxx/              # USxx-implementation-summary.md (one per story)
 │
 └── user-stories/
-    ├── US01-US34 *.md                  # One file per user story, each with a Status line
+    ├── US01-US35 *.md                  # One file per user story, each with a Status line
     └── example-files/                  # Real-format sample upload files (canonical copies)
         ├── online-registration.xlsx    # Pre-registration entrants
         ├── on-the-day-1.xlsx           # On-the-day entrants (file 1)
@@ -248,7 +250,7 @@ pitsea-rc-results-processing/
 
 - **Service layer owns all business logic.** Controllers are thin: they call `IRaceResultsService` / `IChampionsOfChampionsService`, store feedback in `TempData`, and redirect. File parsing, validation, collation, scoring, and PDF generation all live in services.
 - **DbContext factory pattern.** Services receive `IDbContextFactory<RaceResultsDbContext>` and create a short-lived context per operation, which is why `RaceResultsService` can be registered as a singleton.
-- **DI registrations** (`Program.cs`): `IRaceResultsService` → singleton (uses `IDbContextFactory`); everything else scoped — `IChampionsOfChampionsService`, `IDatabaseBackupService`, `IRunnerRegistryService`, `ICourseRecordService`, `ISeasonStatisticsService`, `ISeasonCalendarService`, `ISeasonReviewService`, `IVolunteerRegistryService`, `IVolunteerRoleService`, `IVolunteerStatsService`, `IVolunteerRosterService`, `IVolunteerRosterExportService`, `IRosterAllocator`, `IRosterDraftApplier`.
+- **DI registrations** (`Program.cs`): `IRaceResultsService` → singleton (uses `IDbContextFactory`); everything else scoped — `IChampionsOfChampionsService`, `IDatabaseBackupService`, `IRunnerRegistryService`, `ICourseRecordService`, `ISeasonStatisticsService`, `ISeasonCalendarService`, `ISeasonReviewService`, `IVolunteerRegistryService`, `IVolunteerRoleService`, `IVolunteerStatsService`, `IVolunteerRosterService`, `IVolunteerRosterExportService`, `IRosterAllocator`, `IRosterDraftApplier`, `IVolunteerRosterImportService`.
 - **Migrations apply automatically at startup** (`db.Database.Migrate()`), skipped when the environment is `Testing` so integration tests can use `EnsureCreated` against in-memory SQLite.
 - **Current event promotion (no auto-seeding).** At most one event is "current" at a time. If none is current, the most recent non-archived event by date is promoted. If no events exist at all, `GetCurrentEvent()` returns `null` and the app renders an empty state ("No events yet — create the first event") rather than silently seeding a placeholder. Read-only views return empty data; mutating actions (uploads, edits, DSQ/reinstate) return a clear "Create an event first" error.
 - **Operation results, not exceptions.** Upload and edit flows return an `OperationResult` carrying `Messages`, `Warnings`, and `Errors`; controllers render all three. Warnings (e.g. unmatched bibs, duplicate names) do not block the operation.
