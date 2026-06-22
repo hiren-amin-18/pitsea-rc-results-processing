@@ -15,7 +15,7 @@ Every race has its marshal points, finish area, and course roles covered, and I 
 
 ## Background
 
-Races depend on volunteers as much as runners, but the app currently models only runners. Organisers track volunteer assignments separately (spreadsheets, messages); bringing the roster into the app puts it alongside the event it belongs to and unlocks volunteer recognition stats (US29) — which matter more than ever now that each volunteering instance earns a Pitsea RC London Marathon ballot entry.
+Races depend on volunteers as much as runners, but the app currently models only runners. Organisers track volunteer assignments separately (spreadsheets, messages); bringing the roster into the app puts it alongside the event it belongs to and unlocks volunteer recognition stats (US29) — which matter more than ever now that each event a volunteer turns up to earns a Pitsea RC London Marathon ballot entry.
 
 This story is the **data foundation and manual workflow**: the volunteer register, the role catalogue and complement, and a roster the organiser builds and edits by hand. The rules-based **automatic allocation** that proposes a draft roster from volunteer preferences and season history is split into [[US32-roster-auto-allocation]].
 
@@ -99,6 +99,6 @@ The default set the allocator targets and that US29 measures "unfilled vs usual 
 ## Notes
 
 - A volunteer optionally linking to a runner record anticipates [[US15-runner-registry]]; until US15 lands, the link can be by name or omitted.
-- Provides the data foundation for [[US29-volunteer-stats]] (including the **London Marathon ballot** count, one entry per volunteering instance) and for [[US32-roster-auto-allocation]] (the rules-based draft allocation).
+- Provides the data foundation for [[US29-volunteer-stats]] (including the **London Marathon ballot** count, one entry per event volunteered at) and for [[US32-roster-auto-allocation]] (the rules-based draft allocation).
 - Bluebell 5 will need an equivalent roster with its own role complement — separate user story, out of scope here.
 - Out of scope: volunteer self-service sign-up (would require hosting + accounts, which the club has decided against); this story is organiser-managed only.

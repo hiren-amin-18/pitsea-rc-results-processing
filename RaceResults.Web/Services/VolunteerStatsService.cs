@@ -69,7 +69,7 @@ public class VolunteerStatsService : IVolunteerStatsService
             {
                 var v = g.First().Volunteer!;
                 var eventsAttended = g.Select(a => a.EventId).Distinct().Count();
-                var ballot = v.IsClubMember ? g.Count() : 0;
+                var ballot = v.IsClubMember ? eventsAttended : 0;
                 return new VolunteerSeasonProfile
                 {
                     VolunteerId = v.Id,

@@ -78,7 +78,7 @@ public class VolunteerStatsTests : IDisposable
     }
 
     [Fact]
-    public async Task VolunteerWithMultipleRolesAtOneEvent_CountsOnceForEvents_TwiceForBallot()
+    public async Task VolunteerWithMultipleRolesAtOneEvent_CountsOnceForEventsAndBallot()
     {
         var alice = await CreateVolunteer("Alice", firstAid: true);
         await AssignAsync(1, alice.Id, "Number Collection");
@@ -88,7 +88,7 @@ public class VolunteerStatsTests : IDisposable
         var profile = Assert.Single(result.VolunteerProfiles);
         Assert.Equal(1, profile.EventsAttended);
         Assert.Equal(2, profile.Assignments);
-        Assert.Equal(2, profile.BallotEntries);
+        Assert.Equal(1, profile.BallotEntries);
     }
 
     [Fact]

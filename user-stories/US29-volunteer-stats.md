@@ -15,7 +15,7 @@ The club can recognise its volunteers' contributions (e.g. end-of-season awards)
 
 ## Background
 
-Builds directly on the volunteer roster (US28). Once assignments are recorded per event, per-event summaries and season aggregates fall out of the same data. This year the season count matters more than ever: **each volunteering instance earns one entry into the Pitsea RC London Marathon ballot**, so the per-volunteer total must be accurate and defensible.
+Builds directly on the volunteer roster (US28). Once assignments are recorded per event, per-event summaries and season aggregates fall out of the same data. This year the season count matters more than ever: **each event a volunteer turns up to earns one entry into the Pitsea RC London Marathon ballot** (multiple roles at the same event still count as one), so the per-volunteer total must be accurate and defensible.
 
 ## Per-Event Statistics
 
@@ -28,7 +28,7 @@ Builds directly on the volunteer roster (US28). Once assignments are recorded pe
 For a selected year, across **all events of all event types** (C2C, Bluebell 5, etc.):
 
 1. **Total volunteering count per person** — how many times each person volunteered across all event types in the season. This is the headline figure and the basis for the ballot count.
-2. **London Marathon ballot entries** — one entry per volunteering instance, **for Pitsea RC members only** (non-members are not eligible for the ballot). Per-volunteer entry counts and a season total, exportable for running the ballot.
+2. **London Marathon ballot entries** — one entry per event volunteered at (multiple roles at the same event still count as one), **for Pitsea RC members only** (non-members are not eligible for the ballot). Per-volunteer entry counts and a season total, exportable for running the ballot.
 3. **Most active volunteers** — ranked by events volunteered at; "ever-present volunteer" badge for those at every event.
 4. **Total volunteering instances** and unique volunteers across the season.
 5. **Per-volunteer season profile** — events attended, roles performed, run-after slots taken.
@@ -39,8 +39,8 @@ For a selected year, across **all events of all event types** (C2C, Bluebell 5, 
 
 1. Each event's roster page shows the per-event statistics above.
 2. A season volunteers page, selectable by year, shows the season statistics **aggregated across all event types**, not a single event type.
-3. **Total volunteering count and ballot entries** are shown per volunteer; one ballot entry is counted per volunteering instance (each role at each event counts), **with no per-person cap**, counted **per season (year)**. **Ballot entries are counted for club members only** — non-members accrue a total volunteering count and full recognition but zero ballot entries.
-4. Ever-present and most-active calculations count distinct events (multiple roles at one event count once for attendance, but all roles appear in the profile and each counts as a separate ballot entry).
+3. **Total volunteering count and ballot entries** are shown per volunteer; one ballot entry is counted per event volunteered at (multiple roles at the same event still count as one), **with no per-person cap**, counted **per season (year)**. **Ballot entries are counted for club members only** — non-members accrue a total volunteering count and full recognition but zero ballot entries.
+4. Ever-present and most-active calculations count distinct events; multiple roles at one event count once for both attendance and ballot, with all roles still appearing in the per-volunteer profile.
 5. Statistics respect volunteer deactivation: past contributions remain counted; deactivated volunteers simply stop appearing in assignment pickers.
 6. Statistics reflect post-event roster edits (no-shows removed, additions included) per US28.
 7. Calculations live in the service layer with unit test coverage (edge cases: volunteer with multiple roles in one event, single-event seasons, ties for most active, ballot-entry counting across mixed event types).
