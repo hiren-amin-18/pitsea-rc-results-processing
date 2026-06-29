@@ -96,7 +96,10 @@ public class VolunteerRosterController : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Allocate(AllocationFormInput input)
     {
-        var draft = _allocator.Propose(input.EventId, input.Candidates ?? new List<AllocationCandidate>());
+        var candidates = (input.Candidates ?? new List<AllocationCandidate>())
+            .Where(c => c.VolunteerId > 0)
+            .ToList();
+        var draft = _allocator.Propose(input.EventId, candidates);
         return View("Draft", draft);
     }
 

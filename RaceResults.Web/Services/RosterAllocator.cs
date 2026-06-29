@@ -35,6 +35,8 @@ public class RosterAllocator : IRosterAllocator
             return draft;
         }
 
+        candidates = candidates.DistinctBy(c => c.VolunteerId).ToList();
+
         var volunteers = db.Volunteers
             .Where(v => candidates.Select(c => c.VolunteerId).Contains(v.Id))
             .ToDictionary(v => v.Id);
