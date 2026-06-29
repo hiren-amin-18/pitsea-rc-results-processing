@@ -38,9 +38,9 @@
                     }
                     else
                     {
+                        <th>Preferred role</th>
                         <th class="small text-muted text-nowrap">Any role</th>
                         <th class="small text-muted text-nowrap">Run after</th>
-                        <th>Preferred role</th>
                         <th class="small text-muted text-nowrap">Near finish</th>
                         <th class="small text-muted text-nowrap">Can't walk far</th>
                         <th class="small text-muted text-nowrap">Seated</th>
@@ -69,8 +69,6 @@
                         }
                         else
                         {
-                            <td class="text-center"><input type="checkbox" name="Candidates[@i].AnyRole" value="true" /></td>
-                            <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsToRunAfter" value="true" /></td>
                             <td>
                                 <select name="Candidates[@i].PreferredRoleId" class="form-select form-select-sm">
                                     <option value="">-</option>
@@ -80,6 +78,8 @@
                                     }
                                 </select>
                             </td>
+                            <td class="text-center"><input type="checkbox" name="Candidates[@i].AnyRole" value="true" /></td>
+                            <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsToRunAfter" value="true" /></td>
                             <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsNearFinish" value="true" /></td>
                             <td class="text-center"><input type="checkbox" name="Candidates[@i].CantWalkFar" value="true" /></td>
                             <td class="text-center"><input type="checkbox" name="Candidates[@i].WantsSeated" value="true" /></td>
