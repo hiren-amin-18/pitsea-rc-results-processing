@@ -1,4 +1,4 @@
-@model RaceResults.Web.Models.SeasonDashboard
+﻿@model RaceResults.Web.Models.SeasonDashboard
 @using RaceResults.Web.Models
 @{
     ViewData["Title"] = "Season Statistics";
@@ -94,7 +94,7 @@
             @if (Model.FastestByCategory.Any())
             {
                 <table class="table table-sm mb-0">
-                    <thead><tr><th>Type</th><th>Category</th><th>Time</th><th>Runner</th></tr></thead>
+                    <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);"><tr><th>Type</th><th>Category</th><th>Time</th><th>Runner</th></tr></thead>
                     <tbody>
                     @foreach (var f in Model.FastestByCategory)
                     {
@@ -126,7 +126,7 @@
         <div class="card"><div class="card-body">
             <h5 class="card-title">Participation</h5>
             <table class="table table-sm mb-0">
-                <thead><tr><th>Event</th><th>Date</th><th>Entrants</th><th>Finishers</th><th>First-timers</th></tr></thead>
+                <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);"><tr><th>Event</th><th>Date</th><th>Entrants</th><th>Finishers</th><th>First-timers</th></tr></thead>
                 <tbody>
                 @foreach (var p in Model.Participation)
                 {

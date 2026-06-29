@@ -1,4 +1,4 @@
-@model RaceResults.Web.Models.AllocationDraft
+﻿@model RaceResults.Web.Models.AllocationDraft
 @{
     ViewData["Title"] = $"Draft Roster - {Model.EventName}";
     var draftJson = System.Text.Json.JsonSerializer.Serialize(Model);
@@ -22,9 +22,9 @@
 }
 
 <h3>Proposed assignments (@Model.Proposals.Count)</h3>
-<div class="table-responsive">
+<div class="table-responsive" style="overflow-x: clip;">
     <table class="table table-sm align-middle">
-        <thead><tr><th>Volunteer</th><th>Role</th><th>Category</th><th>Run after?</th><th>Reason</th></tr></thead>
+        <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);"><tr><th>Volunteer</th><th>Role</th><th>Category</th><th>Run after?</th><th>Reason</th></tr></thead>
         <tbody>
         @foreach (var p in Model.Proposals.OrderBy(p => p.Category).ThenBy(p => p.RoleName).ThenBy(p => p.VolunteerName))
         {

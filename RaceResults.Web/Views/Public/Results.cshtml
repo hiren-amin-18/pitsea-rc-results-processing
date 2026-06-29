@@ -1,4 +1,4 @@
-@model RaceResults.Web.Models.PublicResultsViewModel
+﻿@model RaceResults.Web.Models.PublicResultsViewModel
 @{
     Layout = "_PublicLayout";
     ViewData["Title"] = Model.Event.EventName + " Results";
@@ -47,9 +47,9 @@ else
     <div class="mb-3">
         <input id="filter" class="form-control" type="search" placeholder="Filter by name, club, or bib…" aria-label="Filter results" />
     </div>
-    <div class="table-responsive">
+    <div class="table-responsive" style="overflow-x: clip;">
         <table class="table table-striped align-middle" id="resultsTable">
-            <thead>
+            <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
                 <tr>
                     <th class="text-center">Pos</th>
                     <th class="text-center">Time</th>

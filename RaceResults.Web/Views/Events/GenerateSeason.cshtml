@@ -1,4 +1,4 @@
-@model IReadOnlyList<RaceResults.Web.Services.SeasonFixturePreview>
+﻿@model IReadOnlyList<RaceResults.Web.Services.SeasonFixturePreview>
 @using RaceResults.Web.Services
 @{
     ViewData["Title"] = "Generate Season";
@@ -31,7 +31,7 @@
 </form>
 
 <table class="table table-striped align-middle">
-    <thead>
+    <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
         <tr>
             <th>Fixture</th>
             <th>Date</th>

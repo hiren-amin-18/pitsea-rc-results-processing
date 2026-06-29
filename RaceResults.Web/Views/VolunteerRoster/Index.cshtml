@@ -1,4 +1,4 @@
-@model RaceResults.Web.Models.RosterViewModel
+﻿@model RaceResults.Web.Models.RosterViewModel
 @using RaceResults.Web.Models
 @{
     ViewData["Title"] = $"Roster - {Model.Event.EventName}";
@@ -156,9 +156,9 @@
         _ => category.ToString()
     };
     <h3 class="mt-4">@categoryLabel</h3>
-    <div class="table-responsive">
+    <div class="table-responsive" style="overflow-x: clip;">
         <table class="table table-sm align-middle">
-            <thead>
+            <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
                 <tr>
                     <th style="width: 22%;">Role</th>
                     <th class="text-center" style="width: 8%;">Count</th>

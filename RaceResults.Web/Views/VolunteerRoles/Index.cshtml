@@ -1,4 +1,4 @@
-@model IReadOnlyList<RaceResults.Web.Models.VolunteerRole>
+﻿@model IReadOnlyList<RaceResults.Web.Models.VolunteerRole>
 @using RaceResults.Web.Models
 @{
     ViewData["Title"] = "Volunteer Roles";
@@ -30,9 +30,9 @@
     </a>
 </div>
 
-<div class="table-responsive">
+<div class="table-responsive" style="overflow-x: clip;">
     <table class="table table-striped align-middle">
-        <thead>
+        <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
             <tr>
                 <th>Category</th>
                 <th>Role</th>

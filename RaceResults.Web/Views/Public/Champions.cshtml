@@ -1,4 +1,4 @@
-@model RaceResults.Web.Models.PublicChampionsViewModel
+﻿@model RaceResults.Web.Models.PublicChampionsViewModel
 @{
     Layout = "_PublicLayout";
     ViewData["Title"] = "Champions of Champions " + Model.SeasonYear;
@@ -16,9 +16,9 @@ else
     foreach (var category in Model.Leaderboard.GroupBy(e => e.Category))
     {
         <h3 class="h5 mt-4">@category.Key</h3>
-        <div class="table-responsive">
+        <div class="table-responsive" style="overflow-x: clip;">
             <table class="table table-striped align-middle mb-0">
-                <thead>
+                <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
                     <tr><th style="width:70px;">Rank</th><th>Name</th><th>Club</th><th class="text-center">Events</th><th class="text-end">Points</th></tr>
                 </thead>
                 <tbody>

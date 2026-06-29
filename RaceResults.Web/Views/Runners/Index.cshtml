@@ -1,4 +1,4 @@
-@model RaceResults.Web.Models.RunnersIndexViewModel
+﻿@model RaceResults.Web.Models.RunnersIndexViewModel
 @{
     ViewData["Title"] = "Runners";
 }
@@ -81,9 +81,9 @@ else
                                     </select>
                                 </div>
                             </div>
-                            <div class="table-responsive">
+                            <div class="table-responsive" style="overflow-x: clip;">
                                 <table class="table table-sm align-middle mb-0">
-                                    <thead>
+                                    <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
                                         <tr>
                                             <th class="text-center" style="width:6rem;">Merge in</th>
                                             <th>Name</th>
@@ -237,9 +237,9 @@ else
             </div>
         </div>
 
-        <div class="table-responsive">
+        <div class="table-responsive" style="overflow-x: clip;">
             <table class="table table-striped align-middle">
-                <thead>
+                <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
                     <tr>
                         <th>Name</th>
                         <th>Club</th>

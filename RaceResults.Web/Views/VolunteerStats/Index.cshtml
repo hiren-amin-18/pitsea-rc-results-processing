@@ -1,4 +1,4 @@
-@model RaceResults.Web.Models.SeasonVolunteerStats
+﻿@model RaceResults.Web.Models.SeasonVolunteerStats
 @{
     ViewData["Title"] = $"Volunteer Stats - {Model.Year}";
 }
@@ -43,7 +43,7 @@
 @if (Model.MostActive.Any())
 {
     <table class="table table-sm align-middle">
-        <thead><tr><th>#</th><th>Name</th><th class="text-center">Events</th><th class="text-center">Assignments</th><th class="text-center">Ballot</th><th></th></tr></thead>
+        <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);"><tr><th>#</th><th>Name</th><th class="text-center">Events</th><th class="text-center">Assignments</th><th class="text-center">Ballot</th><th></th></tr></thead>
         <tbody>
         @for (var i = 0; i < Model.MostActive.Count; i++)
         {
@@ -68,9 +68,9 @@ else
 <h3 class="mt-4">All volunteers (sorted by ballot entries)</h3>
 @if (Model.VolunteerProfiles.Any())
 {
-    <div class="table-responsive">
+    <div class="table-responsive" style="overflow-x: clip;">
         <table class="table table-sm table-striped align-middle">
-            <thead>
+            <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
                 <tr>
                     <th>Name</th>
                     <th>Member</th>
@@ -110,7 +110,7 @@ else
 @if (Model.RoleCoverageTrend.Any())
 {
     <table class="table table-sm align-middle" style="max-width: 720px;">
-        <thead><tr><th>Event</th><th>Date</th><th class="text-center">Assignments</th><th class="text-center">Volunteers</th></tr></thead>
+        <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);"><tr><th>Event</th><th>Date</th><th class="text-center">Assignments</th><th class="text-center">Volunteers</th></tr></thead>
         <tbody>
         @foreach (var t in Model.RoleCoverageTrend)
         {

@@ -1,4 +1,4 @@
-@model RaceResults.Web.Models.RosterImportPreview
+﻿@model RaceResults.Web.Models.RosterImportPreview
 @{
     ViewData["Title"] = $"Confirm roster import - {Model.EventName}";
     var json = System.Text.Json.JsonSerializer.Serialize(Model);
@@ -50,9 +50,9 @@ else if (Model.RosterAlreadyHasAssignments)
             These names aren't in the register yet. Pick a gender now (used by the auto-allocator). Member flag
             defaults to <em>Pitsea member</em>; flip the handful of exceptions on the volunteer page after the import.
         </p>
-        <div class="table-responsive">
+        <div class="table-responsive" style="overflow-x: clip;">
             <table class="table table-sm align-middle">
-                <thead><tr><th style="width: 60%;">Name</th><th>Gender</th></tr></thead>
+                <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);"><tr><th style="width: 60%;">Name</th><th>Gender</th></tr></thead>
                 <tbody>
                 @foreach (var n in Model.NewVolunteers)
                 {
@@ -88,9 +88,9 @@ else if (Model.RosterAlreadyHasAssignments)
     @if (Model.Assignments.Count > 0)
     {
         <h3 class="mt-4">Assignments to create</h3>
-        <div class="table-responsive">
+        <div class="table-responsive" style="overflow-x: clip;">
             <table class="table table-sm">
-                <thead><tr><th>Role</th><th>Volunteer</th><th>Running after?</th><th>Note</th></tr></thead>
+                <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);"><tr><th>Role</th><th>Volunteer</th><th>Running after?</th><th>Note</th></tr></thead>
                 <tbody>
                 @foreach (var a in Model.Assignments.OrderBy(a => a.RoleName).ThenBy(a => a.VolunteerDisplayName))
                 {

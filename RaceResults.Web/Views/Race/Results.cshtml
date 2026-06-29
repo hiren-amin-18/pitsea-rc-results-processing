@@ -1,4 +1,4 @@
-@model RaceResults.Web.Models.ResultsPageViewModel
+﻿@model RaceResults.Web.Models.ResultsPageViewModel
 @using RaceResults.Web.Services
 @{
     ViewData["Title"] = "Results";
@@ -69,9 +69,9 @@ else
             @unmatchedCount finish @(unmatchedCount == 1 ? "position has" : "positions have") a bib number with no registered entrant. Review the highlighted rows and correct them via Edit.
         </div>
     }
-    <div class="table-responsive">
+    <div class="table-responsive" style="overflow-x: clip;">
         <table class="table table-striped align-middle">
-            <thead>
+            <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
                 <tr>
                     <th class="text-center">Pos</th>
                     <th class="text-center">Time</th>

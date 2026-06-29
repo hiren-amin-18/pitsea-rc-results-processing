@@ -1,4 +1,4 @@
-@model RaceResults.Web.Models.RunnerSeasonProfile
+﻿@model RaceResults.Web.Models.RunnerSeasonProfile
 @using RaceResults.Web.Models
 @{
     ViewData["Title"] = "Runner Season";
@@ -30,7 +30,7 @@
             @if (Model.Races.Any())
             {
                 <table class="table table-sm mb-0">
-                    <thead><tr><th>Event</th><th>Date</th><th>Type</th><th>Pos</th><th>Category</th><th>Time</th></tr></thead>
+                    <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);"><tr><th>Event</th><th>Date</th><th>Type</th><th>Pos</th><th>Category</th><th>Time</th></tr></thead>
                     <tbody>
                     @foreach (var r in Model.Races)
                     {
@@ -61,7 +61,7 @@
             @if (Model.ChampionsProgression.Any())
             {
                 <table class="table table-sm mb-0">
-                    <thead><tr><th>Event</th><th>Points</th><th>Cumulative</th></tr></thead>
+                    <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);"><tr><th>Event</th><th>Points</th><th>Cumulative</th></tr></thead>
                     <tbody>
                     @foreach (var p in Model.ChampionsProgression)
                     {

@@ -1,4 +1,4 @@
-@model IReadOnlyList<RaceResults.Web.Models.TopTenCategory>
+﻿@model IReadOnlyList<RaceResults.Web.Models.TopTenCategory>
 @{
     ViewData["Title"] = "Top 10 by Category";
 }
@@ -17,9 +17,9 @@
             }
             else
             {
-                <div class="table-responsive">
+                <div class="table-responsive" style="overflow-x: clip;">
                     <table class="table table-sm table-striped mb-0">
-                        <thead>
+                        <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
                             <tr>
                                 <th>Pos</th>
                                 <th>Time</th>
