@@ -7,7 +7,9 @@ public enum AllocationReason
     RunAfterRotation = 2,
     Preference = 3,
     Mix = 4,
-    Fill = 5
+    Fill = 5,
+    /// <summary>Secondary assignment: volunteer also covers a finish line role after their primary OTD/NC duty.</summary>
+    FinishLine = 6
 }
 
 public class AllocationCandidate

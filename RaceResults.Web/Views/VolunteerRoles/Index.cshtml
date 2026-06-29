@@ -58,6 +58,7 @@
                 <td class="text-center">@role.RunAfterCapacity</td>
                 <td>
                     @if (role.IsOptional) { <span class="badge bg-secondary me-1">Optional</span> }
+                    @if (role.IsGenericPreference) { <span class="badge bg-info text-dark me-1">Generic preference</span> }
                     @if (role.RequiresFirstAid) { <span class="badge bg-danger me-1">First Aid</span> }
                     @if (role.HasEligibilityRestriction)
                     {

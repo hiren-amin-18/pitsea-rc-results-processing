@@ -44,6 +44,7 @@ public class VolunteerRoleInput
     [Range(0, 50)] public int MaxCount { get; set; }
 
     public bool IsOptional { get; set; }
+    public bool IsGenericPreference { get; set; }
     [Range(0, 50)] public int RunAfterCapacity { get; set; }
     public bool RequiresFirstAid { get; set; }
     public bool HasEligibilityRestriction { get; set; }

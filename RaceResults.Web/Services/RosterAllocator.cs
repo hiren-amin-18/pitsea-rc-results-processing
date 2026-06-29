@@ -85,10 +85,38 @@ public class RosterAllocator : IRosterAllocator
             recentRoleNameByVolunteer.TryGetValue(volunteerId, out var m)
                 && m.TryGetValue(Normalise(role.Name), out var d) ? d : DateTime.MinValue;
 
-        // Track remaining role slots and per-role run-after slots.
+        // ---------- Role partitions ----------
+        // Generic-preference sentinels (e.g. "Marshal (any point)") are never physical slots.
+        var genericPrefRoleIds = roles.Where(r => r.IsGenericPreference).Select(r => r.Id).ToHashSet();
+
+        // Optional roles are deferred until after all mandatory minimums are met.
+        var optionalRoles = roles.Where(r => r.IsOptional && !r.IsGenericPreference).ToList();
+
+        // C2C only: non-runners at OTD Registration / Number Collection dual-cover the finish line.
+        // Those slots are reserved and excluded from normal passes so dual assignment fills them.
+        var finishLineRoles = raceEvent.EventType == EventType.CrownToCrown
+            ? roles.Where(r => r.Name is "Finish Line Funnel" or "Finish Line Results").ToList()
+            : new List<VolunteerRole>();
+        var finishLineRoleIds = finishLineRoles.Select(r => r.Id).ToHashSet();
+        var otdNcRoleIds = raceEvent.EventType == EventType.CrownToCrown
+            ? roles.Where(r => r.Name is "On The Day Registration" or "Number Collection")
+                   .Select(r => r.Id).ToHashSet()
+            : new HashSet<int>();
+
+        // Core: mandatory roles that receive volunteers in passes 1–7.
+        // Excludes optional, generic-preference sentinels, and finish-line reserved slots.
+        var coreRoles = roles
+            .Where(r => !r.IsOptional && !r.IsGenericPreference && !finishLineRoleIds.Contains(r.Id))
+            .ToList();
+
+        // ---------- Slots ----------
+        // Initialise from all roles so finish-line and optional slot counts are tracked even if not
+        // filled via normal passes.
         var slots = roles.ToDictionary(r => r.Id, r => r.DefaultCount);
         var runAfterSlots = roles.ToDictionary(r => r.Id, r => r.RunAfterCapacity);
         var placed = new HashSet<int>();
+
+        var candidatesById = candidates.ToDictionary(c => c.VolunteerId);
 
         void Place(AllocationCandidate cand, VolunteerRole role, AllocationReason reason, bool willRunAfter = false)
         {
@@ -133,8 +161,6 @@ public class RosterAllocator : IRosterAllocator
             return true;
         }
 
-        var candidatesById = candidates.ToDictionary(c => c.VolunteerId);
-
         // ---------- 1. Pre-placements ----------
         foreach (var role in roles.Where(r => r.PrePlacedVolunteerId.HasValue))
         {
@@ -148,7 +174,7 @@ public class RosterAllocator : IRosterAllocator
         }
 
         // ---------- 2. Restricted roles ----------
-        foreach (var role in roles.Where(r => r.HasEligibilityRestriction))
+        foreach (var role in coreRoles.Where(r => r.HasEligibilityRestriction))
         {
             while (slots[role.Id] > 0)
             {
@@ -165,7 +191,7 @@ public class RosterAllocator : IRosterAllocator
         }
 
         // ---------- 3. Run-after rotation ----------
-        foreach (var role in roles.Where(r => r.RunAfterCapacity > 0).OrderBy(r => r.Category).ThenBy(r => r.SortOrder))
+        foreach (var role in coreRoles.Where(r => r.RunAfterCapacity > 0).OrderBy(r => r.Category).ThenBy(r => r.SortOrder))
         {
             while (slots[role.Id] > 0 && runAfterSlots[role.Id] > 0)
             {
@@ -183,11 +209,28 @@ public class RosterAllocator : IRosterAllocator
 
         // ---------- 4. Preferences ----------
 
-        // 4a. Specific role
+        // 4a. Specific role preference.
+        // Generic-preference sentinels (e.g. "Marshal any point") are skipped here — handled in 4a₂.
         foreach (var cand in candidates.Where(c => !placed.Contains(c.VolunteerId) && c.PreferredRoleId.HasValue))
         {
-            var role = roles.FirstOrDefault(r => r.Id == cand.PreferredRoleId);
+            var role = coreRoles.FirstOrDefault(r => r.Id == cand.PreferredRoleId);
             if (role != null && CanAssign(cand, role, cand.WantsToRunAfter))
+            {
+                var willRunAfter = cand.WantsToRunAfter && runAfterSlots[role.Id] > 0;
+                Place(cand, role, AllocationReason.Preference, willRunAfter);
+            }
+        }
+
+        // 4a₂. Generic marshal preference: fill any open marshal point, least-recently-done first.
+        // Runs after all specific marshal-point preferences so named points are honoured first.
+        foreach (var cand in candidates.Where(c => !placed.Contains(c.VolunteerId)
+            && c.PreferredRoleId.HasValue && genericPrefRoleIds.Contains(c.PreferredRoleId!.Value)))
+        {
+            var role = coreRoles
+                .Where(r => r.Name.StartsWith("Marshal Point") && CanAssign(cand, r, cand.WantsToRunAfter))
+                .OrderBy(r => MostRecentInRole(cand.VolunteerId, r))
+                .FirstOrDefault();
+            if (role != null)
             {
                 var willRunAfter = cand.WantsToRunAfter && runAfterSlots[role.Id] > 0;
                 Place(cand, role, AllocationReason.Preference, willRunAfter);
@@ -199,8 +242,8 @@ public class RosterAllocator : IRosterAllocator
         {
             var primary = new[] { "Marshal Point 1", "Marshal Point 2" };
             var fallback = new[] { "Marshal Point 6" };
-            var role = roles.FirstOrDefault(r => primary.Contains(r.Name) && CanAssign(cand, r, cand.WantsToRunAfter))
-                    ?? roles.FirstOrDefault(r => fallback.Contains(r.Name) && CanAssign(cand, r, cand.WantsToRunAfter));
+            var role = coreRoles.FirstOrDefault(r => primary.Contains(r.Name) && CanAssign(cand, r, cand.WantsToRunAfter))
+                    ?? coreRoles.FirstOrDefault(r => fallback.Contains(r.Name) && CanAssign(cand, r, cand.WantsToRunAfter));
             if (role != null)
             {
                 var willRunAfter = cand.WantsToRunAfter && runAfterSlots[role.Id] > 0;
@@ -212,7 +255,7 @@ public class RosterAllocator : IRosterAllocator
         foreach (var cand in candidates.Where(c => !placed.Contains(c.VolunteerId) && c.WantsSeated))
         {
             var seatedRoles = new[] { "Number Collection", "On The Day Registration" };
-            var role = roles.FirstOrDefault(r => seatedRoles.Contains(r.Name) && CanAssign(cand, r, cand.WantsToRunAfter));
+            var role = coreRoles.FirstOrDefault(r => seatedRoles.Contains(r.Name) && CanAssign(cand, r, cand.WantsToRunAfter));
             if (role != null)
             {
                 var willRunAfter = cand.WantsToRunAfter && runAfterSlots[role.Id] > 0;
@@ -220,10 +263,10 @@ public class RosterAllocator : IRosterAllocator
             }
         }
 
-        // 4d. Near finish → any Finish Area role.
+        // 4d. Near finish → any Finish Area core role (finish-line roles are reserved for dual assignment).
         foreach (var cand in candidates.Where(c => !placed.Contains(c.VolunteerId) && c.WantsNearFinish))
         {
-            var role = roles.Where(r => r.Category == RoleCategory.FinishArea)
+            var role = coreRoles.Where(r => r.Category == RoleCategory.FinishArea)
                 .FirstOrDefault(r => CanAssign(cand, r, cand.WantsToRunAfter));
             if (role != null)
             {
@@ -235,7 +278,7 @@ public class RosterAllocator : IRosterAllocator
         // 4e. Race HQ (Bluebell) → any Race HQ role.
         foreach (var cand in candidates.Where(c => !placed.Contains(c.VolunteerId) && c.WantsRaceHq))
         {
-            var role = roles.Where(r => r.Category == RoleCategory.RaceHq)
+            var role = coreRoles.Where(r => r.Category == RoleCategory.RaceHq)
                 .FirstOrDefault(r => CanAssign(cand, r, cand.WantsToRunAfter));
             if (role != null)
             {
@@ -252,7 +295,7 @@ public class RosterAllocator : IRosterAllocator
 
         foreach (var cand in seasonRotation)
         {
-            var openRoles = roles.Where(r => slots[r.Id] > 0 && CanAssign(cand, r, cand.WantsToRunAfter)).ToList();
+            var openRoles = coreRoles.Where(r => slots[r.Id] > 0 && CanAssign(cand, r, cand.WantsToRunAfter)).ToList();
             if (openRoles.Count == 0) continue;
             var ordered = openRoles
                 .OrderBy(r => MostRecentInRole(cand.VolunteerId, r))
@@ -267,15 +310,12 @@ public class RosterAllocator : IRosterAllocator
         // Best-effort post-pass: for each marshal point, if both proposed people are same gender AND there is
         // an unplaced candidate of the opposite gender who could fit and another marshal point with a same-gender
         // unplaced candidate, swap.
-        // Simple heuristic: try to balance marshal points where possible.
-        foreach (var marshalRole in roles.Where(r => r.Name.StartsWith("Marshal Point")))
+        foreach (var marshalRole in coreRoles.Where(r => r.Name.StartsWith("Marshal Point")))
         {
             var assigned = draft.Proposals.Where(p => p.VolunteerRoleId == marshalRole.Id).ToList();
             if (assigned.Count < 2) continue;
             var genders = assigned.Select(p => volunteers[p.VolunteerId].Gender).ToList();
             if (genders.Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1) continue; // already mixed
-            // Look for an unplaced candidate of opposite gender and swap with one of the assigned.
-            // We will free one slot in the process, so we check eligibility ignoring the slot count.
             var theGender = genders.First();
             var swap = candidates
                 .Where(c => !placed.Contains(c.VolunteerId))
@@ -286,11 +326,11 @@ public class RosterAllocator : IRosterAllocator
                 .FirstOrDefault();
             if (swap == null) continue;
             // True swap: drop one of the same-gender assignees, place the opposite-gender candidate at this
-            // marshal point, and re-home the dropped person in their best remaining role. Skip the swap
-            // entirely if there is nowhere left for the dropped person — otherwise they would be lost.
+            // marshal point, and re-home the dropped person in their best remaining core role. Skip the swap
+            // entirely if there is nowhere left for the dropped person.
             var dropped = assigned.Last();
             var droppedCand = candidatesById[dropped.VolunteerId];
-            var droppedAltRole = roles
+            var droppedAltRole = coreRoles
                 .Where(r => r.Id != marshalRole.Id
                             && slots[r.Id] > 0
                             && CanAssign(droppedCand, r, droppedCand.WantsToRunAfter))
@@ -312,20 +352,11 @@ public class RosterAllocator : IRosterAllocator
             Place(swapCand, marshalRole, AllocationReason.Mix, willRunAfter);
         }
 
-        // ---------- 7. Fill remainder (AnyRole + anyone left) ----------
+        // ---------- 7. Fill core remainder (AnyRole + anyone left) ----------
         foreach (var cand in candidates.Where(c => !placed.Contains(c.VolunteerId)))
         {
-            var openRoles = roles.Where(r => slots[r.Id] > 0 && CanAssign(cand, r, cand.WantsToRunAfter)).ToList();
-            if (openRoles.Count == 0)
-            {
-                draft.Report.UnplacedCandidates.Add(new UnplacedCandidate
-                {
-                    VolunteerId = cand.VolunteerId,
-                    Name = volunteers.TryGetValue(cand.VolunteerId, out var v) ? v.Name : "(unknown)",
-                    Reason = "No compatible open role left."
-                });
-                continue;
-            }
+            var openRoles = coreRoles.Where(r => slots[r.Id] > 0 && CanAssign(cand, r, cand.WantsToRunAfter)).ToList();
+            if (openRoles.Count == 0) continue;
             var role = openRoles
                 .OrderBy(r => MostRecentInRole(cand.VolunteerId, r))
                 .First();
@@ -333,8 +364,94 @@ public class RosterAllocator : IRosterAllocator
             Place(cand, role, AllocationReason.Fill, willRunAfter);
         }
 
+        // ---------- 7b. Finish line dual assignment (C2C only) ----------
+        // Non-runners already placed at OTD Registration or Number Collection are additionally assigned
+        // to cover Finish Line Funnel / Finish Line Results (minimum 3 across both roles).
+        // These volunteers keep their primary OTD/NC assignment; this only adds a second entry.
+        if (finishLineRoles.Count > 0)
+        {
+            var otdNcNonRunners = draft.Proposals
+                .Where(p => otdNcRoleIds.Contains(p.VolunteerRoleId) && !p.WillRunAfter)
+                .ToList();
+
+            int dualAssigned = 0;
+            foreach (var flRole in finishLineRoles)
+            {
+                var picks = otdNcNonRunners.Take(slots[flRole.Id]).ToList();
+                foreach (var pick in picks)
+                {
+                    if (!candidatesById.TryGetValue(pick.VolunteerId, out var cand)) continue;
+                    draft.Proposals.Add(new ProposedAssignment
+                    {
+                        VolunteerId = pick.VolunteerId,
+                        VolunteerName = pick.VolunteerName,
+                        VolunteerRoleId = flRole.Id,
+                        RoleName = flRole.Name,
+                        Category = flRole.Category,
+                        WillRunAfter = false,
+                        Reason = AllocationReason.FinishLine,
+                        PreferredRoleId = cand.PreferredRoleId,
+                        WantsToRunAfter = cand.WantsToRunAfter,
+                        WantsNearFinish = cand.WantsNearFinish,
+                        CantWalkFar = cand.CantWalkFar,
+                        WantsSeated = cand.WantsSeated,
+                        WantsRaceHq = cand.WantsRaceHq,
+                        AnyRole = cand.AnyRole
+                    });
+                    slots[flRole.Id]--;
+                    dualAssigned++;
+                }
+                otdNcNonRunners = otdNcNonRunners.Skip(picks.Count).ToList();
+            }
+
+            int flMinTotal = finishLineRoles.Sum(r => r.MinCount);
+            if (dualAssigned < flMinTotal)
+            {
+                draft.Report.Notes.Add(
+                    $"Finish line dual assignment: only {dualAssigned}/{flMinTotal} minimum finish-line slots covered " +
+                    "from OTD Registration/Number Collection non-runners. Consider moving a non-runner into OTD/NC.");
+            }
+        }
+
+        // ---------- 8. Optional roles (deferred until all mandatory minimums are met) ----------
+        bool mandatoryMet = coreRoles.All(r => (r.DefaultCount - slots[r.Id]) >= r.MinCount);
+        if (mandatoryMet && optionalRoles.Count > 0)
+        {
+            foreach (var cand in candidates.Where(c => !placed.Contains(c.VolunteerId)))
+            {
+                // Honour an explicit preference for an optional role if available.
+                var prefOpt = optionalRoles.FirstOrDefault(r => r.Id == cand.PreferredRoleId
+                    && CanAssign(cand, r, cand.WantsToRunAfter));
+                var role = prefOpt
+                    ?? optionalRoles.FirstOrDefault(r => slots[r.Id] > 0 && CanAssign(cand, r, cand.WantsToRunAfter));
+                if (role == null) continue;
+                var willRunAfter = cand.WantsToRunAfter && runAfterSlots[role.Id] > 0;
+                Place(cand, role, AllocationReason.Fill, willRunAfter);
+            }
+        }
+        else if (!mandatoryMet && optionalRoles.Count > 0)
+        {
+            var optionalNames = string.Join(", ", optionalRoles.Select(r => r.Name));
+            draft.Report.Notes.Add(
+                $"Optional roles not filled ({optionalNames}): one or more mandatory roles are below minimum count.");
+        }
+
+        // ---------- Report unplaced candidates ----------
+        foreach (var cand in candidates.Where(c => !placed.Contains(c.VolunteerId)))
+        {
+            var reason = (!mandatoryMet && optionalRoles.Count > 0)
+                ? "Mandatory roles not fully staffed; optional slots not opened."
+                : "No compatible open role left.";
+            draft.Report.UnplacedCandidates.Add(new UnplacedCandidate
+            {
+                VolunteerId = cand.VolunteerId,
+                Name = volunteers.TryGetValue(cand.VolunteerId, out var v) ? v.Name : "(unknown)",
+                Reason = reason
+            });
+        }
+
         // ---------- Report unfilled + unhonoured prefs ----------
-        foreach (var role in roles.Where(r => !r.IsOptional))
+        foreach (var role in roles.Where(r => !r.IsOptional && !r.IsGenericPreference))
         {
             var assigned = draft.Proposals.Count(p => p.VolunteerRoleId == role.Id);
             if (assigned < role.DefaultCount)
@@ -351,14 +468,22 @@ public class RosterAllocator : IRosterAllocator
 
         foreach (var cand in candidates)
         {
+            // Use the first proposal (primary assignment) for preference-honoured checks.
             var prop = draft.Proposals.FirstOrDefault(p => p.VolunteerId == cand.VolunteerId);
             if (prop == null) continue;
             var name = volunteers.TryGetValue(cand.VolunteerId, out var v) ? v.Name : cand.VolunteerId.ToString();
 
             if (cand.PreferredRoleId.HasValue && prop.VolunteerRoleId != cand.PreferredRoleId)
             {
-                var preferredName = roles.FirstOrDefault(r => r.Id == cand.PreferredRoleId)?.Name ?? "(unknown)";
-                draft.Report.PreferencesNotHonoured.Add($"{name}: wanted '{preferredName}', got '{prop.RoleName}'.");
+                var prefRole = roles.FirstOrDefault(r => r.Id == cand.PreferredRoleId);
+                // Generic preference ("Marshal any point") is honoured if placed at any marshal point.
+                bool honoured = prefRole?.IsGenericPreference == true
+                    && prop.RoleName.StartsWith("Marshal Point");
+                if (!honoured)
+                {
+                    var preferredName = prefRole?.Name ?? "(unknown)";
+                    draft.Report.PreferencesNotHonoured.Add($"{name}: wanted '{preferredName}', got '{prop.RoleName}'.");
+                }
             }
             if (cand.WantsToRunAfter && !prop.WillRunAfter)
             {

@@ -41,4 +41,9 @@ public class VolunteerRole
 
     /// <summary>Retired roles are kept (history) but hidden from new assignments.</summary>
     public bool IsActive { get; set; } = true;
+
+    /// <summary>Preference sentinel role (e.g. "Marshal (any point)") with no physical slots. When a volunteer
+    /// selects this as their preferred role the allocator places them in any open role of that type rather than
+    /// a specific named role. DefaultCount must be 0.</summary>
+    public bool IsGenericPreference { get; set; }
 }

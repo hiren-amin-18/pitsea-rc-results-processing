@@ -28,12 +28,23 @@
         <tbody>
         @foreach (var p in Model.Proposals.OrderBy(p => p.Category).ThenBy(p => p.RoleName).ThenBy(p => p.VolunteerName))
         {
-            <tr>
+            var reasonLabel = p.Reason switch {
+                RaceResults.Web.Models.AllocationReason.PrePlaced        => "Pre-placed",
+                RaceResults.Web.Models.AllocationReason.Eligibility      => "Eligibility",
+                RaceResults.Web.Models.AllocationReason.RunAfterRotation => "Run-after rotation",
+                RaceResults.Web.Models.AllocationReason.Preference       => "Preference",
+                RaceResults.Web.Models.AllocationReason.Mix              => "Mix",
+                RaceResults.Web.Models.AllocationReason.Fill             => "Fill",
+                RaceResults.Web.Models.AllocationReason.FinishLine       => "Finish line (also OTD/NC)",
+                _ => p.Reason.ToString()
+            };
+            var isFinishLine = p.Reason == RaceResults.Web.Models.AllocationReason.FinishLine;
+            <tr class="@(isFinishLine ? "table-info" : null)">
                 <td>@p.VolunteerName</td>
                 <td>@p.RoleName</td>
                 <td>@p.Category</td>
                 <td>@(p.WillRunAfter ? "Yes" : "")</td>
-                <td><span class="badge bg-light text-dark border">@p.Reason</span></td>
+                <td><span class="badge @(isFinishLine ? "bg-info text-dark" : "bg-light text-dark border")">@reasonLabel</span></td>
             </tr>
         }
         </tbody>

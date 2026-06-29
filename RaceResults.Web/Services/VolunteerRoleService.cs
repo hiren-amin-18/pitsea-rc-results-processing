@@ -56,6 +56,7 @@ public class VolunteerRoleService : IVolunteerRoleService
             MinCount = role.MinCount,
             MaxCount = role.MaxCount,
             IsOptional = role.IsOptional,
+            IsGenericPreference = role.IsGenericPreference,
             RunAfterCapacity = role.RunAfterCapacity,
             RequiresFirstAid = role.RequiresFirstAid,
             HasEligibilityRestriction = role.HasEligibilityRestriction,
@@ -96,6 +97,7 @@ public class VolunteerRoleService : IVolunteerRoleService
             MinCount = input.MinCount,
             MaxCount = input.MaxCount,
             IsOptional = input.IsOptional,
+            IsGenericPreference = input.IsGenericPreference,
             RunAfterCapacity = input.RunAfterCapacity,
             RequiresFirstAid = input.RequiresFirstAid,
             HasEligibilityRestriction = input.HasEligibilityRestriction,
@@ -127,6 +129,7 @@ public class VolunteerRoleService : IVolunteerRoleService
         role.MinCount = input.MinCount;
         role.MaxCount = input.MaxCount;
         role.IsOptional = input.IsOptional;
+        role.IsGenericPreference = input.IsGenericPreference;
         role.RunAfterCapacity = input.RunAfterCapacity;
         role.RequiresFirstAid = input.RequiresFirstAid;
         role.HasEligibilityRestriction = input.HasEligibilityRestriction;

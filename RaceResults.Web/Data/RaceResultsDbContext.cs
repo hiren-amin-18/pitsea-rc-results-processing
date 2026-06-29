@@ -194,7 +194,8 @@ public class RaceResultsDbContext : DbContext
     private static VolunteerRole[] SeedC2CRoles()
     {
         VolunteerRole R(int id, RoleCategory cat, string name, int def, int min, int max,
-            bool optional = false, int runAfter = 0, bool firstAid = false, bool restricted = false) =>
+            bool optional = false, int runAfter = 0, bool firstAid = false, bool restricted = false,
+            bool genericPreference = false, int sortOrder = 0) =>
             new()
             {
                 Id = id,
@@ -205,11 +206,12 @@ public class RaceResultsDbContext : DbContext
                 MinCount = min,
                 MaxCount = max,
                 IsOptional = optional,
+                IsGenericPreference = genericPreference,
                 RunAfterCapacity = runAfter,
                 RequiresFirstAid = firstAid,
                 HasEligibilityRestriction = restricted,
                 PrePlacedVolunteerId = null,
-                SortOrder = id,
+                SortOrder = sortOrder == 0 ? id : sortOrder,
                 IsActive = true
             };
 
@@ -237,7 +239,11 @@ public class RaceResultsDbContext : DbContext
             R(20, RoleCategory.Course,     "Marshal Point 6",        2, 2, 2),
             R(21, RoleCategory.Course,     "Marshal Point 7",        2, 2, 2),
             R(22, RoleCategory.Course,     "Metal Gate",             1, 0, 1, optional: true),
-            R(23, RoleCategory.Course,     "First Aid On Course",    1, 1, 1, firstAid: true)
+            R(23, RoleCategory.Course,     "First Aid On Course",    1, 1, 1, firstAid: true),
+            // Generic preference sentinel: appears in the preferred-role dropdown but has no physical slots.
+            // The allocator places volunteers who select this into any open marshal point.
+            R(39, RoleCategory.Course,     "Marshal (any point)",    0, 0, 0,
+                genericPreference: true, sortOrder: 13),
         };
     }
 
@@ -257,6 +263,7 @@ public class RaceResultsDbContext : DbContext
                 MinCount = min,
                 MaxCount = max,
                 IsOptional = optional,
+                IsGenericPreference = false,
                 RunAfterCapacity = runAfter,
                 RequiresFirstAid = false,
                 HasEligibilityRestriction = restricted,
