@@ -1,0 +1,52 @@
+@model RaceResults.Web.Models.VolunteerAssignmentInput
+@{
+    var raceEvent = (RaceResults.Web.Models.RaceEvent)ViewBag.Event;
+    var roles = ViewBag.Roles as IReadOnlyList<RaceResults.Web.Models.VolunteerRole> ?? new List<RaceResults.Web.Models.VolunteerRole>();
+    var volunteerName = ViewBag.VolunteerName as string ?? "";
+    ViewData["Title"] = $"Edit Assignment - {raceEvent.EventName}";
+}
+
+<h1>Edit Assignment</h1>
+<p class="text-muted">@volunteerName @@ @raceEvent.EventName - @raceEvent.EventDate.ToString("dd MMM yyyy")</p>
+<p class="small text-muted">Change the role, run-after flag, or note. To change the volunteer, remove this assignment and add a new one. Preferences captured on the assignment are kept as they are.</p>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var ftype = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
+}
+
+<form method="post" asp-action="Update" asp-route-eventId="@Model.EventId" class="col-md-6">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="EventId" />
+    <input type="hidden" asp-for="VolunteerId" />
+
+    <div class="mb-3">
+        <label class="form-label">Role</label>
+        <select asp-for="VolunteerRoleId" class="form-select">
+            @foreach (var r in roles)
+            {
+                var hints = new List<string>();
+                if (r.RequiresFirstAid) hints.Add("first aid only");
+                if (r.HasEligibilityRestriction) hints.Add("restricted");
+                if (r.RunAfterCapacity > 0) hints.Add($"{r.RunAfterCapacity} can run after");
+                var suffix = hints.Any() ? $" - {string.Join(", ", hints)}" : "";
+                <option value="@r.Id">@r.Category - @r.Name@suffix</option>
+            }
+        </select>
+    </div>
+
+    <div class="form-check mb-3">
+        <input class="form-check-input" asp-for="WillRunAfter" />
+        <label class="form-check-label" asp-for="WillRunAfter">Will run after</label>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Note</label>
+        <input asp-for="Note" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a class="btn btn-link" asp-action="Index" asp-route-eventId="@Model.EventId">Cancel</a>
+</form>

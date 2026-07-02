@@ -185,6 +185,68 @@ public class VolunteerRosterService : IVolunteerRosterService
         return (pick.Id, pick.Name, null);
     }
 
+    public bool TryGetAssignmentForEdit(int assignmentId, out VolunteerAssignmentInput input, out string volunteerName)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        var assignment = db.VolunteerAssignments
+            .Include(a => a.Volunteer)
+            .FirstOrDefault(a => a.Id == assignmentId);
+        if (assignment is null)
+        {
+            input = new VolunteerAssignmentInput();
+            volunteerName = string.Empty;
+            return false;
+        }
+        input = new VolunteerAssignmentInput
+        {
+            Id = assignment.Id,
+            EventId = assignment.EventId,
+            VolunteerId = assignment.VolunteerId,
+            VolunteerRoleId = assignment.VolunteerRoleId,
+            WillRunAfter = assignment.WillRunAfter,
+            Note = assignment.Note
+        };
+        volunteerName = assignment.Volunteer?.Name ?? "(unknown)";
+        return true;
+    }
+
+    public async Task<OperationResult> UpdateAssignmentAsync(VolunteerAssignmentInput input)
+    {
+        await using var db = _dbContextFactory.CreateDbContext();
+        var assignment = await db.VolunteerAssignments.FirstOrDefaultAsync(a => a.Id == input.Id);
+        if (assignment is null) return OperationResult.Fail(new[] { "Assignment not found." });
+
+        // The event and volunteer on an assignment are immutable — take them from the stored record.
+        input.EventId = assignment.EventId;
+        input.VolunteerId = assignment.VolunteerId;
+
+        var newRole = await db.VolunteerRoles.FirstOrDefaultAsync(r => r.Id == input.VolunteerRoleId);
+        string? autoFillMessage = null;
+        if (newRole is not null && newRole.IsGenericPreference)
+        {
+            if (input.WillRunAfter)
+                return OperationResult.Fail(new[] { "Marshal roles cannot also run after." });
+            var (resolvedId, resolvedName, error) = await ResolveGenericMarshalAsync(db, input);
+            if (error is not null) return OperationResult.Fail(new[] { error });
+            input.VolunteerRoleId = resolvedId!.Value;
+            autoFillMessage = $"Placed at {resolvedName}.";
+        }
+
+        var validation = await ValidateAssignmentAsync(db, input, existingId: assignment.Id);
+        if (validation.Errors.Count > 0) return OperationResult.Fail(validation.Errors);
+
+        assignment.VolunteerRoleId = input.VolunteerRoleId;
+        assignment.WillRunAfter = input.WillRunAfter;
+        assignment.Note = string.IsNullOrWhiteSpace(input.Note) ? null : input.Note.Trim();
+        // Per-event preferences are deliberately untouched (US36 AC4).
+        await db.SaveChangesAsync();
+
+        var result = OperationResult.Ok(autoFillMessage ?? "Assignment updated.");
+        foreach (var warning in validation.Warnings) result.Warnings.Add(warning);
+        _logger.LogInformation("Assignment {Id} updated for event {EventId} role {RoleId}.", assignment.Id, assignment.EventId, assignment.VolunteerRoleId);
+        return result;
+    }
+
     public async Task<OperationResult> RemoveAssignmentAsync(int assignmentId)
     {
         await using var db = _dbContextFactory.CreateDbContext();

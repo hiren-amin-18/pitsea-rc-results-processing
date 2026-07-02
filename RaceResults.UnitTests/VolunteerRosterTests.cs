@@ -299,6 +299,71 @@ public class VolunteerRosterTests : IDisposable
         Assert.Contains(second.Errors, e => e.Contains("run-after"));
     }
 
+    // ---------- Edit assignment (US36) ----------
+
+    [Fact]
+    public async Task UpdateAssignment_ChangesRoleAndNote_PreservesPreferences()
+    {
+        var alice = await CreateVolunteerAsync("Alice", "Female");
+        var tk = (await GetRoleAsync("Timekeeping")).Id;
+        var courseSetup = (await GetRoleAsync("Course Setup")).Id;
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = tk, Note = "old", CantWalkFar = true });
+
+        var assignmentId = _rosterService.GetRoster(1).ByCategory[RoleCategory.FinishArea]
+            .Single(r => r.Role.Name == "Timekeeping").Assignments.Single().Assignment.Id;
+
+        var result = await _rosterService.UpdateAssignmentAsync(new VolunteerAssignmentInput
+        { Id = assignmentId, VolunteerRoleId = courseSetup, Note = "new" });
+
+        Assert.True(result.Success);
+        await using var db = _factory.CreateDbContext();
+        var updated = db.VolunteerAssignments.Single(a => a.Id == assignmentId);
+        Assert.Equal(courseSetup, updated.VolunteerRoleId);
+        Assert.Equal("new", updated.Note);
+        Assert.True(updated.CantWalkFar); // preference preserved (US36 AC4)
+        Assert.Equal(alice.Id, updated.VolunteerId);
+    }
+
+    [Fact]
+    public async Task UpdateAssignment_SavingUnchanged_DoesNotTripCapacityCheck()
+    {
+        var photographer = (await GetRoleAsync("Photographer")).Id; // Max = 1
+        var a = await CreateVolunteerAsync("A", "Female");
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = a.Id, VolunteerRoleId = photographer });
+
+        var assignmentId = _rosterService.GetRoster(1).ByCategory[RoleCategory.FinishArea]
+            .Single(r => r.Role.Name == "Photographer").Assignments.Single().Assignment.Id;
+
+        var result = await _rosterService.UpdateAssignmentAsync(new VolunteerAssignmentInput
+        { Id = assignmentId, VolunteerRoleId = photographer });
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task UpdateAssignment_MovingToFullRole_Fails()
+    {
+        var photographer = (await GetRoleAsync("Photographer")).Id; // Max = 1
+        var tk = (await GetRoleAsync("Timekeeping")).Id;
+        var a = await CreateVolunteerAsync("A", "Female");
+        var b = await CreateVolunteerAsync("B", "Male");
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = a.Id, VolunteerRoleId = photographer });
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = b.Id, VolunteerRoleId = tk });
+
+        var bAssignment = _rosterService.GetRoster(1).ByCategory[RoleCategory.FinishArea]
+            .Single(r => r.Role.Name == "Timekeeping").Assignments.Single().Assignment.Id;
+
+        var result = await _rosterService.UpdateAssignmentAsync(new VolunteerAssignmentInput
+        { Id = bAssignment, VolunteerRoleId = photographer });
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("maximum"));
+    }
+
     [Fact]
     public async Task GenericMarshalSentinel_FillsMostUnderStaffedMarshalPoint()
     {

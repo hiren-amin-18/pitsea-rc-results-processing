@@ -52,6 +52,36 @@ public class VolunteerRosterController : Controller
         return RedirectToAction(nameof(Index), new { eventId = input.EventId });
     }
 
+    [HttpGet("Edit/{assignmentId:int}")]
+    public IActionResult Edit(int eventId, int assignmentId)
+    {
+        if (!_roster.TryGetAssignmentForEdit(assignmentId, out var input, out var volunteerName)
+            || input.EventId != eventId)
+        {
+            TempData["FeedbackType"] = "danger";
+            TempData["FeedbackText"] = "Assignment not found.";
+            return RedirectToAction(nameof(Index), new { eventId });
+        }
+        var roster = _roster.GetRoster(eventId);
+        ViewBag.Roles = _roles.GetRoles(roster.Event.EventType);
+        ViewBag.Event = roster.Event;
+        ViewBag.VolunteerName = volunteerName;
+        return View(input);
+    }
+
+    [HttpPost("Update")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Update(VolunteerAssignmentInput input)
+    {
+        var result = await _roster.UpdateAssignmentAsync(input);
+        StoreFeedback(result);
+        if (!result.Success)
+        {
+            return RedirectToAction(nameof(Edit), new { eventId = input.EventId, assignmentId = input.Id });
+        }
+        return RedirectToAction(nameof(Index), new { eventId = input.EventId });
+    }
+
     [HttpPost("Remove")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Remove(int eventId, int assignmentId)

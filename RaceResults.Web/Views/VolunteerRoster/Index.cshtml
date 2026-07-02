@@ -195,6 +195,7 @@
                                     @if (a.Assignment.WillRunAfter) { <em class="text-primary">(running after)</em> }
                                     @if (!a.Volunteer.IsClubMember) { <em class="text-muted">*</em> }
                                     @if (!string.IsNullOrWhiteSpace(a.Assignment.Note)) { <span class="text-muted"> - @a.Assignment.Note</span> }
+                                    <a class="ms-1 text-decoration-none" asp-action="Edit" asp-route-eventId="@Model.Event.Id" asp-route-assignmentId="@a.Assignment.Id" title="Edit">✎</a>
                                     <form method="post" asp-action="Remove" asp-route-eventId="@Model.Event.Id" class="d-inline ms-1" onsubmit="return confirm('Remove this assignment?');">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="eventId" value="@Model.Event.Id" />

@@ -1,6 +1,6 @@
 # US36 - Edit Roster Assignments In Place
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser
