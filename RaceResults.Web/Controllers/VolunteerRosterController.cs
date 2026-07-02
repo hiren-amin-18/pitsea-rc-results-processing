@@ -135,7 +135,7 @@ public class VolunteerRosterController : Controller
 
     [HttpPost("Apply")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Apply(int eventId, [FromForm] string draftJson)
+    public async Task<IActionResult> Apply(int eventId, [FromForm] string draftJson, [FromForm] int[]? includeIndexes)
     {
         AllocationDraft? draft;
         try { draft = System.Text.Json.JsonSerializer.Deserialize<AllocationDraft>(draftJson); }
@@ -144,6 +144,19 @@ public class VolunteerRosterController : Controller
         {
             TempData["FeedbackType"] = "danger";
             TempData["FeedbackText"] = "Could not read the draft to apply.";
+            return RedirectToAction(nameof(Index), new { eventId });
+        }
+
+        // US38: apply only the proposals ticked on the draft page.
+        if (includeIndexes is not null)
+        {
+            var keep = includeIndexes.Where(i => i >= 0 && i < draft.Proposals.Count).ToHashSet();
+            draft.Proposals = draft.Proposals.Where((_, i) => keep.Contains(i)).ToList();
+        }
+        if (draft.Proposals.Count == 0)
+        {
+            TempData["FeedbackType"] = "warning";
+            TempData["FeedbackText"] = "No proposals were selected to apply.";
             return RedirectToAction(nameof(Index), new { eventId });
         }
 

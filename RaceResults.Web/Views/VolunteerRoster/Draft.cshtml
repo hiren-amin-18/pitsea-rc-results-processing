@@ -8,13 +8,14 @@
 <p class="text-muted">@Model.EventName - @Model.EventDate.ToString("dd MMM yyyy")</p>
 <p class="small text-muted">Review the proposed allocation. Click Apply to add these assignments to the roster (existing assignments are kept; nothing is deleted). After applying you can adjust the roster freely.</p>
 
-<form method="post" asp-action="Apply" asp-route-eventId="@Model.EventId" class="mb-3"
-      onsubmit="return confirm('Apply @Model.Proposals.Count proposed assignment(s) to the roster? Existing assignments are kept; this only adds.');">
+<form method="post" asp-action="Apply" asp-route-eventId="@Model.EventId" id="apply-form"
+      onsubmit="return confirm('Apply ' + document.querySelectorAll('.proposal-tick:checked').length + ' proposed assignment(s) to the roster? Existing assignments are kept; this only adds.');">
     @Html.AntiForgeryToken()
     <input type="hidden" name="draftJson" value="@draftJson" />
-    <button type="submit" class="btn btn-primary" @(Model.Proposals.Count == 0 ? "disabled" : "")>Apply draft (@Model.Proposals.Count)</button>
-    <a class="btn btn-link" asp-action="Allocate" asp-route-eventId="@Model.EventId">Back</a>
-</form>
+    <div class="mb-3">
+        <button type="submit" class="btn btn-primary" id="apply-btn" @(Model.Proposals.Count == 0 ? "disabled" : "")>Apply draft (@Model.Proposals.Count)</button>
+        <a class="btn btn-link" asp-action="Allocate" asp-route-eventId="@Model.EventId">Back</a>
+    </div>
 
 @if (Model.Proposals.Count == 0)
 {
@@ -22,11 +23,14 @@
 }
 
 <h3>Proposed assignments (@Model.Proposals.Count)</h3>
+<p class="small text-muted">Untick any proposal you disagree with before applying — only ticked rows are added to the roster.</p>
 <div class="table-responsive" style="overflow-x: clip;">
     <table class="table table-sm align-middle">
-        <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);"><tr><th>Volunteer</th><th>Role</th><th>Category</th><th>Run after?</th><th>Reason</th></tr></thead>
+        <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);"><tr><th style="width: 30px;" class="text-center">✓</th><th>Volunteer</th><th>Role</th><th>Category</th><th>Run after?</th><th>Reason</th></tr></thead>
         <tbody>
-        @foreach (var p in Model.Proposals.OrderBy(p => p.Category).ThenBy(p => p.RoleName).ThenBy(p => p.VolunteerName))
+        @foreach (var (p, originalIndex) in Model.Proposals
+            .Select((p, i) => (p, i))
+            .OrderBy(x => x.p.Category).ThenBy(x => x.p.RoleName).ThenBy(x => x.p.VolunteerName))
         {
             var reasonLabel = p.Reason switch {
                 RaceResults.Web.Models.AllocationReason.PrePlaced        => "Pre-placed",
@@ -40,6 +44,7 @@
             };
             var isFinishLine = p.Reason == RaceResults.Web.Models.AllocationReason.FinishLine;
             <tr class="@(isFinishLine ? "table-info" : null)">
+                <td class="text-center"><input type="checkbox" class="proposal-tick" name="includeIndexes" value="@originalIndex" checked /></td>
                 <td>@p.VolunteerName</td>
                 <td>@p.RoleName</td>
                 <td>@p.Category</td>
@@ -50,6 +55,16 @@
         </tbody>
     </table>
 </div>
+</form>
+
+<script>
+    document.querySelectorAll('.proposal-tick').forEach(t => t.addEventListener('change', () => {
+        const n = document.querySelectorAll('.proposal-tick:checked').length;
+        const btn = document.getElementById('apply-btn');
+        btn.textContent = `Apply draft (${n})`;
+        btn.disabled = n === 0;
+    }));
+</script>
 
 @if (Model.Report.UnfilledRoles.Any())
 {

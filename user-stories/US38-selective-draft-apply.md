@@ -1,6 +1,6 @@
 # US38 - Selective Draft Apply
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser
