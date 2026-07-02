@@ -20,6 +20,15 @@ public class VolunteerInput
     public bool IsClubMember { get; set; } = true;
     public bool IsFirstAidTrained { get; set; }
     public int? RunnerId { get; set; }
+
+    // Usual preferences (US40) — pre-fill the allocate grid; per-event overrides never write back here.
+    public int? DefaultPreferredRoleId { get; set; }
+    public bool DefaultWantsToRunAfter { get; set; }
+    public bool DefaultWantsNearFinish { get; set; }
+    public bool DefaultCantWalkFar { get; set; }
+    public bool DefaultWantsSeated { get; set; }
+    public bool DefaultWantsRaceHq { get; set; }
+    public bool DefaultAnyRole { get; set; }
 }
 
 public class VolunteerListItem

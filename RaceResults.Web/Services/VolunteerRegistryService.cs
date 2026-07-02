@@ -61,7 +61,14 @@ public class VolunteerRegistryService : IVolunteerRegistryService
             Gender = v.Gender,
             IsClubMember = v.IsClubMember,
             IsFirstAidTrained = v.IsFirstAidTrained,
-            RunnerId = v.RunnerId
+            RunnerId = v.RunnerId,
+            DefaultPreferredRoleId = v.DefaultPreferredRoleId,
+            DefaultWantsToRunAfter = v.DefaultWantsToRunAfter,
+            DefaultWantsNearFinish = v.DefaultWantsNearFinish,
+            DefaultCantWalkFar = v.DefaultCantWalkFar,
+            DefaultWantsSeated = v.DefaultWantsSeated,
+            DefaultWantsRaceHq = v.DefaultWantsRaceHq,
+            DefaultAnyRole = v.DefaultAnyRole
         };
         return true;
     }
@@ -81,6 +88,13 @@ public class VolunteerRegistryService : IVolunteerRegistryService
             IsClubMember = input.IsClubMember,
             IsFirstAidTrained = input.IsFirstAidTrained,
             RunnerId = input.RunnerId,
+            DefaultPreferredRoleId = input.DefaultPreferredRoleId,
+            DefaultWantsToRunAfter = input.DefaultWantsToRunAfter,
+            DefaultWantsNearFinish = input.DefaultWantsNearFinish,
+            DefaultCantWalkFar = input.DefaultCantWalkFar,
+            DefaultWantsSeated = input.DefaultWantsSeated,
+            DefaultWantsRaceHq = input.DefaultWantsRaceHq,
+            DefaultAnyRole = input.DefaultAnyRole,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -120,6 +134,13 @@ public class VolunteerRegistryService : IVolunteerRegistryService
         volunteer.IsClubMember = input.IsClubMember;
         volunteer.IsFirstAidTrained = input.IsFirstAidTrained;
         volunteer.RunnerId = input.RunnerId;
+        volunteer.DefaultPreferredRoleId = input.DefaultPreferredRoleId;
+        volunteer.DefaultWantsToRunAfter = input.DefaultWantsToRunAfter;
+        volunteer.DefaultWantsNearFinish = input.DefaultWantsNearFinish;
+        volunteer.DefaultCantWalkFar = input.DefaultCantWalkFar;
+        volunteer.DefaultWantsSeated = input.DefaultWantsSeated;
+        volunteer.DefaultWantsRaceHq = input.DefaultWantsRaceHq;
+        volunteer.DefaultAnyRole = input.DefaultAnyRole;
         await db.SaveChangesAsync();
         _logger.LogInformation("Volunteer {Id} updated.", volunteer.Id);
         return OperationResult.Ok($"Volunteer '{volunteer.Name}' updated.");

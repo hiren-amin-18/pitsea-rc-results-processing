@@ -15,6 +15,7 @@ public class VolunteerRosterController : Controller
     private readonly IRosterAllocator _allocator;
     private readonly IRosterDraftApplier _applier;
     private readonly IVolunteerRosterImportService _import;
+    private readonly IAllocationGridService _grid;
 
     public VolunteerRosterController(
         IVolunteerRosterService roster,
@@ -23,7 +24,8 @@ public class VolunteerRosterController : Controller
         IVolunteerRoleService roles,
         IRosterAllocator allocator,
         IRosterDraftApplier applier,
-        IVolunteerRosterImportService import)
+        IVolunteerRosterImportService import,
+        IAllocationGridService grid)
     {
         _roster = roster;
         _export = export;
@@ -32,6 +34,7 @@ public class VolunteerRosterController : Controller
         _allocator = allocator;
         _applier = applier;
         _import = import;
+        _grid = grid;
     }
 
     [HttpGet("")]
@@ -125,7 +128,7 @@ public class VolunteerRosterController : Controller
     public IActionResult Allocate(int eventId)
     {
         var roster = _roster.GetRoster(eventId);
-        ViewBag.Volunteers = _volunteers.GetVolunteers();
+        ViewBag.Grid = _grid.GetGrid(eventId);
         ViewBag.Roles = _roles.GetRoles(roster.Event.EventType);
         ViewBag.Event = roster.Event;
         return View(new AllocationFormInput { EventId = eventId });
@@ -133,11 +136,13 @@ public class VolunteerRosterController : Controller
 
     [HttpPost("Allocate")]
     [ValidateAntiForgeryToken]
-    public IActionResult Allocate(AllocationFormInput input)
+    public async Task<IActionResult> Allocate(AllocationFormInput input)
     {
         var candidates = (input.Candidates ?? new List<AllocationCandidate>())
             .Where(c => c.VolunteerId > 0)
             .ToList();
+        // US40: remember the grid so Back from the draft (or a later revisit) restores it.
+        await _grid.SaveGridAsync(input.EventId, candidates);
         var draft = _allocator.Propose(input.EventId, candidates);
         return View("Draft", draft);
     }

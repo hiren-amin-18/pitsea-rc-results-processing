@@ -8,12 +8,18 @@ public class VolunteersController : Controller
 {
     private readonly IVolunteerRegistryService _registry;
     private readonly IRunnerRegistryService _runners;
+    private readonly IVolunteerRoleService _roles;
 
-    public VolunteersController(IVolunteerRegistryService registry, IRunnerRegistryService runners)
+    public VolunteersController(IVolunteerRegistryService registry, IRunnerRegistryService runners, IVolunteerRoleService roles)
     {
         _registry = registry;
         _runners = runners;
+        _roles = roles;
     }
+
+    /// <summary>Active roles across both event types for the "usual preferred role" dropdown (US40).</summary>
+    private List<VolunteerRole> AllRoles() =>
+        Enum.GetValues<EventType>().SelectMany(t => _roles.GetRoles(t)).ToList();
 
     [HttpGet]
     public IActionResult Index(bool showInactive = false)
@@ -25,7 +31,7 @@ public class VolunteersController : Controller
     [HttpGet]
     public IActionResult Create()
     {
-        ViewBag.Runners = _runners.GetRunners();
+        ViewBag.Runners = _runners.GetRunners(); ViewBag.AllRoles = AllRoles();
         return View(new VolunteerInput { IsClubMember = true });
     }
 
@@ -33,10 +39,10 @@ public class VolunteersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(VolunteerInput model)
     {
-        if (!ModelState.IsValid) { ViewBag.Runners = _runners.GetRunners(); return View(model); }
+        if (!ModelState.IsValid) { ViewBag.Runners = _runners.GetRunners(); ViewBag.AllRoles = AllRoles(); return View(model); }
         var result = await _registry.CreateAsync(model);
         StoreFeedback(result);
-        if (!result.Success) { ViewBag.Runners = _runners.GetRunners(); return View(model); }
+        if (!result.Success) { ViewBag.Runners = _runners.GetRunners(); ViewBag.AllRoles = AllRoles(); return View(model); }
         return RedirectToAction(nameof(Index));
     }
 
@@ -49,7 +55,7 @@ public class VolunteersController : Controller
             TempData["FeedbackText"] = "Volunteer not found.";
             return RedirectToAction(nameof(Index));
         }
-        ViewBag.Runners = _runners.GetRunners();
+        ViewBag.Runners = _runners.GetRunners(); ViewBag.AllRoles = AllRoles();
         return View(input);
     }
 
@@ -57,10 +63,10 @@ public class VolunteersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(VolunteerInput model)
     {
-        if (!ModelState.IsValid) { ViewBag.Runners = _runners.GetRunners(); return View(model); }
+        if (!ModelState.IsValid) { ViewBag.Runners = _runners.GetRunners(); ViewBag.AllRoles = AllRoles(); return View(model); }
         var result = await _registry.UpdateAsync(model);
         StoreFeedback(result);
-        if (!result.Success) { ViewBag.Runners = _runners.GetRunners(); return View(model); }
+        if (!result.Success) { ViewBag.Runners = _runners.GetRunners(); ViewBag.AllRoles = AllRoles(); return View(model); }
         return RedirectToAction(nameof(Index));
     }
 

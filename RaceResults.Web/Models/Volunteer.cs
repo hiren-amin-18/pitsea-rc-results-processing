@@ -26,4 +26,16 @@ public class Volunteer
     public bool IsActive { get; set; } = true;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // ---- Usual preferences (US40): pre-fill the allocate grid and the add-assignment form.
+    // Per-event overrides live on the assignment / saved grid; these are the starting values. ----
+
+    public int? DefaultPreferredRoleId { get; set; }
+    public VolunteerRole? DefaultPreferredRole { get; set; }
+    public bool DefaultWantsToRunAfter { get; set; }
+    public bool DefaultWantsNearFinish { get; set; }
+    public bool DefaultCantWalkFar { get; set; }
+    public bool DefaultWantsSeated { get; set; }
+    public bool DefaultWantsRaceHq { get; set; }
+    public bool DefaultAnyRole { get; set; }
 }

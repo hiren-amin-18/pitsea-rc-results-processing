@@ -1,8 +1,11 @@
 @model RaceResults.Web.Models.VolunteerInput
 @{
     var runners = ViewBag.Runners as IReadOnlyList<RaceResults.Web.Models.RunnerListItem>;
+    var allRoles = ViewBag.AllRoles as IReadOnlyList<RaceResults.Web.Models.VolunteerRole> ?? new List<RaceResults.Web.Models.VolunteerRole>();
     var isEdit = Model.Id > 0;
     var action = isEdit ? "Edit" : "Create";
+    var hasAnyDefaultPref = Model.DefaultPreferredRoleId.HasValue || Model.DefaultWantsToRunAfter || Model.DefaultWantsNearFinish
+        || Model.DefaultCantWalkFar || Model.DefaultWantsSeated || Model.DefaultWantsRaceHq || Model.DefaultAnyRole;
 }
 
 <form method="post" asp-action="@action" class="row g-3" style="max-width: 720px;">
@@ -55,6 +58,30 @@
             }
         </select>
     </div>
+
+    <details class="col-12" @(hasAnyDefaultPref ? "open" : null)>
+        <summary class="small text-muted">Usual preferences (US40 — pre-fill the allocate form; can be overridden per event)</summary>
+        <div class="row g-2 mt-1">
+            <div class="col-md-4">
+                <label asp-for="DefaultPreferredRoleId" class="form-label small">Usual preferred role</label>
+                <select asp-for="DefaultPreferredRoleId" class="form-select form-select-sm">
+                    <option value="">-</option>
+                    @foreach (var r in allRoles)
+                    {
+                        <option value="@r.Id">@(r.EventType == RaceResults.Web.Models.EventType.Bluebell5 ? "Bluebell - " : "C2C - ")@r.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-8 d-flex flex-wrap gap-3 align-items-center">
+                <div class="form-check"><input class="form-check-input" asp-for="DefaultWantsToRunAfter" /><label class="form-check-label small" asp-for="DefaultWantsToRunAfter">Wants to run after</label></div>
+                <div class="form-check"><input class="form-check-input" asp-for="DefaultWantsNearFinish" /><label class="form-check-label small" asp-for="DefaultWantsNearFinish">Near finish</label></div>
+                <div class="form-check"><input class="form-check-input" asp-for="DefaultCantWalkFar" /><label class="form-check-label small" asp-for="DefaultCantWalkFar">Can't walk far</label></div>
+                <div class="form-check"><input class="form-check-input" asp-for="DefaultWantsSeated" /><label class="form-check-label small" asp-for="DefaultWantsSeated">Seated</label></div>
+                <div class="form-check"><input class="form-check-input" asp-for="DefaultWantsRaceHq" /><label class="form-check-label small" asp-for="DefaultWantsRaceHq">Race HQ (Bluebell)</label></div>
+                <div class="form-check"><input class="form-check-input" asp-for="DefaultAnyRole" /><label class="form-check-label small" asp-for="DefaultAnyRole">Any role</label></div>
+            </div>
+        </div>
+    </details>
 
     <div class="col-12">
         <button type="submit" class="btn btn-primary">Save</button>

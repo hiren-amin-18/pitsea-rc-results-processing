@@ -32,6 +32,7 @@ builder.Services.AddScoped<IVolunteerStatsService, VolunteerStatsService>();
 builder.Services.AddScoped<IVolunteerRosterService, VolunteerRosterService>();
 builder.Services.AddScoped<IVolunteerRosterExportService, VolunteerRosterExportService>();
 builder.Services.AddScoped<IRosterAllocator, RosterAllocator>();
+builder.Services.AddScoped<IAllocationGridService, AllocationGridService>();
 builder.Services.AddScoped<IRosterDraftApplier, RosterDraftApplier>();
 builder.Services.AddScoped<IVolunteerRosterImportService, VolunteerRosterImportService>();
 

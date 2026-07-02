@@ -501,6 +501,56 @@ public class VolunteerRosterTests : IDisposable
         Assert.Empty(rosterAfter.ByCategory[RoleCategory.FinishArea].Single(r => r.Role.Name == "Timekeeping").Assignments);
     }
 
+    // ---------- Persistent preferences and grid memory (US40) ----------
+
+    [Fact]
+    public async Task AllocationGrid_FreshGrid_UsesVolunteerDefaults_Unticked()
+    {
+        await _registry.CreateAsync(new VolunteerInput
+        { Name = "Pam", Gender = "Female", DefaultCantWalkFar = true, DefaultWantsToRunAfter = true });
+
+        var grid = new AllocationGridService(_factory).GetGrid(1);
+
+        var row = Assert.Single(grid);
+        Assert.False(row.IsSelected);
+        Assert.True(row.Candidate.CantWalkFar);
+        Assert.True(row.Candidate.WantsToRunAfter);
+        Assert.False(row.Candidate.WantsSeated);
+    }
+
+    [Fact]
+    public async Task AllocationGrid_SaveAndReload_RestoresTicksAndOverrides_WithoutTouchingDefaults()
+    {
+        await _registry.CreateAsync(new VolunteerInput { Name = "Pam", Gender = "Female", DefaultCantWalkFar = true });
+        await _registry.CreateAsync(new VolunteerInput { Name = "Sid", Gender = "Male" });
+        var pam = _registry.GetVolunteers().Single(v => v.Volunteer.Name == "Pam").Volunteer;
+
+        var gridService = new AllocationGridService(_factory);
+        // Pam ticked with a per-event override (CantWalkFar off, Seated on); Sid left unticked.
+        await gridService.SaveGridAsync(1, new[]
+        {
+            new AllocationCandidate { VolunteerId = pam.Id, CantWalkFar = false, WantsSeated = true }
+        });
+
+        var grid = gridService.GetGrid(1);
+        var pamRow = grid.Single(r => r.Volunteer.Name == "Pam");
+        var sidRow = grid.Single(r => r.Volunteer.Name == "Sid");
+
+        Assert.True(pamRow.IsSelected);
+        Assert.False(pamRow.Candidate.CantWalkFar); // per-event override restored
+        Assert.True(pamRow.Candidate.WantsSeated);
+        Assert.False(sidRow.IsSelected);
+
+        // The volunteer record's defaults are untouched.
+        await using var db = _factory.CreateDbContext();
+        Assert.True(db.Volunteers.Single(v => v.Id == pam.Id).DefaultCantWalkFar);
+
+        // A different event still starts fresh from defaults.
+        var otherEventGrid = gridService.GetGrid(999);
+        Assert.True(otherEventGrid.Single(r => r.Volunteer.Name == "Pam").Candidate.CantWalkFar);
+        Assert.False(otherEventGrid.Single(r => r.Volunteer.Name == "Pam").IsSelected);
+    }
+
     // ---------- No-show tracking (US42) ----------
 
     [Fact]

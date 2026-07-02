@@ -82,3 +82,12 @@ public class AllocationFormInput
     public List<int> SelectedVolunteerIds { get; set; } = new();
     public List<AllocationCandidate> Candidates { get; set; } = new();
 }
+
+/// <summary>One row of the allocate grid (US40): the volunteer plus their starting tick/preferences,
+/// sourced from the event's saved grid if present, otherwise from the volunteer's defaults.</summary>
+public class AllocationGridRow
+{
+    public Volunteer Volunteer { get; set; } = null!;
+    public bool IsSelected { get; set; }
+    public AllocationCandidate Candidate { get; set; } = null!;
+}

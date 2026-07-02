@@ -19,6 +19,7 @@ public class RaceResultsDbContext : DbContext
     public DbSet<VolunteerRole> VolunteerRoles => Set<VolunteerRole>();
     public DbSet<VolunteerRoleEligibility> VolunteerRoleEligibilities => Set<VolunteerRoleEligibility>();
     public DbSet<VolunteerAssignment> VolunteerAssignments => Set<VolunteerAssignment>();
+    public DbSet<AllocationCandidateRecord> AllocationCandidateRecords => Set<AllocationCandidateRecord>();
     public DbSet<NotDuplicatePair> NotDuplicatePairs => Set<NotDuplicatePair>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -149,6 +150,16 @@ public class RaceResultsDbContext : DbContext
             e.Property(x => x.Gender).IsRequired();
             // Deleting an event (and its assignments) must never delete the persistent volunteer (US28 AC10).
             e.HasOne(x => x.Runner).WithMany().HasForeignKey(x => x.RunnerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.DefaultPreferredRole).WithMany().HasForeignKey(x => x.DefaultPreferredRoleId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<AllocationCandidateRecord>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.EventId, x.VolunteerId }).IsUnique();
+            // Grid memory is per-event scratch state: deleting the event or the volunteer clears it.
+            e.HasOne(x => x.Event).WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Volunteer).WithMany().HasForeignKey(x => x.VolunteerId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<VolunteerRole>(e =>

@@ -1,6 +1,6 @@
 # US40 - Persistent Volunteer Preferences and Allocate Form Memory
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

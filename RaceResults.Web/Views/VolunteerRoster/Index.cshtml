@@ -102,7 +102,13 @@
                     <option value="">-</option>
                     @foreach (var v in volunteers) {
                         var assignedMark = assignedVolunteerIds.Contains(v.Volunteer.Id) ? " · assigned" : "";
-                        <option value="@v.Volunteer.Id">@v.Volunteer.Name @(v.Volunteer.IsFirstAidTrained ? "(FA)" : "")@assignedMark</option>
+                        <option value="@v.Volunteer.Id"
+                                data-pref-role="@(v.Volunteer.DefaultPreferredRoleId?.ToString() ?? "")"
+                                data-runafter="@(v.Volunteer.DefaultWantsToRunAfter ? "1" : "")"
+                                data-nearfinish="@(v.Volunteer.DefaultWantsNearFinish ? "1" : "")"
+                                data-cantwalkfar="@(v.Volunteer.DefaultCantWalkFar ? "1" : "")"
+                                data-seated="@(v.Volunteer.DefaultWantsSeated ? "1" : "")"
+                                data-anyrole="@(v.Volunteer.DefaultAnyRole ? "1" : "")">@v.Volunteer.Name @(v.Volunteer.IsFirstAidTrained ? "(FA)" : "")@assignedMark</option>
                     }
                 </select>
             </div>
@@ -159,6 +165,24 @@
                 </div>
             </details>
         </form>
+        <script>
+            // US40: picking a volunteer pre-fills the preference section from their usual preferences.
+            (function () {
+                const form = document.currentScript.closest('.card-body').querySelector('form');
+                const volunteerSelect = form.querySelector('select[name="VolunteerId"]');
+                volunteerSelect.addEventListener('change', function () {
+                    const opt = this.selectedOptions[0];
+                    if (!opt) return;
+                    const set = (name, val) => { const el = form.querySelector(`[name="${name}"]`); if (el) el.type === 'checkbox' ? el.checked = !!val : el.value = val; };
+                    set('PreferredRoleId', opt.dataset.prefRole || '');
+                    set('WantsToRunAfter', opt.dataset.runafter);
+                    set('WantsNearFinish', opt.dataset.nearfinish);
+                    set('CantWalkFar', opt.dataset.cantwalkfar);
+                    set('WantsSeated', opt.dataset.seated);
+                    set('AnyRole', opt.dataset.anyrole);
+                });
+            })();
+        </script>
     </div>
 </div>
 
