@@ -124,6 +124,67 @@ public class VolunteerRosterController : Controller
         return RedirectToAction(nameof(Index), new { eventId });
     }
 
+    [HttpGet("QuickAssign/{roleId:int}")]
+    public IActionResult QuickAssign(int eventId, int roleId)
+    {
+        var roster = _roster.GetRoster(eventId);
+        var row = roster.ByCategory.Values.SelectMany(r => r).FirstOrDefault(r => r.Role.Id == roleId);
+        if (row is null || row.Role.IsGenericPreference)
+        {
+            TempData["FeedbackType"] = "danger";
+            TempData["FeedbackText"] = "Role not found on this roster.";
+            return RedirectToAction(nameof(Index), new { eventId });
+        }
+
+        // Eligible = active, not yet assigned at this event, first-aid if required, on the allow-list if restricted.
+        var assignedIds = roster.ByCategory.Values.SelectMany(r => r)
+            .SelectMany(r => r.Assignments).Select(a => a.Volunteer.Id).ToHashSet();
+        var allowList = row.Role.HasEligibilityRestriction
+            ? _roles.GetEligibleVolunteerIds(roleId).ToHashSet()
+            : null;
+        var candidates = _volunteers.GetVolunteers()
+            .Where(v => !assignedIds.Contains(v.Volunteer.Id))
+            .Where(v => !row.Role.RequiresFirstAid || v.Volunteer.IsFirstAidTrained)
+            .Where(v => allowList is null || allowList.Contains(v.Volunteer.Id))
+            .ToList();
+
+        ViewBag.Event = roster.Event;
+        ViewBag.RoleRow = row;
+        ViewBag.Candidates = candidates;
+        return View();
+    }
+
+    [HttpPost("QuickAssign")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> QuickAssign(int eventId, int roleId, int[]? volunteerIds)
+    {
+        if (volunteerIds is null || volunteerIds.Length == 0)
+        {
+            TempData["FeedbackType"] = "warning";
+            TempData["FeedbackText"] = "No volunteers were ticked.";
+            return RedirectToAction(nameof(QuickAssign), new { eventId, roleId });
+        }
+
+        var combined = new OperationResult { Success = true };
+        var added = 0;
+        foreach (var volunteerId in volunteerIds.Distinct())
+        {
+            var result = await _roster.AddAssignmentAsync(new VolunteerAssignmentInput
+            {
+                EventId = eventId,
+                VolunteerId = volunteerId,
+                VolunteerRoleId = roleId
+            });
+            if (result.Success) added++;
+            foreach (var w in result.Warnings) combined.Warnings.Add(w);
+            foreach (var e in result.Errors) combined.Errors.Add(e);
+        }
+        combined.Messages.Add($"Added {added} of {volunteerIds.Distinct().Count()} volunteer(s) to the role.");
+        combined.Success = added > 0;
+        StoreFeedback(combined);
+        return RedirectToAction(nameof(Index), new { eventId });
+    }
+
     [HttpGet("Allocate")]
     public IActionResult Allocate(int eventId)
     {

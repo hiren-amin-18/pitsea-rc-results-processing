@@ -255,7 +255,14 @@
                             }
                         }
                     </td>
-                    <td></td>
+                    <td class="text-end">
+                        @if (!row.Role.IsGenericPreference && row.AssignedCount < row.Role.MaxCount)
+                        {
+                            <a class="btn btn-sm btn-outline-primary py-0 px-2" asp-action="QuickAssign"
+                               asp-route-eventId="@Model.Event.Id" asp-route-roleId="@row.Role.Id"
+                               title="Quick assign eligible volunteers to @row.Role.Name">+</a>
+                        }
+                    </td>
                 </tr>
             }
             </tbody>

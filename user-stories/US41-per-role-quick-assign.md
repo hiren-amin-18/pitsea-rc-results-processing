@@ -1,6 +1,6 @@
 # US41 - Per-Role Quick Assign
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

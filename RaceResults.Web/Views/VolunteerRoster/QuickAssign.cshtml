@@ -1,0 +1,63 @@
+@{
+    var raceEvent = (RaceResults.Web.Models.RaceEvent)ViewBag.Event;
+    var row = (RaceResults.Web.Models.RosterRoleRow)ViewBag.RoleRow;
+    var candidates = ViewBag.Candidates as IReadOnlyList<RaceResults.Web.Models.VolunteerListItem>
+        ?? new List<RaceResults.Web.Models.VolunteerListItem>();
+    var headroom = row.Role.MaxCount - row.AssignedCount;
+    ViewData["Title"] = $"Quick Assign - {row.Role.Name}";
+}
+
+<h1>Quick Assign - @row.Role.Name</h1>
+<p class="text-muted">@raceEvent.EventName - @raceEvent.EventDate.ToString("dd MMM yyyy")</p>
+<p class="small text-muted">
+    Currently @row.AssignedCount/@row.DefaultCount assigned (max @row.Role.MaxCount — @headroom spot(s) open).
+    Listing volunteers who are eligible and not yet assigned at this event; tick several and add them in one go.
+</p>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var ftype = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
+}
+
+@if (!candidates.Any())
+{
+    <div class="alert alert-info">Nobody left to add: every eligible volunteer is already assigned at this event.</div>
+    <a class="btn btn-link" asp-action="Index" asp-route-eventId="@raceEvent.Id">Back to roster</a>
+}
+else
+{
+    <form method="post" asp-action="QuickAssign" asp-route-eventId="@raceEvent.Id">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="roleId" value="@row.Role.Id" />
+
+        <div class="table-responsive" style="overflow-x: clip; max-width: 640px;">
+            <table class="table table-sm align-middle">
+                <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
+                    <tr>
+                        <th style="width: 30px;" class="text-center">✓</th>
+                        <th>Name</th>
+                        <th class="text-center">Assignments this season</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var v in candidates)
+                {
+                    <tr>
+                        <td class="text-center"><input type="checkbox" name="volunteerIds" value="@v.Volunteer.Id" /></td>
+                        <td>
+                            @v.Volunteer.Name
+                            @if (v.Volunteer.IsFirstAidTrained) { <span class="badge bg-danger ms-1">FA</span> }
+                            @if (!v.Volunteer.IsClubMember) { <span class="badge bg-secondary ms-1">Non-member</span> }
+                        </td>
+                        <td class="text-center">@v.AssignmentCount</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Add ticked volunteers</button>
+        <a class="btn btn-link" asp-action="Index" asp-route-eventId="@raceEvent.Id">Cancel</a>
+    </form>
+}
