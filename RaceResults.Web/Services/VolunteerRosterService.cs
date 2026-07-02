@@ -82,6 +82,21 @@ public class VolunteerRosterService : IVolunteerRosterService
     {
         await using var db = _dbContextFactory.CreateDbContext();
 
+        // Generic-preference sentinel (e.g. "Marshal (any point)") has no physical slot — resolve it to
+        // the most under-staffed Marshal Point the volunteer is eligible for, or error if all are full.
+        string? autoFillMessage = null;
+        var pickedRole = await db.VolunteerRoles.FirstOrDefaultAsync(r => r.Id == input.VolunteerRoleId);
+        if (pickedRole is not null && pickedRole.IsGenericPreference)
+        {
+            if (input.WillRunAfter)
+                return OperationResult.Fail(new[] { "Marshal roles cannot also run after." });
+
+            var (resolvedId, resolvedName, error) = await ResolveGenericMarshalAsync(db, input);
+            if (error is not null) return OperationResult.Fail(new[] { error });
+            input.VolunteerRoleId = resolvedId!.Value;
+            autoFillMessage = $"Placed at {resolvedName}.";
+        }
+
         var validation = await ValidateAssignmentAsync(db, input, existingId: null);
         if (validation.Errors.Count > 0) return OperationResult.Fail(validation.Errors);
 
@@ -103,10 +118,71 @@ public class VolunteerRosterService : IVolunteerRosterService
         db.VolunteerAssignments.Add(assignment);
         await db.SaveChangesAsync();
 
-        var result = OperationResult.Ok($"Assignment added.");
+        var result = OperationResult.Ok(autoFillMessage ?? "Assignment added.");
         foreach (var warning in validation.Warnings) result.Warnings.Add(warning);
         _logger.LogInformation("Assignment {Id} created for event {EventId} role {RoleId}.", assignment.Id, input.EventId, input.VolunteerRoleId);
         return result;
+    }
+
+    private async Task<(int? RoleId, string? RoleName, string? Error)> ResolveGenericMarshalAsync(
+        RaceResultsDbContext db, VolunteerAssignmentInput input)
+    {
+        var raceEvent = await db.Events.FirstOrDefaultAsync(e => e.Id == input.EventId);
+        if (raceEvent is null) return (null, null, "Event not found.");
+
+        var volunteer = await db.Volunteers.FirstOrDefaultAsync(v => v.Id == input.VolunteerId);
+        if (volunteer is null) return (null, null, "Volunteer not found.");
+        if (!volunteer.IsActive) return (null, null, $"Volunteer '{volunteer.Name}' is deactivated.");
+
+        var marshalPoints = await db.VolunteerRoles
+            .Where(r => r.EventType == raceEvent.EventType
+                        && r.IsActive
+                        && r.Name.StartsWith("Marshal Point"))
+            .ToListAsync();
+        if (marshalPoints.Count == 0)
+            return (null, null, "No marshal points exist for this event type.");
+
+        var marshalIds = marshalPoints.Select(r => r.Id).ToList();
+
+        var allowLists = await db.VolunteerRoleEligibilities
+            .Where(e => marshalIds.Contains(e.VolunteerRoleId))
+            .GroupBy(e => e.VolunteerRoleId)
+            .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.VolunteerId).ToHashSet());
+
+        var assignmentCounts = await db.VolunteerAssignments
+            .Where(a => a.EventId == input.EventId && marshalIds.Contains(a.VolunteerRoleId))
+            .GroupBy(a => a.VolunteerRoleId)
+            .Select(g => new { RoleId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.RoleId, x => x.Count);
+
+        bool IsEligible(VolunteerRole r)
+        {
+            if (r.RequiresFirstAid && !volunteer.IsFirstAidTrained) return false;
+            if (r.HasEligibilityRestriction)
+            {
+                if (!allowLists.TryGetValue(r.Id, out var list) || !list.Contains(volunteer.Id))
+                    return false;
+            }
+            return true;
+        }
+
+        var pick = marshalPoints
+            .Where(IsEligible)
+            .Select(r => new
+            {
+                Role = r,
+                Assigned = assignmentCounts.TryGetValue(r.Id, out var c) ? c : 0
+            })
+            .Where(x => x.Assigned < x.Role.DefaultCount)
+            .OrderByDescending(x => x.Role.DefaultCount - x.Assigned)
+            .ThenBy(x => x.Role.SortOrder)
+            .Select(x => x.Role)
+            .FirstOrDefault();
+
+        if (pick is null)
+            return (null, null, "No marshal point has an available spot.");
+
+        return (pick.Id, pick.Name, null);
     }
 
     public async Task<OperationResult> RemoveAssignmentAsync(int assignmentId)

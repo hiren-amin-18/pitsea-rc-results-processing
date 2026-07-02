@@ -130,13 +130,13 @@ public class VolunteerRosterTests : IDisposable
     // ---------- Role catalogue (seed verified) ----------
 
     [Fact]
-    public void Seed_Has23C2CRoles_AcrossThreeCategories()
+    public void Seed_Has24C2CRoles_AcrossThreeCategories()
     {
         var roles = _roleService.GetRoles(EventType.CrownToCrown);
-        Assert.Equal(23, roles.Count);
+        Assert.Equal(24, roles.Count);
         Assert.Equal(3, roles.Count(r => r.Category == RoleCategory.Leadership));
         Assert.Equal(10, roles.Count(r => r.Category == RoleCategory.FinishArea));
-        Assert.Equal(10, roles.Count(r => r.Category == RoleCategory.Course));
+        Assert.Equal(11, roles.Count(r => r.Category == RoleCategory.Course));
     }
 
     [Fact]
@@ -297,6 +297,71 @@ public class VolunteerRosterTests : IDisposable
 
         Assert.False(second.Success);
         Assert.Contains(second.Errors, e => e.Contains("run-after"));
+    }
+
+    [Fact]
+    public async Task GenericMarshalSentinel_FillsMostUnderStaffedMarshalPoint()
+    {
+        var alice = await CreateVolunteerAsync("Alice", "Female");
+        var bob = await CreateVolunteerAsync("Bob", "Male");
+        var sentinel = (await GetRoleAsync("Marshal (any point)")).Id;
+
+        // Pre-fill Marshal Point 1 (default 2) with one person so Marshal Point 4 (default 3) is the most
+        // under-staffed. Point 4 has gap 3, points 2/3/5/5a/6/7 have gap 2, point 1 now has gap 1.
+        var mp1 = (await GetRoleAsync("Marshal Point 1")).Id;
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = mp1 });
+
+        var result = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = bob.Id, VolunteerRoleId = sentinel });
+
+        Assert.True(result.Success);
+        Assert.Contains("Marshal Point 4", result.Messages.Single());
+
+        var roster = _rosterService.GetRoster(1);
+        var mp4 = roster.ByCategory[RoleCategory.Course].Single(r => r.Role.Name == "Marshal Point 4");
+        Assert.Contains(mp4.Assignments, a => a.Volunteer.Id == bob.Id);
+    }
+
+    [Fact]
+    public async Task GenericMarshalSentinel_ErrorsWhenAllMarshalPointsFull()
+    {
+        var sentinel = (await GetRoleAsync("Marshal (any point)")).Id;
+        var marshalPoints = _roleService.GetRoles(EventType.CrownToCrown)
+            .Where(r => r.Name.StartsWith("Marshal Point")).ToList();
+        var fillCount = marshalPoints.Sum(r => r.DefaultCount);
+
+        // Fill every marshal point to its default count with unique volunteers.
+        int i = 0;
+        foreach (var mp in marshalPoints)
+        {
+            for (int slot = 0; slot < mp.DefaultCount; slot++)
+            {
+                var v = await CreateVolunteerAsync($"Filler{++i}", "Female");
+                await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+                { EventId = 1, VolunteerId = v.Id, VolunteerRoleId = mp.Id });
+            }
+        }
+
+        var extra = await CreateVolunteerAsync("Extra", "Male");
+        var result = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = extra.Id, VolunteerRoleId = sentinel });
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("No marshal point has an available spot"));
+    }
+
+    [Fact]
+    public async Task GenericMarshalSentinel_RejectsWillRunAfter()
+    {
+        var alice = await CreateVolunteerAsync("Alice", "Female");
+        var sentinel = (await GetRoleAsync("Marshal (any point)")).Id;
+
+        var result = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = sentinel, WillRunAfter = true });
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("cannot also run after"));
     }
 
     [Fact]
