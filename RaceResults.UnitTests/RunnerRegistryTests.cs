@@ -95,6 +95,37 @@ public class RunnerRegistryTests : IDisposable
     }
 
     [Fact]
+    public async Task MergeRunners_ReassignsLinkedVolunteersToTarget()
+    {
+        await UploadEntrants(("1", "Jon Smith", "Club A", "Male"));
+        await StartNewEvent("Event 2", new DateTime(2026, 6, 10));
+        await UploadEntrants(("1", "John Smith", "Club A", "Male")); // near match → separate runner
+
+        var runners = _registry.GetRunners();
+        var source = runners.First(r => r.Runner.Name == "Jon Smith").Runner;
+        var target = runners.First(r => r.Runner.Name == "John Smith").Runner;
+
+        int volunteerId;
+        await using (var db = _factory.CreateDbContext())
+        {
+            var volunteer = new Volunteer { Name = "Jon Smith", Gender = "Male", RunnerId = source.Id };
+            db.Volunteers.Add(volunteer);
+            await db.SaveChangesAsync();
+            volunteerId = volunteer.Id;
+        }
+
+        var result = await _registry.MergeRunnersAsync(source.Id, target.Id);
+
+        Assert.True(result.Success);
+        await using (var db = _factory.CreateDbContext())
+        {
+            var volunteer = await db.Volunteers.SingleAsync(v => v.Id == volunteerId);
+            Assert.Equal(target.Id, volunteer.RunnerId);
+            Assert.False(await db.Runners.AnyAsync(r => r.Id == source.Id));
+        }
+    }
+
+    [Fact]
     public async Task UpdateRunner_PropagatesToEntrants()
     {
         await UploadEntrants(("1", "Alice", "Club A", "Female"));

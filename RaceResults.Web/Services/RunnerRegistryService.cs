@@ -345,15 +345,24 @@ public class RunnerRegistryService : IRunnerRegistryService
             entrant.RunnerId = targetId;
         }
 
+        // Volunteers also hold a Restrict FK to Runner (US28); re-point them or the delete below throws.
+        var sourceVolunteers = await db.Volunteers.Where(v => v.RunnerId == sourceId).ToListAsync();
+        foreach (var volunteer in sourceVolunteers)
+        {
+            volunteer.RunnerId = targetId;
+        }
+
         await db.SaveChangesAsync();
 
-        // Source now has no entrants referencing it (FK is Restrict), so it can be removed.
+        // Source now has no entrants or volunteers referencing it (FKs are Restrict), so it can be
+        // removed. NotDuplicatePair rows cascade-delete with the runner.
         db.Runners.Remove(source);
         await db.SaveChangesAsync();
 
         await RecalculateSeasonsForRunnersAsync(db, new[] { targetId });
         _logger.LogInformation(
-            "Merged runner {SourceId} into {TargetId}; reassigned {Count} entrant(s).", sourceId, targetId, sourceEntrants.Count);
+            "Merged runner {SourceId} into {TargetId}; reassigned {Count} entrant(s) and {VolunteerCount} volunteer(s).",
+            sourceId, targetId, sourceEntrants.Count, sourceVolunteers.Count);
         return OperationResult.Ok($"Merged '{source.Name}' into '{target.Name}'. {sourceEntrants.Count} race entry(ies) moved.");
     }
 
