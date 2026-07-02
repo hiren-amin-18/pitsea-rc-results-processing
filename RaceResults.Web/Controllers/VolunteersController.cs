@@ -82,6 +82,23 @@ public class VolunteersController : Controller
         return RedirectToAction(nameof(Index), new { showInactive });
     }
 
+    [HttpGet]
+    public IActionResult Merge()
+    {
+        ViewBag.Volunteers = _registry.GetVolunteers(includeInactive: true);
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Merge(int survivorId, int duplicateId)
+    {
+        var result = await _registry.MergeAsync(survivorId, duplicateId);
+        StoreFeedback(result);
+        if (!result.Success) return RedirectToAction(nameof(Merge));
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteAllUnused(bool showInactive = false)

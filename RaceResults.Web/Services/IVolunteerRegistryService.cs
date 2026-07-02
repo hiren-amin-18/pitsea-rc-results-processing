@@ -18,4 +18,9 @@ public interface IVolunteerRegistryService
 
     /// <summary>Permanently remove every volunteer who has no assignments. Returns how many were removed.</summary>
     Task<OperationResult> DeleteAllUnusedAsync();
+
+    /// <summary>Merges the duplicate volunteer into the survivor (US39): re-points assignments, eligibility
+    /// entries, and role pre-placements, adopts the duplicate's contact details where the survivor's are empty,
+    /// then deletes the duplicate. Colliding duplicate assignments (same event + role) are dropped and reported.</summary>
+    Task<OperationResult> MergeAsync(int survivorId, int duplicateId);
 }

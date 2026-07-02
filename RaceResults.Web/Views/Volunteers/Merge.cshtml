@@ -1,0 +1,48 @@
+@{
+    ViewData["Title"] = "Merge Volunteers";
+    var volunteers = ViewBag.Volunteers as IReadOnlyList<RaceResults.Web.Models.VolunteerListItem>
+        ?? new List<RaceResults.Web.Models.VolunteerListItem>();
+}
+
+<h1>Merge Volunteers</h1>
+<p class="text-muted">
+    Combine two records that are the same person. The duplicate's assignments, eligibility entries, and
+    pre-placements move to the survivor; contact details fill any gaps on the survivor; then the duplicate
+    record is deleted. <strong>This cannot be undone.</strong>
+</p>
+
+@if (TempData["FeedbackText"] is string feedback)
+{
+    var ftype = TempData["FeedbackType"] as string ?? "info";
+    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
+}
+
+<form method="post" asp-action="Merge" class="col-md-6"
+      onsubmit="return confirm('Merge the duplicate into the survivor and delete the duplicate record? This cannot be undone.');">
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        <label class="form-label">Survivor (kept)</label>
+        <select name="survivorId" class="form-select" required>
+            <option value="">-</option>
+            @foreach (var v in volunteers)
+            {
+                <option value="@v.Volunteer.Id">@v.Volunteer.Name (#@v.Volunteer.Id, @v.AssignmentCount assignment(s))@(v.Volunteer.IsActive ? "" : " - inactive")</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Duplicate (deleted after merge)</label>
+        <select name="duplicateId" class="form-select" required>
+            <option value="">-</option>
+            @foreach (var v in volunteers)
+            {
+                <option value="@v.Volunteer.Id">@v.Volunteer.Name (#@v.Volunteer.Id, @v.AssignmentCount assignment(s))@(v.Volunteer.IsActive ? "" : " - inactive")</option>
+            }
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-danger">Merge</button>
+    <a class="btn btn-link" asp-action="Index">Cancel</a>
+</form>

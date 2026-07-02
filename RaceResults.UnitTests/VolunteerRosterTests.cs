@@ -127,6 +127,59 @@ public class VolunteerRosterTests : IDisposable
         return ev.Id;
     }
 
+    // ---------- Duplicate guard and merge (US39) ----------
+
+    [Fact]
+    public async Task CreateVolunteer_SameName_WarnsButAllows()
+    {
+        await _registry.CreateAsync(new VolunteerInput { Name = "Dave Smith", Gender = "Male" });
+        var second = await _registry.CreateAsync(new VolunteerInput { Name = "dave smith", Gender = "Male" });
+
+        Assert.True(second.Success);
+        Assert.Contains(second.Warnings, w => w.Contains("already exists"));
+        Assert.Equal(2, _registry.GetVolunteers().Count);
+    }
+
+    [Fact]
+    public async Task Merge_MovesAssignments_DropsCollisions_AdoptsDetails()
+    {
+        var eventId = SeedEvent();
+        await _registry.CreateAsync(new VolunteerInput { Name = "Dave Smith", Gender = "Male", Email = "dave@x.com" });
+        await _registry.CreateAsync(new VolunteerInput { Name = "Dave Smith", Gender = "Male", Phone = "07000", IsFirstAidTrained = true });
+        var volunteers = _registry.GetVolunteers();
+        var survivor = volunteers.First().Volunteer;
+        var duplicate = volunteers.Last().Volunteer;
+        Assert.NotEqual(survivor.Id, duplicate.Id);
+
+        var tk = _roleService.GetRoles(EventType.CrownToCrown).First(r => r.Name == "Timekeeping").Id;
+        var setup = _roleService.GetRoles(EventType.CrownToCrown).First(r => r.Name == "Course Setup").Id;
+        // Survivor and duplicate share Timekeeping (collision — dropped); duplicate also has Course Setup (moved).
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput { EventId = eventId, VolunteerId = survivor.Id, VolunteerRoleId = tk });
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput { EventId = eventId, VolunteerId = duplicate.Id, VolunteerRoleId = tk });
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput { EventId = eventId, VolunteerId = duplicate.Id, VolunteerRoleId = setup });
+
+        var result = await _registry.MergeAsync(survivor.Id, duplicate.Id);
+        Assert.True(result.Success);
+
+        await using var db = _factory.CreateDbContext();
+        Assert.Null(db.Volunteers.FirstOrDefault(v => v.Id == duplicate.Id));
+        var survivorAssignments = db.VolunteerAssignments.Where(a => a.VolunteerId == survivor.Id).ToList();
+        Assert.Equal(2, survivorAssignments.Count); // tk (own) + setup (moved); colliding tk dropped
+        var merged = db.Volunteers.Single(v => v.Id == survivor.Id);
+        Assert.Equal("dave@x.com", merged.Email);   // survivor's own kept
+        Assert.Equal("07000", merged.Phone);        // adopted from duplicate
+        Assert.True(merged.IsFirstAidTrained);      // OR of the two
+    }
+
+    [Fact]
+    public async Task Merge_SameVolunteerTwice_Fails()
+    {
+        await _registry.CreateAsync(new VolunteerInput { Name = "Solo", Gender = "Female" });
+        var solo = _registry.GetVolunteers().Single().Volunteer;
+        var result = await _registry.MergeAsync(solo.Id, solo.Id);
+        Assert.False(result.Success);
+    }
+
     // ---------- Role catalogue (seed verified) ----------
 
     [Fact]

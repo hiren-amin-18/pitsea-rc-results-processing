@@ -1,6 +1,6 @@
 # US39 - Volunteer Duplicate Guard and Merge
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser
