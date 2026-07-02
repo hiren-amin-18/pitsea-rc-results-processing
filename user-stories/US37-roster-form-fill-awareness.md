@@ -1,6 +1,6 @@
 # US37 - Roster Form Fill-State Awareness
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser

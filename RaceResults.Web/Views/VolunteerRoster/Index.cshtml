@@ -80,6 +80,16 @@
     </div>
 }
 
+@{
+    // Fill-state for the Add form (US37): current counts per role, who is already assigned, and
+    // how many marshal-point spots remain open for the generic sentinel.
+    var rosterRows = Model.ByCategory.Values.SelectMany(r => r).ToList();
+    var assignedByRole = rosterRows.ToDictionary(r => r.Role.Id, r => r.AssignedCount);
+    var assignedVolunteerIds = rosterRows.SelectMany(r => r.Assignments).Select(a => a.Volunteer.Id).ToHashSet();
+    var openMarshalSpots = rosterRows
+        .Where(r => r.Role.Name.StartsWith("Marshal Point"))
+        .Sum(r => Math.Max(0, r.Role.DefaultCount - r.AssignedCount));
+}
 <div class="card mb-4">
     <div class="card-body">
         <h5 class="card-title">Add assignment</h5>
@@ -91,7 +101,8 @@
                 <select name="VolunteerId" class="form-select form-select-sm" required>
                     <option value="">-</option>
                     @foreach (var v in volunteers) {
-                        <option value="@v.Volunteer.Id">@v.Volunteer.Name @(v.Volunteer.IsFirstAidTrained ? "(FA)" : "")</option>
+                        var assignedMark = assignedVolunteerIds.Contains(v.Volunteer.Id) ? " · assigned" : "";
+                        <option value="@v.Volunteer.Id">@v.Volunteer.Name @(v.Volunteer.IsFirstAidTrained ? "(FA)" : "")@assignedMark</option>
                     }
                 </select>
             </div>
@@ -100,12 +111,17 @@
                 <select name="VolunteerRoleId" class="form-select form-select-sm" required>
                     <option value="">-</option>
                     @foreach (var r in roles) {
+                        if (r.IsGenericPreference) {
+                            <option value="@r.Id" disabled="@(openMarshalSpots == 0)">@r.Category - @r.Name (@openMarshalSpots spot(s) open)</option>
+                            continue;
+                        }
+                        var assigned = assignedByRole.TryGetValue(r.Id, out var c) ? c : 0;
                         var hints = new List<string>();
                         if (r.RequiresFirstAid) hints.Add("first aid only");
                         if (r.HasEligibilityRestriction) hints.Add("restricted");
                         if (r.RunAfterCapacity > 0) hints.Add($"{r.RunAfterCapacity} can run after");
                         var suffix = hints.Any() ? $" - {string.Join(", ", hints)}" : "";
-                        <option value="@r.Id">@r.Category - @r.Name@suffix</option>
+                        <option value="@r.Id" disabled="@(assigned >= r.MaxCount)">@r.Category - @r.Name (@assigned/@r.DefaultCount)@suffix</option>
                     }
                 </select>
             </div>
