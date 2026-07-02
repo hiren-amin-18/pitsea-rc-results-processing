@@ -206,12 +206,21 @@
                         {
                             @foreach (var a in row.Assignments)
                             {
-                                <span class="badge bg-light text-dark border me-1 mb-1">
-                                    @a.Volunteer.Name
+                                <span class="badge @(a.Assignment.IsNoShow ? "bg-danger-subtle" : "bg-light") text-dark border me-1 mb-1">
+                                    <span class="@(a.Assignment.IsNoShow ? "text-decoration-line-through" : null)">@a.Volunteer.Name</span>
+                                    @if (a.Assignment.IsNoShow) { <em class="text-danger">(no show)</em> }
                                     @if (a.Assignment.WillRunAfter) { <em class="text-primary">(running after)</em> }
                                     @if (!a.Volunteer.IsClubMember) { <em class="text-muted">*</em> }
                                     @if (!string.IsNullOrWhiteSpace(a.Assignment.Note)) { <span class="text-muted"> - @a.Assignment.Note</span> }
                                     <a class="ms-1 text-decoration-none" asp-action="Edit" asp-route-eventId="@Model.Event.Id" asp-route-assignmentId="@a.Assignment.Id" title="Edit">✎</a>
+                                    <form method="post" asp-action="SetNoShow" asp-route-eventId="@Model.Event.Id" class="d-inline ms-1">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="eventId" value="@Model.Event.Id" />
+                                        <input type="hidden" name="assignmentId" value="@a.Assignment.Id" />
+                                        <input type="hidden" name="isNoShow" value="@((!a.Assignment.IsNoShow).ToString().ToLowerInvariant())" />
+                                        <button class="btn btn-link btn-sm p-0 align-baseline" type="submit"
+                                                title="@(a.Assignment.IsNoShow ? "Clear no-show" : "Mark as no-show")">@(a.Assignment.IsNoShow ? "↩" : "🚫")</button>
+                                    </form>
                                     <form method="post" asp-action="Remove" asp-route-eventId="@Model.Event.Id" class="d-inline ms-1" onsubmit="return confirm('Remove this assignment?');">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="eventId" value="@Model.Event.Id" />

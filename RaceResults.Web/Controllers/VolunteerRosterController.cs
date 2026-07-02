@@ -91,6 +91,15 @@ public class VolunteerRosterController : Controller
         return RedirectToAction(nameof(Index), new { eventId });
     }
 
+    [HttpPost("SetNoShow")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetNoShow(int eventId, int assignmentId, bool isNoShow)
+    {
+        var result = await _roster.SetNoShowAsync(assignmentId, isNoShow);
+        StoreFeedback(result);
+        return RedirectToAction(nameof(Index), new { eventId });
+    }
+
     [HttpPost("CopyPrevious")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CopyPrevious(int eventId)

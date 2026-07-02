@@ -19,6 +19,10 @@ public class VolunteerAssignment
     /// <summary>Free-text note, e.g. marshal point sub-location.</summary>
     public string? Note { get; set; }
 
+    /// <summary>Rostered but didn't turn up (US42). Kept on the roster for history, but excluded from
+    /// stats, ballot entries, fill counts, and the allocator's season history.</summary>
+    public bool IsNoShow { get; set; }
+
     // ---- Preferences (captured per-event by the organiser, used by US32 to draft a new roster). ----
 
     /// <summary>Volunteer asked for a specific role.</summary>

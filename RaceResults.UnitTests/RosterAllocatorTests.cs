@@ -126,7 +126,8 @@ public class RosterAllocatorTests : IDisposable
         var draft = _allocator.Propose(1, new[] {
             new AllocationCandidate { VolunteerId = alice.Id, WantsSeated = true }
         });
-        var prop = Assert.Single(draft.Proposals);
+        // A non-runner at NC/OTD also picks up a finish-line dual assignment — check the primary only.
+        var prop = Assert.Single(draft.Proposals, p => p.Reason != AllocationReason.FinishLine);
         Assert.Contains(prop.RoleName, new[] { "Number Collection", "On The Day Registration" });
     }
 

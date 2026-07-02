@@ -42,8 +42,10 @@ public class RosterDraftApplier : IRosterDraftApplier
         var existing = await db.VolunteerAssignments
             .Where(a => a.EventId == draft.EventId)
             .ToListAsync();
-        var roleCounts = existing.GroupBy(a => a.VolunteerRoleId).ToDictionary(g => g.Key, g => g.Count());
-        var roleRunAfterCounts = existing.Where(a => a.WillRunAfter)
+        // No-shows (US42) don't occupy slots for capacity purposes.
+        var roleCounts = existing.Where(a => !a.IsNoShow)
+            .GroupBy(a => a.VolunteerRoleId).ToDictionary(g => g.Key, g => g.Count());
+        var roleRunAfterCounts = existing.Where(a => a.WillRunAfter && !a.IsNoShow)
             .GroupBy(a => a.VolunteerRoleId)
             .ToDictionary(g => g.Key, g => g.Count());
 

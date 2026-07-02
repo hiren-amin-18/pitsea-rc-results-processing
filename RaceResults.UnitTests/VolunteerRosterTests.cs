@@ -501,6 +501,54 @@ public class VolunteerRosterTests : IDisposable
         Assert.Empty(rosterAfter.ByCategory[RoleCategory.FinishArea].Single(r => r.Role.Name == "Timekeeping").Assignments);
     }
 
+    // ---------- No-show tracking (US42) ----------
+
+    [Fact]
+    public async Task NoShow_ExcludedFromFillCountAndStats_ButStaysOnRoster()
+    {
+        var alice = await CreateVolunteerAsync("Alice", "Female");
+        var tk = (await GetRoleAsync("Timekeeping")).Id;
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = tk });
+
+        var assignmentId = _rosterService.GetRoster(1).ByCategory[RoleCategory.FinishArea]
+            .Single(r => r.Role.Name == "Timekeeping").Assignments.Single().Assignment.Id;
+
+        var result = await _rosterService.SetNoShowAsync(assignmentId, true);
+        Assert.True(result.Success);
+
+        var roster = _rosterService.GetRoster(1);
+        var tkRow = roster.ByCategory[RoleCategory.FinishArea].Single(r => r.Role.Name == "Timekeeping");
+        Assert.Single(tkRow.Assignments);          // still visible
+        Assert.Equal(0, tkRow.AssignedCount);      // but not filling the role
+        Assert.Equal(1, tkRow.NoShowCount);
+        Assert.Equal(0, roster.TotalAssigned);
+
+        var stats = new VolunteerStatsService(_factory);
+        Assert.Equal(0, stats.GetEventStats(1).TotalAssignments);
+        var season = stats.GetSeasonStats(2026);
+        Assert.DoesNotContain(season.VolunteerProfiles, p => p.VolunteerId == alice.Id);
+    }
+
+    [Fact]
+    public async Task NoShow_FreesCapacityForReplacement()
+    {
+        var photographer = (await GetRoleAsync("Photographer")).Id; // Max = 1
+        var a = await CreateVolunteerAsync("A", "Female");
+        var b = await CreateVolunteerAsync("B", "Male");
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = a.Id, VolunteerRoleId = photographer });
+
+        var assignmentId = _rosterService.GetRoster(1).ByCategory[RoleCategory.FinishArea]
+            .Single(r => r.Role.Name == "Photographer").Assignments.Single().Assignment.Id;
+        await _rosterService.SetNoShowAsync(assignmentId, true);
+
+        var replacement = await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = b.Id, VolunteerRoleId = photographer });
+
+        Assert.True(replacement.Success);
+    }
+
     // ---------- Copy from previous event ----------
 
     [Fact]

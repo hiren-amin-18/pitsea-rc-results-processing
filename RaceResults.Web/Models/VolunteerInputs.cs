@@ -80,7 +80,9 @@ public class RosterRoleRow
 {
     public VolunteerRole Role { get; set; } = null!;
     public List<RosterAssignmentRow> Assignments { get; set; } = new();
-    public int AssignedCount => Assignments.Count;
+    /// <summary>People actually covering the role — no-shows (US42) don't count towards the complement.</summary>
+    public int AssignedCount => Assignments.Count(a => !a.Assignment.IsNoShow);
+    public int NoShowCount => Assignments.Count(a => a.Assignment.IsNoShow);
     public int DefaultCount => Role.DefaultCount;
     public int Shortfall => Math.Max(0, Role.MinCount - AssignedCount);
     public int Excess => Math.Max(0, AssignedCount - Role.MaxCount);

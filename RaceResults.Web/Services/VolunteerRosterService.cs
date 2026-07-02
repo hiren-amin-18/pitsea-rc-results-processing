@@ -70,8 +70,8 @@ public class VolunteerRosterService : IVolunteerRosterService
         {
             Event = raceEvent,
             ByCategory = byCategory,
-            TotalAssigned = assignments.Count,
-            DistinctVolunteers = assignments.Select(a => a.VolunteerId).Distinct().Count(),
+            TotalAssigned = assignments.Count(a => !a.IsNoShow),
+            DistinctVolunteers = assignments.Where(a => !a.IsNoShow).Select(a => a.VolunteerId).Distinct().Count(),
             DoubleBookedVolunteerIds = doubleBooked,
             CopyableEvents = copyable,
             PerEventStats = _stats?.GetEventStats(eventId)
@@ -150,7 +150,7 @@ public class VolunteerRosterService : IVolunteerRosterService
             .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.VolunteerId).ToHashSet());
 
         var assignmentCounts = await db.VolunteerAssignments
-            .Where(a => a.EventId == input.EventId && marshalIds.Contains(a.VolunteerRoleId))
+            .Where(a => a.EventId == input.EventId && marshalIds.Contains(a.VolunteerRoleId) && !a.IsNoShow)
             .GroupBy(a => a.VolunteerRoleId)
             .Select(g => new { RoleId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.RoleId, x => x.Count);
@@ -255,6 +255,21 @@ public class VolunteerRosterService : IVolunteerRosterService
         db.VolunteerAssignments.Remove(assignment);
         await db.SaveChangesAsync();
         return OperationResult.Ok("Assignment removed.");
+    }
+
+    public async Task<OperationResult> SetNoShowAsync(int assignmentId, bool isNoShow)
+    {
+        await using var db = _dbContextFactory.CreateDbContext();
+        var assignment = await db.VolunteerAssignments
+            .Include(a => a.Volunteer)
+            .FirstOrDefaultAsync(a => a.Id == assignmentId);
+        if (assignment is null) return OperationResult.Fail(new[] { "Assignment not found." });
+        assignment.IsNoShow = isNoShow;
+        await db.SaveChangesAsync();
+        var name = assignment.Volunteer?.Name ?? "Volunteer";
+        return OperationResult.Ok(isNoShow
+            ? $"{name} marked as a no-show — excluded from stats and ballot entries."
+            : $"{name} no longer marked as a no-show.");
     }
 
     public async Task<CopyRosterResult> CopyFromPreviousEventAsync(int targetEventId)
@@ -371,8 +386,9 @@ public class VolunteerRosterService : IVolunteerRosterService
         }
 
         // Capacity check: count existing assignments excluding this one if updating.
+        // No-shows (US42) don't occupy a slot — a last-minute replacement must be addable.
         var existingForRole = await db.VolunteerAssignments
-            .Where(a => a.EventId == input.EventId && a.VolunteerRoleId == role.Id && (existingId == null || a.Id != existingId.Value))
+            .Where(a => a.EventId == input.EventId && a.VolunteerRoleId == role.Id && !a.IsNoShow && (existingId == null || a.Id != existingId.Value))
             .CountAsync();
         if (existingForRole + 1 > role.MaxCount)
             errors.Add($"'{role.Name}' is at its maximum of {role.MaxCount}.");
@@ -381,7 +397,7 @@ public class VolunteerRosterService : IVolunteerRosterService
         if (input.WillRunAfter)
         {
             var existingRunAfter = await db.VolunteerAssignments
-                .Where(a => a.EventId == input.EventId && a.VolunteerRoleId == role.Id && a.WillRunAfter && (existingId == null || a.Id != existingId.Value))
+                .Where(a => a.EventId == input.EventId && a.VolunteerRoleId == role.Id && a.WillRunAfter && !a.IsNoShow && (existingId == null || a.Id != existingId.Value))
                 .CountAsync();
             if (existingRunAfter + 1 > role.RunAfterCapacity)
                 errors.Add($"'{role.Name}' has run-after capacity {role.RunAfterCapacity} (would be exceeded).");

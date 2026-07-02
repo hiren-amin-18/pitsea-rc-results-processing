@@ -79,7 +79,15 @@ public class VolunteerRosterExportService : IVolunteerRosterExportService
                                     foreach (var a in row.Assignments)
                                     {
                                         if (!first) t.Span(", ");
-                                        t.Span(a.Volunteer.Name);
+                                        if (a.Assignment.IsNoShow)
+                                        {
+                                            t.Span(a.Volunteer.Name).Strikethrough().FontColor(Colors.Red.Darken1);
+                                            t.Span(" (no show)").FontColor(Colors.Red.Darken1);
+                                        }
+                                        else
+                                        {
+                                            t.Span(a.Volunteer.Name);
+                                        }
                                         if (a.Assignment.WillRunAfter) t.Span(" (running after)").FontColor(Colors.Blue.Darken1);
                                         if (!a.Volunteer.IsClubMember) t.Span(" *").FontColor(Colors.Grey.Darken1);
                                         first = false;
@@ -124,7 +132,7 @@ public class VolunteerRosterExportService : IVolunteerRosterExportService
         sheet.Cell(3, 1).Value = $"{roster.TotalAssigned} assignment(s) across {roster.DistinctVolunteers} volunteer(s)";
 
         var headerRow = 5;
-        var headers = new[] { "Category", "Role", "#", "Volunteer", "Member?", "First Aid?", "Running After?", "Note" };
+        var headers = new[] { "Category", "Role", "#", "Volunteer", "Member?", "First Aid?", "Running After?", "No Show?", "Note" };
         for (var i = 0; i < headers.Length; i++)
         {
             sheet.Cell(headerRow, i + 1).Value = headers[i];
@@ -157,7 +165,13 @@ public class VolunteerRosterExportService : IVolunteerRosterExportService
                     sheet.Cell(row, 5).Value = a.Volunteer.IsClubMember ? "Yes" : "No";
                     sheet.Cell(row, 6).Value = a.Volunteer.IsFirstAidTrained ? "Yes" : "";
                     sheet.Cell(row, 7).Value = a.Assignment.WillRunAfter ? "Yes" : "";
-                    sheet.Cell(row, 8).Value = a.Assignment.Note ?? "";
+                    sheet.Cell(row, 8).Value = a.Assignment.IsNoShow ? "Yes" : "";
+                    if (a.Assignment.IsNoShow)
+                    {
+                        sheet.Cell(row, 4).Style.Font.Strikethrough = true;
+                        sheet.Cell(row, 8).Style.Font.FontColor = XLColor.Red;
+                    }
+                    sheet.Cell(row, 9).Value = a.Assignment.Note ?? "";
                     row++;
                 }
             }

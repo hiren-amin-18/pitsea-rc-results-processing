@@ -20,7 +20,7 @@ public class VolunteerStatsService : IVolunteerStatsService
         if (raceEvent is null) return new EventVolunteerStats { EventId = eventId };
 
         var assignments = db.VolunteerAssignments
-            .Where(a => a.EventId == eventId)
+            .Where(a => a.EventId == eventId && !a.IsNoShow)
             .Include(a => a.VolunteerRole)
             .ToList();
 
@@ -56,8 +56,9 @@ public class VolunteerStatsService : IVolunteerStatsService
         var eventIds = eventsInYear.Select(e => e.Id).ToHashSet();
         var totalEvents = eventsInYear.Count;
 
+        // No-shows (US42) earn nothing: no ballot entry, no attendance, no role history.
         var assignments = db.VolunteerAssignments
-            .Where(a => eventIds.Contains(a.EventId))
+            .Where(a => eventIds.Contains(a.EventId) && !a.IsNoShow)
             .Include(a => a.Volunteer)
             .Include(a => a.VolunteerRole)
             .Include(a => a.Event)
@@ -142,7 +143,7 @@ public class VolunteerStatsService : IVolunteerStatsService
             .ToList();
 
         var volunteeredEvents = db.VolunteerAssignments
-            .Where(a => a.VolunteerId == v.Id)
+            .Where(a => a.VolunteerId == v.Id && !a.IsNoShow)
             .Join(db.Events.Where(ev => ev.EventDate.Year == year), a => a.EventId, ev => ev.Id, (a, _) => a.EventId)
             .Distinct()
             .ToList();

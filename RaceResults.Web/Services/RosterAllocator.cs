@@ -52,9 +52,9 @@ public class RosterAllocator : IRosterAllocator
             .ToDictionary(g => g.Key, g => g.Select(x => x.VolunteerId).ToHashSet());
 
         // Season history pools across event types (US34 AC6 — Bluebell + C2C in the same year are
-        // treated as one fairness pool).
+        // treated as one fairness pool). No-shows (US42) never happened for fairness purposes.
         var seasonHistory = db.VolunteerAssignments
-            .Where(a => candidates.Select(c => c.VolunteerId).Contains(a.VolunteerId))
+            .Where(a => candidates.Select(c => c.VolunteerId).Contains(a.VolunteerId) && !a.IsNoShow)
             .Join(db.Events,
                 a => a.EventId,
                 e => e.Id,

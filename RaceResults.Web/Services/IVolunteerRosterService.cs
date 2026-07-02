@@ -13,5 +13,8 @@ public interface IVolunteerRosterService
     /// <summary>Updates role, run-after, and note on an existing assignment (US36). Preferences are preserved.</summary>
     Task<OperationResult> UpdateAssignmentAsync(VolunteerAssignmentInput input);
     Task<OperationResult> RemoveAssignmentAsync(int assignmentId);
+    /// <summary>Marks or clears a no-show (US42): the assignment stays on the roster but stops counting
+    /// towards fill, stats, and ballot entries.</summary>
+    Task<OperationResult> SetNoShowAsync(int assignmentId, bool isNoShow);
     Task<CopyRosterResult> CopyFromPreviousEventAsync(int targetEventId);
 }

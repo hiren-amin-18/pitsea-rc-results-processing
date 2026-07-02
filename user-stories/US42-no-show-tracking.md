@@ -1,6 +1,6 @@
 # US42 - No-Show Tracking
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser
