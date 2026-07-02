@@ -21,10 +21,25 @@ public class VolunteerRegistryService : IVolunteerRegistryService
     {
         using var db = _dbContextFactory.CreateDbContext();
 
-        var assignmentCounts = db.VolunteerAssignments
+        var rawCounts = db.VolunteerAssignments
             .GroupBy(a => a.VolunteerId)
             .Select(g => new { VolunteerId = g.Key, Count = g.Count() })
             .ToDictionary(x => x.VolunteerId, x => x.Count);
+
+        // Worked assignments and recency exclude no-shows (US42/US43).
+        var worked = db.VolunteerAssignments
+            .Where(a => !a.IsNoShow)
+            .Join(db.Events, a => a.EventId, e => e.Id,
+                (a, e) => new { a.VolunteerId, e.EventDate, e.EventName })
+            .ToList()
+            .GroupBy(x => x.VolunteerId)
+            .ToDictionary(
+                g => g.Key,
+                g => new
+                {
+                    Count = g.Count(),
+                    Last = g.OrderByDescending(x => x.EventDate).First()
+                });
 
         var query = db.Volunteers.Include(v => v.Runner).AsQueryable();
         if (!includeInactive) query = query.Where(v => v.IsActive);
@@ -36,7 +51,10 @@ public class VolunteerRegistryService : IVolunteerRegistryService
             {
                 Volunteer = v,
                 RunnerName = v.Runner?.Name,
-                AssignmentCount = assignmentCounts.TryGetValue(v.Id, out var c) ? c : 0
+                AssignmentCount = worked.TryGetValue(v.Id, out var w) ? w.Count : 0,
+                HasAnyAssignments = rawCounts.ContainsKey(v.Id),
+                LastVolunteeredDate = w?.Last.EventDate,
+                LastVolunteeredEventName = w?.Last.EventName
             })
             .ToList();
     }

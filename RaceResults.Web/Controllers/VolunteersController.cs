@@ -22,10 +22,18 @@ public class VolunteersController : Controller
         Enum.GetValues<EventType>().SelectMany(t => _roles.GetRoles(t)).ToList();
 
     [HttpGet]
-    public IActionResult Index(bool showInactive = false)
+    public IActionResult Index(bool showInactive = false, string sort = "name")
     {
         ViewBag.ShowInactive = showInactive;
-        return View(_registry.GetVolunteers(showInactive));
+        ViewBag.Sort = sort;
+        IEnumerable<VolunteerListItem> items = _registry.GetVolunteers(showInactive);
+        items = sort switch
+        {
+            "assignments" => items.OrderByDescending(i => i.AssignmentCount).ThenBy(i => i.Volunteer.Name),
+            "last" => items.OrderByDescending(i => i.LastVolunteeredDate ?? DateTime.MinValue).ThenBy(i => i.Volunteer.Name),
+            _ => items.OrderBy(i => i.Volunteer.Name)
+        };
+        return View(items.ToList());
     }
 
     [HttpGet]

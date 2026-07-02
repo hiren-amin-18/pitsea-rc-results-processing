@@ -35,7 +35,17 @@ public class VolunteerListItem
 {
     public Volunteer Volunteer { get; set; } = null!;
     public string? RunnerName { get; set; }
+
+    /// <summary>Assignments actually worked — no-shows excluded (US42/US43).</summary>
     public int AssignmentCount { get; set; }
+
+    /// <summary>True when any assignment exists at all (including no-shows) — gates permanent deletion,
+    /// which must refuse for anyone with history.</summary>
+    public bool HasAnyAssignments { get; set; }
+
+    /// <summary>Most recent event actually worked (no-shows excluded); null for never-assigned (US43).</summary>
+    public DateTime? LastVolunteeredDate { get; set; }
+    public string? LastVolunteeredEventName { get; set; }
 }
 
 public class VolunteerRoleInput

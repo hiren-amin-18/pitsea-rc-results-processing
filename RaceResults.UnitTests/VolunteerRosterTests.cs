@@ -599,6 +599,40 @@ public class VolunteerRosterTests : IDisposable
         Assert.True(replacement.Success);
     }
 
+    // ---------- Register grooming (US43) ----------
+
+    [Fact]
+    public async Task GetVolunteers_LastVolunteeredAndCounts_ExcludeNoShows()
+    {
+        var alice = await CreateVolunteerAsync("Alice", "Female");
+        var tk = (await GetRoleAsync("Timekeeping")).Id;
+        var setup = (await GetRoleAsync("Course Setup")).Id;
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = tk });
+        await _rosterService.AddAssignmentAsync(new VolunteerAssignmentInput
+        { EventId = 1, VolunteerId = alice.Id, VolunteerRoleId = setup });
+
+        var before = _registry.GetVolunteers().Single();
+        Assert.Equal(2, before.AssignmentCount);
+        Assert.NotNull(before.LastVolunteeredDate);
+
+        // Mark both as no-shows: counts drop to zero, recency clears, but the record is not deletable.
+        await using (var db = _factory.CreateDbContext())
+        {
+            foreach (var a in db.VolunteerAssignments.Where(a => a.VolunteerId == alice.Id))
+                a.IsNoShow = true;
+            await db.SaveChangesAsync();
+        }
+
+        var after = _registry.GetVolunteers().Single();
+        Assert.Equal(0, after.AssignmentCount);
+        Assert.Null(after.LastVolunteeredDate);
+        Assert.True(after.HasAnyAssignments); // history still protects against deletion
+
+        var delete = await _registry.DeleteIfUnusedAsync(alice.Id);
+        Assert.False(delete.Success);
+    }
+
     // ---------- Copy from previous event ----------
 
     [Fact]

@@ -2,10 +2,11 @@
 @{
     ViewData["Title"] = "Volunteers";
     var showInactive = ViewBag.ShowInactive == true;
+    var sort = ViewBag.Sort as string ?? "name";
 }
 
 @{
-    var unusedCount = Model.Count(i => i.AssignmentCount == 0);
+    var unusedCount = Model.Count(i => !i.HasAnyAssignments);
 }
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1>Volunteers</h1>
@@ -55,12 +56,13 @@ else
         <table class="table table-striped align-middle">
             <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
                 <tr>
-                    <th>Name</th>
+                    <th><a asp-action="Index" asp-route-showInactive="@showInactive" asp-route-sort="name" class="text-decoration-none">Name @(sort == "name" ? "▲" : "")</a></th>
                     <th>Gender</th>
                     <th>Member</th>
                     <th>First Aid</th>
                     <th>Linked Runner</th>
-                    <th>Assignments</th>
+                    <th><a asp-action="Index" asp-route-showInactive="@showInactive" asp-route-sort="assignments" class="text-decoration-none">Assignments @(sort == "assignments" ? "▼" : "")</a></th>
+                    <th><a asp-action="Index" asp-route-showInactive="@showInactive" asp-route-sort="last" class="text-decoration-none">Last volunteered @(sort == "last" ? "▼" : "")</a></th>
                     <th></th>
                 </tr>
             </thead>
@@ -77,6 +79,12 @@ else
                     <td>@(item.Volunteer.IsFirstAidTrained ? "Yes" : "")</td>
                     <td>@(item.RunnerName ?? "")</td>
                     <td>@item.AssignmentCount</td>
+                    <td>
+                        @if (item.LastVolunteeredDate is { } last)
+                        {
+                            @last.ToString("dd MMM yyyy") <span class="text-muted small">(@item.LastVolunteeredEventName)</span>
+                        }
+                    </td>
                     <td class="d-flex gap-2 flex-wrap">
                         <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@item.Volunteer.Id">Edit</a>
                         <form method="post" asp-action="SetActive" asp-route-id="@item.Volunteer.Id" asp-route-isActive="@(!item.Volunteer.IsActive)">
@@ -85,7 +93,7 @@ else
                                 @(item.Volunteer.IsActive ? "Deactivate" : "Reactivate")
                             </button>
                         </form>
-                        @if (item.AssignmentCount == 0)
+                        @if (!item.HasAnyAssignments)
                         {
                             <form method="post" asp-action="Delete" asp-route-id="@item.Volunteer.Id" asp-route-showInactive="@showInactive"
                                   onsubmit="return confirm('Permanently delete @item.Volunteer.Name? This cannot be undone.');">

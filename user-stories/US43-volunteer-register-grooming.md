@@ -1,6 +1,6 @@
 # US43 - Volunteer Register Grooming
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 
 ## As a
 Race organiser
