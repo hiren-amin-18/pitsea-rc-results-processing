@@ -2,6 +2,14 @@
 
 An ASP.NET Core MVC web application for processing race results, built for Pitsea Running Club. Race organisers upload entrant, finish, and timing data, then view, edit, and export the collated results. The app maintains the club's yearly **Champions of Champions** leaderboard across the Crown to Crown race series, and also manages the **volunteer roster** for each event — including a rules-based draft allocator, season-long volunteer recognition, and London Marathon ballot tracking.
 
+## Screenshots
+
+A quick look at the main features (using anonymised demo data). See the full [screenshot gallery](docs/screenshots.md).
+
+| Race statistics | Champions leaderboard | Volunteer roster |
+|---|---|---|
+| [![Race statistics](screenshots/03-race-stats.png)](docs/screenshots.md#race-statistics) | [![Champions leaderboard](screenshots/05-champions.png)](docs/screenshots.md#leaderboard) | [![Volunteer roster](screenshots/09-volunteer-roster.png)](docs/screenshots.md#volunteer-roster) |
+
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
@@ -73,6 +81,7 @@ Detailed reference lives in [`docs/`](docs/):
 | Document | Covers |
 |---|---|
 | [Features](docs/features.md) | Full capability list |
+| [Screenshots](docs/screenshots.md) | Visual tour of the main features |
 | [Domain Conventions](docs/domain-conventions.md) | Club-specific rules the code relies on (ages, categories, finish status, series schedule, volunteer roles, ballot) |
 | [Architecture & Project Structure](docs/architecture.md) | Project layout, architecture notes, and data persistence / reset rules |
 | [Upload File Formats](docs/upload-formats.md) | Entrant, finish bib, and timing file layouts and validation |
