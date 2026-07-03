@@ -16,7 +16,7 @@
         <p class="small text-muted mb-0">@Model.TotalAssigned assignment(s) across @Model.DistinctVolunteers volunteer(s).</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a class="btn btn-outline-primary btn-sm" asp-action="Allocate" asp-route-eventId="@Model.Event.Id">Allocate draft (US32)</a>
+        <a class="btn btn-outline-primary btn-sm" asp-action="Allocate" asp-route-eventId="@Model.Event.Id">Allocate draft</a>
         <a class="btn btn-outline-secondary btn-sm" asp-action="Import" asp-route-eventId="@Model.Event.Id">Import from file</a>
         <a class="btn btn-outline-secondary btn-sm" asp-controller="VolunteerRoles" asp-action="Index" asp-route-eventType="@Model.Event.EventType">Edit roles for this event type</a>
         <a class="btn btn-outline-secondary btn-sm" asp-action="Pdf" asp-route-eventId="@Model.Event.Id">Export PDF</a>
@@ -81,7 +81,7 @@
 }
 
 @{
-    // Fill-state for the Add form (US37): current counts per role, who is already assigned, and
+    // Fill-state for the Add form: current counts per role, who is already assigned, and
     // how many marshal-point spots remain open for the generic sentinel.
     var rosterRows = Model.ByCategory.Values.SelectMany(r => r).ToList();
     var assignedByRole = rosterRows.ToDictionary(r => r.Role.Id, r => r.AssignedCount);
@@ -144,7 +144,7 @@
             </div>
 
             <details class="col-12 mt-2">
-                <summary class="small text-muted">Preferences (used by the US32 auto-allocator)</summary>
+                <summary class="small text-muted">Preferences (used by the auto-allocator)</summary>
                 <div class="row g-2 mt-1">
                     <div class="col-md-3">
                         <label class="form-label small">Preferred role</label>
@@ -166,7 +166,7 @@
             </details>
         </form>
         <script>
-            // US40: picking a volunteer pre-fills the preference section from their usual preferences.
+            // Picking a volunteer pre-fills the preference section from their usual preferences.
             (function () {
                 const form = document.currentScript.closest('.card-body').querySelector('form');
                 const volunteerSelect = form.querySelector('select[name="VolunteerId"]');

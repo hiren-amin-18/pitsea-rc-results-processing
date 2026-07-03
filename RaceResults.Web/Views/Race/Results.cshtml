@@ -2,7 +2,7 @@
 @using RaceResults.Web.Services
 @{
     ViewData["Title"] = "Results";
-    // Winner = earliest finishing position that has a typed time (US17 gap-to-winner).
+    // Winner = earliest finishing position that has a typed time (gap-to-winner).
     var winnerDuration = Model.Results.FirstOrDefault(r => r.Duration.HasValue)?.Duration;
 }
 
