@@ -1265,8 +1265,6 @@ public class RaceResultsService : IRaceResultsService
     public byte[] GenerateResultsPdf(int eventId)
     {
         var collated = GetCollatedResults(eventId);
-        var dnfEntrants = GetDnfEntrants(eventId);
-        var dsqResults = GetDsqResults(eventId);
         var currentEvent = GetEventById(eventId) ?? throw new InvalidOperationException("Event not found.");
         var courseRecords = LoadCurrentCourseRecords(currentEvent.EventType);
         var logoBytes = TryLoadPdfLogo();
@@ -1357,27 +1355,7 @@ public class RaceResultsService : IRaceResultsService
                         }
                     });
 
-                    // DNF and DSQ sections mirror the on-screen view (US16 AC6). DNS entrants are excluded.
-                    if (dnfEntrants.Count > 0)
-                    {
-                        column.Item().PaddingTop(8).Text("DNF").SemiBold().FontSize(12);
-                        foreach (var dnf in dnfEntrants)
-                        {
-                            var clubSuffix = string.IsNullOrWhiteSpace(dnf.Club) ? string.Empty : $" ({dnf.Club})";
-                            column.Item().Text($"{dnf.BibNumber} - {dnf.Name}{clubSuffix}").FontSize(10);
-                        }
-                    }
-
-                    if (dsqResults.Count > 0)
-                    {
-                        column.Item().PaddingTop(8).Text("DSQ").SemiBold().FontSize(12);
-                        foreach (var dsq in dsqResults)
-                        {
-                            var clubSuffix = string.IsNullOrWhiteSpace(dsq.Club) ? string.Empty : $" ({dsq.Club})";
-                            var reason = string.IsNullOrWhiteSpace(dsq.StatusReason) ? string.Empty : $" — {dsq.StatusReason}";
-                            column.Item().Text($"{dsq.BibNumber} - {dsq.Name}{clubSuffix}{reason}").FontSize(10);
-                        }
-                    }
+                    // Finishers only — DNF, DNS and DSQ entrants are intentionally omitted from the PDF.
                 });
             });
         });
@@ -1390,9 +1368,6 @@ public class RaceResultsService : IRaceResultsService
     public byte[] GenerateResultsCsv(int eventId)
     {
         var collated = GetCollatedResults(eventId);
-        var dnf = GetDnfEntrants(eventId);
-        var dns = GetDnsEntrants(eventId);
-        var dsq = GetDsqResults(eventId);
 
         using var memory = new MemoryStream();
         // UTF-8 with BOM so Excel opens accented names correctly (AC7).
@@ -1418,42 +1393,7 @@ public class RaceResultsService : IRaceResultsService
                 csv.NextRecord();
             }
 
-            // Non-finishers and disqualified runners follow, flagged via the Status column (US16/US18).
-            void WriteEntrantRow(Entrant entrant, string status)
-            {
-                csv.WriteField(string.Empty);
-                csv.WriteField(string.Empty);
-                csv.WriteField(entrant.BibNumber);
-                csv.WriteField(entrant.Name);
-                csv.WriteField(entrant.Club);
-                csv.WriteField(entrant.Gender);
-                csv.WriteField(entrant.Age?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
-                csv.WriteField(status);
-                csv.NextRecord();
-            }
-
-            foreach (var entrant in dnf)
-            {
-                WriteEntrantRow(entrant, "DNF");
-            }
-
-            foreach (var entrant in dns)
-            {
-                WriteEntrantRow(entrant, "DNS");
-            }
-
-            foreach (var row in dsq)
-            {
-                csv.WriteField(string.Empty);
-                csv.WriteField(row.Time);
-                csv.WriteField(row.BibNumber);
-                csv.WriteField(row.Name);
-                csv.WriteField(row.Club);
-                csv.WriteField(row.Gender);
-                csv.WriteField(row.Age?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
-                csv.WriteField("DSQ");
-                csv.NextRecord();
-            }
+            // Finishers only — DNF, DNS and DSQ entrants are intentionally omitted from the export.
 
             writer.Flush();
         }

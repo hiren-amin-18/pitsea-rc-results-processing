@@ -16,7 +16,7 @@ The generated PDF follows the race-day format used by Pitsea Running Club:
 - Table styling: black header row with white text and white borders; plain white body rows
 - Column alignment in PDF table: `Position`, `Time`, `Race No`, and `Gender` are centered
 - Continuation pages: same branded header and table styling as page 1, without repeating the winners block
-- After the results table, DNF and DSQ sections are listed (US16); DNS entrants are excluded
+- The PDF lists finishers only — DNF, DNS and DSQ entrants are excluded
 
 ---
 

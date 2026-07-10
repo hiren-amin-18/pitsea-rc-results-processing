@@ -27,7 +27,7 @@ Full capability list for the Pitsea RC Race Result Processor. See also [Domain C
 | **Champions audit trail** | Append-only points audit log distinguishing initial awards from recalculations; full scoring history retained |
 | **PDF export** | Download a branded, race-ready PDF: first page includes winners + data-driven course records for the event type, subsequent pages continue with results table |
 | **Course records** | Records stored per event type and category; a management page to view/correct them, automatic detection of a new record after timings (organiser confirms), retained record history, and a "NEW COURSE RECORD" flag on the PDF |
-| **CSV export** | Download collated results (finishers + DNF, with a Status column) and the Champions leaderboard as Excel-friendly UTF-8 CSV with descriptive filenames |
+| **CSV export** | Download collated results (finishers only, with a Status column) and the Champions leaderboard as Excel-friendly UTF-8 CSV with descriptive filenames |
 | **Champions PDF export** | Export Champions leaderboard to PDF with tie-breaking indicators (†) and gold/silver/bronze highlighting for top 3 |
 | **Event management** | Create, edit, select current, and delete events (`Crown to Crown` / `Bluebell 5`) with event-scoped results |
 | **Season calendar generator** | One-click "Generate Season" creates the year's Crown to Crown fixtures from the club's fixed date rules (Good Friday, second Wednesdays May–Aug, first-or-second Wednesday Sep, Boxing Day) with start times; preview before generating; skips dates that already have a C2C event (US31) |

@@ -9,7 +9,7 @@ public class CsvExportTests : RaceResultsServiceTestBase
     private static readonly string[] EntrantHeader = ["Bib", "Name", "Club", "Gender", "Age"];
 
     [Fact]
-    public async Task GenerateResultsCsv_HasHeaderFinishersAndDnfSection()
+    public async Task GenerateResultsCsv_HasHeaderAndFinishersOnly()
     {
         await SeedRaceWithDnf();
 
@@ -19,12 +19,11 @@ public class CsvExportTests : RaceResultsServiceTestBase
                         .ToArray();
 
         Assert.Equal("Position,Time,Bib,Name,Club,Gender,Age,Status", lines[0]);
-        // Two finishers then one DNF.
+        // Two finishers, and the DNF entrant (Carol) is omitted.
         Assert.Contains(lines, l => l.StartsWith("1,") && l.EndsWith(",Finished"));
         Assert.Contains(lines, l => l.StartsWith("2,") && l.EndsWith(",Finished"));
-        var dnfLine = Assert.Single(lines, l => l.EndsWith(",DNF"));
-        Assert.StartsWith(",,", dnfLine); // DNF rows have no position/time
-        Assert.Contains("Carol", dnfLine);
+        Assert.DoesNotContain(lines, l => l.EndsWith(",DNF"));
+        Assert.DoesNotContain("Carol", text);
     }
 
     [Fact]
