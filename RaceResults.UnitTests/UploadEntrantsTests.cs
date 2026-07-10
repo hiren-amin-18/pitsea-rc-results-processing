@@ -120,6 +120,74 @@ public class UploadEntrantsTests : RaceResultsServiceTestBase
     }
 
     [Fact]
+    public async Task BibOnlyEntrant_BlankNameAndGender_IsLoaded()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            EntrantHeader,
+            ["214", "", "", "", ""],  // only the bib is present
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, Service.GetStatusCounts().EntrantCount);
+    }
+
+    [Fact]
+    public async Task BlankBib_StillRejected()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            EntrantHeader,
+            ["", "Alice Smith", "Club A", "Female", "30"],  // no bib
+        ]);
+
+        var result = await Service.UploadEntrantsAsync([file]);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("bib is required"));
+    }
+
+    [Fact]
+    public async Task BlankNameEntrant_ShownAsUnknownInResults()
+    {
+        await Service.UploadEntrantsAsync([FormFileHelpers.CreateXlsx("e.xlsx",
+        [
+            EntrantHeader,
+            ["214", "", "", "", ""],  // bib-only entrant
+        ])]);
+        await Service.UploadFinishBibAsync(FormFileHelpers.CreateXlsx("fb.xlsx",
+        [
+            ["Position", "Bib"],
+            ["1", "214"],
+        ]));
+        await Service.UploadTimingsAsync(FormFileHelpers.CreateCsv("t.csv",
+            "STARTOFEVENT,x,x\n1,x,00:20:00\n"));
+
+        var results = Service.GetCollatedResults();
+
+        Assert.Single(results);
+        Assert.Equal("Unknown", results[0].Name);
+    }
+
+    [Fact]
+    public async Task BlankGenderEntrant_ExcludedFromGenderCounts()
+    {
+        var file = FormFileHelpers.CreateXlsx("entrants.xlsx",
+        [
+            EntrantHeader,
+            ["214", "", "", "", ""],  // bib-only entrant, no gender
+        ]);
+
+        await Service.UploadEntrantsAsync([file]);
+
+        var stats = Service.GetRaceStats();
+        Assert.Equal(0, stats.TotalMales);
+        Assert.Equal(0, stats.TotalFemales);
+    }
+
+    [Fact]
     public async Task UploadingNewEntrants_ClearsExistingFinishBibAndTimingData()
     {
         // Arrange: seed all three tables via the full upload flow

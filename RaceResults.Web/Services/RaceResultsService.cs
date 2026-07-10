@@ -1751,9 +1751,13 @@ public class RaceResultsService : IRaceResultsService
             var gender = ReadCell(row, headerMap, new[] { "gender", "sex", "mf" });
             var ageRaw = ReadCell(row, headerMap, new[] { "age" });
 
-            if (string.IsNullOrWhiteSpace(bib) || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(gender))
+            // Only the bib is mandatory: it is the key used to match timing data. A bib-only entrant
+            // (blank name/gender) is allowed so runners with no registration record can still appear in
+            // the overall results. Blank name shows as "Unknown"; blank gender leaves them out of gendered
+            // categories until an organiser fills it in via the edit form.
+            if (string.IsNullOrWhiteSpace(bib))
             {
-                errors.Add($"{fileName} row {rowNumber}: bib, name, and gender are required.");
+                errors.Add($"{fileName} row {rowNumber}: bib is required.");
                 continue;
             }
 
@@ -1771,7 +1775,7 @@ public class RaceResultsService : IRaceResultsService
             entrants.Add(new Entrant
             {
                 BibNumber = bib.Trim(),
-                Name = name.Trim(),
+                Name = string.IsNullOrWhiteSpace(name) ? "Unknown" : name.Trim(),
                 Club = club.Trim(),
                 Gender = NormalizeGender(gender),
                 Age = age
@@ -1826,9 +1830,11 @@ public class RaceResultsService : IRaceResultsService
             var gender = ReadCell(row, headerMap, new[] { "gender", "sex", "mf" });
             var ageRaw = ReadCell(row, headerMap, new[] { "age" });
 
-            if (string.IsNullOrWhiteSpace(bib) || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(gender))
+            // Only the bib is mandatory (see Crown to Crown parser): a bib-only entrant is allowed so a
+            // runner with no registration record still appears in the overall results.
+            if (string.IsNullOrWhiteSpace(bib))
             {
-                errors.Add($"{fileName} row {rowNumber}: bib, name, and gender are required.");
+                errors.Add($"{fileName} row {rowNumber}: bib is required.");
                 continue;
             }
 
@@ -1870,7 +1876,7 @@ public class RaceResultsService : IRaceResultsService
             entrants.Add(new Entrant
             {
                 BibNumber = bib.Trim(),
-                Name = name.Trim(),
+                Name = string.IsNullOrWhiteSpace(name) ? "Unknown" : name.Trim(),
                 Club = club.Trim(),
                 Gender = normalisedGender,
                 Age = null,
