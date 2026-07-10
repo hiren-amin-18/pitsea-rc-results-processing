@@ -395,6 +395,20 @@ html[data-theme="dark"] .table {
   max-width: 44rem;
 }
 
+/* Stat chart card header (title + expand button) */
+.chart-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.chart-card-head .chart-expand {
+  flex: none;
+  white-space: nowrap;
+}
+
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
   color: var(--bs-secondary-color);
   text-align: end;

@@ -8,7 +8,8 @@ The typical sequence for processing results after a race:
 3. Uploads page    →  Upload timing file (.csv or .xlsx)
 4. Results page    →  Review collated results and DNF list
 5. Results page    →  Edit any incorrect rows if needed
-6. Stats page      →  View numeric stats and chart breakdowns (gender, category, club, finishers/minute)
+6. Stats page      →  View numeric stats and labelled chart breakdowns (gender, category, club,
+                                finishers/minute); click Expand on any chart to enlarge it
 7. Top 10 page     →  View category leaders
 8. Results page    →  Export PDF or CSV
 ```

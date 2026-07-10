@@ -71,6 +71,7 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 | Excel parsing | `ClosedXML` 0.105.0 |
 | CSV parsing | `CsvHelper` 33.1.0 |
 | PDF generation | `QuestPDF` 2026.2.4 (Community licence) |
+| Charts (client-side) | `Chart.js` 4.4.6 + `chartjs-plugin-datalabels` 2.2.0, bundled locally under `wwwroot/lib` so graphs render offline |
 | Unit testing | xUnit 2.9.3 |
 | Integration testing | `Microsoft.AspNetCore.Mvc.Testing` 10.0.7 |
 

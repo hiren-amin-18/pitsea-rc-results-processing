@@ -17,7 +17,7 @@ All finishers in order with name, club, gender, age, time, and gap to the winner
 ![Collated results](../screenshots/02-collated-results.png)
 
 ### Race statistics
-Completion rate, gender split, finish-time percentiles, and chart breakdowns for gender, category, club, affiliation, and finishers-per-minute.
+Completion rate, gender split, finish-time percentiles, and chart breakdowns for gender, category, club, affiliation, and finishers-per-minute. Each chart carries value/percentage labels and an Expand button that opens it in a large modal.
 
 ![Race statistics](../screenshots/03-race-stats.png)
 

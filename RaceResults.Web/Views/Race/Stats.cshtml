@@ -78,31 +78,43 @@
     <div class="col-lg-6">
         <div class="card h-100">
             <div class="card-body">
-                <h5 class="card-title">Male / Female</h5>
-                <div style="height: 280px;"><canvas id="genderChart" aria-label="Male female breakdown"></canvas></div>
+                <div class="chart-card-head">
+                    <h5 class="card-title mb-0">Male / Female</h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="gender" title="Expand chart" aria-label="Expand Male / Female chart">⤢ Expand</button>
+                </div>
+                <div style="height: 340px;"><canvas id="genderChart" aria-label="Male female breakdown"></canvas></div>
             </div>
         </div>
     </div>
     <div class="col-lg-6">
         <div class="card h-100">
             <div class="card-body">
-                <h5 class="card-title">Category Breakdown</h5>
-                <div style="height: 280px;"><canvas id="categoryChart" aria-label="Category breakdown"></canvas></div>
+                <div class="chart-card-head">
+                    <h5 class="card-title mb-0">Category Breakdown</h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="category" title="Expand chart" aria-label="Expand Category Breakdown chart">⤢ Expand</button>
+                </div>
+                <div style="height: 340px;"><canvas id="categoryChart" aria-label="Category breakdown"></canvas></div>
             </div>
         </div>
     </div>
     <div class="col-lg-6">
         <div class="card h-100">
             <div class="card-body">
-                <h5 class="card-title">Affiliated vs Unaffiliated</h5>
-                <div style="height: 280px;"><canvas id="affiliationChart" aria-label="Affiliated vs unaffiliated breakdown"></canvas></div>
+                <div class="chart-card-head">
+                    <h5 class="card-title mb-0">Affiliated vs Unaffiliated</h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="affiliation" title="Expand chart" aria-label="Expand Affiliated vs Unaffiliated chart">⤢ Expand</button>
+                </div>
+                <div style="height: 340px;"><canvas id="affiliationChart" aria-label="Affiliated vs unaffiliated breakdown"></canvas></div>
             </div>
         </div>
     </div>
     <div class="col-lg-6">
         <div class="card h-100">
             <div class="card-body">
-                <h5 class="card-title">Club Breakdown</h5>
+                <div class="chart-card-head">
+                    <h5 class="card-title mb-0">Club Breakdown</h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="club" title="Expand chart" aria-label="Expand Club Breakdown chart">⤢ Expand</button>
+                </div>
                 <div style="height: @(clubChartHeight)px;"><canvas id="clubChart" aria-label="Club breakdown"></canvas></div>
             </div>
         </div>
@@ -110,12 +122,15 @@
     <div class="col-lg-6">
         <div class="card h-100">
             <div class="card-body">
-                <h5 class="card-title">Time Per Minute vs Finishers</h5>
+                <div class="chart-card-head">
+                    <h5 class="card-title mb-0">Time Per Minute vs Finishers</h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="minute" title="Expand chart" aria-label="Expand Finishers per minute chart">⤢ Expand</button>
+                </div>
                 @if (summary.BusiestWindowMinute.HasValue)
                 {
                     <p class="small text-muted mb-2">Peak: @summary.BusiestWindowCount finishers between @($"{summary.BusiestWindowMinute:00}:00") and @($"{summary.BusiestWindowMinute + 1:00}:00")</p>
                 }
-                <div style="height: 320px;"><canvas id="minuteChart" aria-label="Finishers per minute"></canvas></div>
+                <div style="height: 360px;"><canvas id="minuteChart" aria-label="Finishers per minute"></canvas></div>
             </div>
         </div>
     </div>
@@ -123,18 +138,35 @@
 
 <p class="mt-3 text-muted">Unaffiliated means runners without a club.</p>
 
+<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chartModalTitle">Chart</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div style="height: 72vh;"><canvas id="chartModalCanvas" aria-label="Expanded chart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="~/lib/chartjs/chart.umd.min.js"></script>
+    <script src="~/lib/chartjs-plugin-datalabels/chartjs-plugin-datalabels.min.js"></script>
     <script>
         (() => {
             if (!window.Chart) {
                 return;
             }
 
-            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-            const textColor = isDark ? "#eef4ff" : "#18212f";
-            const gridColor = isDark ? "#2f4359" : "#dbe2ec";
+            // Value/percentage labels drawn on the charts.
+            if (window.ChartDataLabels) {
+                Chart.register(window.ChartDataLabels);
+            }
 
+            // --- Data (from the server) ---
             const genderValues = [@Model.Stats.TotalMales, @Model.Stats.TotalFemales];
             const isBluebell = @(Model.IsBluebell ? "true" : "false");
             const categoryLabels = isBluebell
@@ -151,114 +183,160 @@
             const minuteLabels = @Html.Raw(JsonSerializer.Serialize(Model.FinishersPerMinute.Select(x => x.Label)));
             const minuteValues = @Html.Raw(JsonSerializer.Serialize(Model.FinishersPerMinute.Select(x => x.Value)));
 
-            const vividPaletteLight = ["#0066ff", "#ff6a00", "#00c2ff", "#ff2ea6", "#7a33ff", "#24cc6b", "#ffbf00", "#ff3b30", "#00b894", "#6c5ce7"];
-            const vividPaletteDark = ["#4da3ff", "#ff9f43", "#45d6ff", "#ff66c4", "#b084ff", "#42e88f", "#ffd166", "#ff6b6b", "#33d9b2", "#a29bfe"];
-            const activePalette = isDark ? vividPaletteDark : vividPaletteLight;
-            const clubBarColors = clubLabels.map((_, index) => activePalette[index % activePalette.length]);
+            const paletteLight = ["#0066ff", "#ff6a00", "#00c2ff", "#ff2ea6", "#7a33ff", "#24cc6b", "#ffbf00", "#ff3b30", "#00b894", "#6c5ce7"];
+            const paletteDark  = ["#4da3ff", "#ff9f43", "#45d6ff", "#ff66c4", "#b084ff", "#42e88f", "#ffd166", "#ff6b6b", "#33d9b2", "#a29bfe"];
 
-            new Chart(document.getElementById("genderChart"), {
-                type: "doughnut",
-                data: {
-                    labels: ["Male", "Female"],
-                    datasets: [{
-                        data: genderValues,
-                        backgroundColor: [activePalette[0], activePalette[1]]
-                    }]
-                },
-                options: {
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: textColor }
+            // Theme snapshot, re-read whenever the chart is (re)built.
+            function theme() {
+                const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+                return {
+                    isDark,
+                    text: isDark ? "#eef4ff" : "#18212f",
+                    grid: isDark ? "#2f4359" : "#dbe2ec",
+                    palette: isDark ? paletteDark : paletteLight
+                };
+            }
+
+            const pctLabels = (t) => ({
+                color: "#ffffff",
+                font: { weight: "700", size: 13 },
+                textAlign: "center",
+                formatter: (value, ctx) => {
+                    const arr = ctx.chart.data.datasets[0].data;
+                    const total = arr.reduce((a, b) => a + (Number(b) || 0), 0);
+                    if (!total || !value) return "";
+                    return value + "\n" + Math.round((value / total) * 100) + "%";
+                }
+            });
+
+            const valueLabels = (t) => ({
+                anchor: "end",
+                align: "end",
+                clamp: true,
+                color: t.text,
+                font: { weight: "600" },
+                formatter: (v) => (v > 0 ? v : "")
+            });
+
+            // Each definition builds a *fresh* Chart.js config for the given theme,
+            // so the inline chart and the expanded (modal) chart never share state.
+            const DEFS = [
+                {
+                    key: "gender", title: "Male / Female",
+                    build: (t) => ({
+                        type: "doughnut",
+                        data: { labels: ["Male", "Female"], datasets: [{ data: genderValues, backgroundColor: [t.palette[0], t.palette[1]] }] },
+                        options: {
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: "bottom", labels: { color: t.text, padding: 14 } }, datalabels: pctLabels(t) }
                         }
-                    }
-                }
-            });
-
-            new Chart(document.getElementById("affiliationChart"), {
-                type: "doughnut",
-                data: {
-                    labels: ["Affiliated", "Unaffiliated"],
-                    datasets: [{
-                        data: affiliationValues,
-                        backgroundColor: [activePalette[5], activePalette[6]]
-                    }]
+                    })
                 },
-                options: {
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: textColor }
+                {
+                    key: "category", title: "Category Breakdown",
+                    build: (t) => ({
+                        type: "bar",
+                        data: { labels: categoryLabels, datasets: [{ label: "Count", data: categoryValues, backgroundColor: [t.palette[0], t.palette[1], t.palette[2], t.palette[3]] }] },
+                        options: {
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { ticks: { color: t.text }, grid: { color: t.grid } },
+                                y: { beginAtZero: true, ticks: { color: t.text, precision: 0 }, grid: { color: t.grid } }
+                            },
+                            plugins: { legend: { display: false }, datalabels: valueLabels(t) }
                         }
-                    }
-                }
-            });
-
-            new Chart(document.getElementById("categoryChart"), {
-                type: "bar",
-                data: {
-                    labels: categoryLabels,
-                    datasets: [{
-                        label: "Count",
-                        data: categoryValues,
-                        backgroundColor: [activePalette[0], activePalette[1], activePalette[2], activePalette[3]]
-                    }]
+                    })
                 },
-                options: {
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { ticks: { color: textColor }, grid: { color: gridColor } },
-                        y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-
-            new Chart(document.getElementById("clubChart"), {
-                type: "bar",
-                data: {
-                    labels: clubLabels,
-                    datasets: [{
-                        label: "Finishers",
-                        data: clubValues,
-                        backgroundColor: clubBarColors
-                    }]
+                {
+                    key: "affiliation", title: "Affiliated vs Unaffiliated",
+                    build: (t) => ({
+                        type: "doughnut",
+                        data: { labels: ["Affiliated", "Unaffiliated"], datasets: [{ data: affiliationValues, backgroundColor: [t.palette[5], t.palette[6]] }] },
+                        options: {
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: "bottom", labels: { color: t.text, padding: 14 } }, datalabels: pctLabels(t) }
+                        }
+                    })
                 },
-                options: {
-                    maintainAspectRatio: false,
-                    indexAxis: "y",
-                    scales: {
-                        x: { beginAtZero: true, ticks: { color: textColor, precision: 0 }, grid: { color: gridColor } },
-                        y: { ticks: { color: textColor, autoSkip: false, font: { size: 11 } }, grid: { color: gridColor } }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-
-            new Chart(document.getElementById("minuteChart"), {
-                type: "line",
-                data: {
-                    labels: minuteLabels,
-                    datasets: [{
-                        label: "Finishers",
-                        data: minuteValues,
-                        borderColor: activePalette[4],
-                        backgroundColor: isDark ? "rgba(176,132,255,0.28)" : "rgba(122,51,255,0.20)",
-                        fill: true,
-                        tension: 0.25
-                    }]
+                {
+                    key: "club", title: "Club Breakdown",
+                    build: (t) => ({
+                        type: "bar",
+                        data: { labels: clubLabels, datasets: [{ label: "Finishers", data: clubValues, backgroundColor: clubLabels.map((_, i) => t.palette[i % t.palette.length]) }] },
+                        options: {
+                            maintainAspectRatio: false,
+                            indexAxis: "y",
+                            scales: {
+                                x: { beginAtZero: true, ticks: { color: t.text, precision: 0 }, grid: { color: t.grid } },
+                                y: { ticks: { color: t.text, autoSkip: false, font: { size: 11 } }, grid: { color: t.grid } }
+                            },
+                            plugins: { legend: { display: false }, datalabels: valueLabels(t) }
+                        }
+                    })
                 },
-                options: {
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { title: { display: true, text: "Minute", color: textColor }, ticks: { color: textColor }, grid: { color: gridColor } },
-                        y: { beginAtZero: true, title: { display: true, text: "Finishers", color: textColor }, ticks: { color: textColor }, grid: { color: gridColor } }
-                    },
-                    plugins: {
-                        legend: { labels: { color: textColor } }
-                    }
+                {
+                    key: "minute", title: "Time Per Minute vs Finishers",
+                    build: (t) => ({
+                        type: "line",
+                        data: { labels: minuteLabels, datasets: [{ label: "Finishers", data: minuteValues, borderColor: t.palette[4], backgroundColor: t.isDark ? "rgba(176,132,255,0.28)" : "rgba(122,51,255,0.20)", fill: true, tension: 0.25, pointRadius: 2, pointHoverRadius: 5 }] },
+                        options: {
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { title: { display: true, text: "Minute", color: t.text }, ticks: { color: t.text }, grid: { color: t.grid } },
+                                y: { beginAtZero: true, title: { display: true, text: "Finishers", color: t.text }, ticks: { color: t.text, precision: 0 }, grid: { color: t.grid } }
+                            },
+                            plugins: { legend: { labels: { color: t.text } }, datalabels: { display: false } }
+                        }
+                    })
                 }
-            });
+            ];
+
+            // --- Inline charts ---
+            const inline = {};
+            function renderInline() {
+                const t = theme();
+                DEFS.forEach((d) => {
+                    const el = document.getElementById(d.key + "Chart");
+                    if (!el) return;
+                    if (inline[d.key]) inline[d.key].destroy();
+                    inline[d.key] = new Chart(el, d.build(t));
+                });
+            }
+            renderInline();
+
+            // --- Expand-to-modal ---
+            let modalChart = null;
+            let modalKey = null;
+            const modalEl = document.getElementById("chartModal");
+            const modal = modalEl && window.bootstrap ? new bootstrap.Modal(modalEl) : null;
+
+            function renderModal() {
+                const d = DEFS.find((x) => x.key === modalKey);
+                if (!d) return;
+                if (modalChart) modalChart.destroy();
+                document.getElementById("chartModalTitle").textContent = d.title;
+                modalChart = new Chart(document.getElementById("chartModalCanvas"), d.build(theme()));
+            }
+
+            if (modal) {
+                document.querySelectorAll(".chart-expand").forEach((btn) => {
+                    btn.addEventListener("click", () => { modalKey = btn.dataset.chart; modal.show(); });
+                });
+                // Render only once the canvas has real dimensions.
+                modalEl.addEventListener("shown.bs.modal", renderModal);
+                modalEl.addEventListener("hidden.bs.modal", () => {
+                    if (modalChart) { modalChart.destroy(); modalChart = null; }
+                    modalKey = null;
+                });
+            }
+
+            // --- React to the dark-mode toggle without a page reload ---
+            new MutationObserver((muts) => {
+                if (muts.some((m) => m.attributeName === "data-theme")) {
+                    renderInline();
+                    if (modalChart) renderModal();
+                }
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
         })();
     </script>
 }
