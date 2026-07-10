@@ -44,30 +44,48 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Events" asp-action="Index">Events</a>
+                        </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link text-dark dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Race</a>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Race" asp-action="Uploads">Uploads</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Race" asp-action="Results">Results</a></li>
-                                <li><a class="dropdown-item" asp-area="" asp-controller="Race" asp-action="Stats">Stats</a></li>
-                                <li><a class="dropdown-item" asp-area="" asp-controller="Race" asp-action="Top10">Top 10</a></li>
                             </ul>
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link text-dark dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Standings</a>
                             <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" asp-area="" asp-controller="Season" asp-action="Dashboard">Season</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Champions" asp-action="Leaderboard">Champions</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="CourseRecords" asp-action="Index">Records</a></li>
                             </ul>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Runners" asp-action="Index">Runners</a>
+                        </li>
                         <li class="nav-item dropdown">
-                            <a class="nav-link text-dark dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Manage</a>
+                            <a class="nav-link text-dark dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Volunteers</a>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Index">Events</a></li>
-                                <li><a class="dropdown-item" asp-area="" asp-controller="Runners" asp-action="Index">Runners</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Volunteers" asp-action="Index">Volunteers</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-controller="VolunteerRoles" asp-action="Index">Roles</a></li>
+                                @if (currentEvent is not null)
+                                {
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="VolunteerRoster" asp-action="Index" asp-route-eventId="@currentEvent.Id">Roster</a></li>
+                                }
+                                else
+                                {
+                                    <li><span class="dropdown-item disabled" aria-disabled="true" title="Set a current event to manage its roster">Roster</span></li>
+                                }
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link text-dark dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Stats</a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" asp-area="" asp-controller="Race" asp-action="Stats">Race Stats</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-controller="Race" asp-action="Top10">Top 10</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="VolunteerStats" asp-action="Index">Volunteer Stats</a></li>
-                                <li><a class="dropdown-item" asp-area="" asp-controller="Season" asp-action="Dashboard">Season</a></li>
                             </ul>
                         </li>
                         <li class="nav-item">
