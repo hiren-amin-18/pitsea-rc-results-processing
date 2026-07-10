@@ -11,11 +11,6 @@
     record is deleted. <strong>This cannot be undone.</strong>
 </p>
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var ftype = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
-}
 
 <form method="post" asp-action="Merge" class="col-md-6"
       onsubmit="return confirm('Merge the duplicate into the survivor and delete the duplicate record? This cannot be undone.');">

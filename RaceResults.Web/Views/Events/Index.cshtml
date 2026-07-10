@@ -1,4 +1,4 @@
-﻿@model RaceResults.Web.Models.EventsPageViewModel
+@model RaceResults.Web.Models.EventsPageViewModel
 @using RaceResults.Web.Models
 @{
     ViewData["Title"] = "Events";
@@ -14,11 +14,6 @@
 
 <p class="small text-muted">Deleting an event permanently removes its entrants, finish rows, and timing data. <a asp-controller="Home" asp-action="Settings">Download a backup</a> first.</p>
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var feedbackType = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
-}
 
 @if (!Model.Events.Any())
 {

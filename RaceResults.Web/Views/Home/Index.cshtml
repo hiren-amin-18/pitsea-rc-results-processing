@@ -16,11 +16,11 @@
     }
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Entrants</h6><p class="display-6">@Model.Entrants</p></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Finish Rows</h6><p class="display-6">@Model.FinishBibRows</p></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Timing Rows</h6><p class="display-6">@Model.TimingRows</p></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><h6>Collated Results</h6><p class="display-6">@Model.ResultsRows</p></div></div></div>
+<div class="stat-grid mb-4">
+    <div class="stat-tile"><span class="stat-tile__label">Entrants</span><span class="stat-tile__value">@Model.Entrants</span></div>
+    <div class="stat-tile"><span class="stat-tile__label">Finish Rows</span><span class="stat-tile__value">@Model.FinishBibRows</span></div>
+    <div class="stat-tile"><span class="stat-tile__label">Timing Rows</span><span class="stat-tile__value">@Model.TimingRows</span></div>
+    <div class="stat-tile"><span class="stat-tile__label">Collated Results</span><span class="stat-tile__value">@Model.ResultsRows</span></div>
 </div>
 
 <div class="d-flex gap-2 flex-wrap">

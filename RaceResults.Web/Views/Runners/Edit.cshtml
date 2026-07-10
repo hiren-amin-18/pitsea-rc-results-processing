@@ -6,11 +6,6 @@
 <h1>Edit Runner</h1>
 <p class="text-muted">Changes apply to all of this runner's race entries and recalculate affected Champions seasons. Bib numbers stay per-event.</p>
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var feedbackType = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
-}
 
 <form method="post" asp-action="Edit" class="row g-3">
     @Html.AntiForgeryToken()

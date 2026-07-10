@@ -6,11 +6,6 @@
 <h1>Disqualify Finisher</h1>
 <p class="text-muted">Disqualifying removes this finisher from the results (positions below close up) and voids any Champions of Champions points for this event. It can be reversed from the Results page.</p>
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var feedbackType = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
-}
 
 <form method="post" asp-action="Disqualify" class="row g-3">
     @Html.AntiForgeryToken()

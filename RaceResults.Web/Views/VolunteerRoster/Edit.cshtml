@@ -10,11 +10,6 @@
 <p class="text-muted">@volunteerName @@ @raceEvent.EventName - @raceEvent.EventDate.ToString("dd MMM yyyy")</p>
 <p class="small text-muted">Change the role, run-after flag, or note. To change the volunteer, remove this assignment and add a new one. Preferences captured on the assignment are kept as they are.</p>
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var ftype = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
-}
 
 <form method="post" asp-action="Update" asp-route-eventId="@Model.EventId" class="col-md-6">
     @Html.AntiForgeryToken()

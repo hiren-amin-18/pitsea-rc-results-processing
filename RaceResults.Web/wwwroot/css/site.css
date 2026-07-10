@@ -1,50 +1,45 @@
-html {
-  font-size: 14px;
-}
-
+/* ============================================================
+   Design tokens
+   Light/dark values resolve via light-dark(); color-scheme is
+   driven by the [data-theme] attribute set by the no-flash script.
+   ============================================================ */
 :root {
-  --app-bg: #f3f5f8;
-  --app-surface: #ffffff;
-  --app-surface-muted: #f8f9fa;
-  --app-text: #18212f;
-  --app-muted: #617082;
-  --app-border: #d7dde6;
-  --app-link: #0d6efd;
-  --app-accent: #0d6efd;
-  --app-accent-strong: #0b5ed7;
-  --app-accent-soft: #e8f1ff;
-  --app-table-header: #e9eff7;
-  --app-table-row-even: #ffffff;
-  --app-table-row-odd: #f5f8fc;
+  color-scheme: light;
+
+  --app-bg:            light-dark(#f3f5f8, #0f141c);
+  --app-surface:       light-dark(#ffffff, #18222f);
+  --app-surface-muted: light-dark(#f8f9fa, #1f2c3b);
+  --app-text:          light-dark(#18212f, #e5edf8);
+  --app-muted:         light-dark(#617082, #a8b5c4);
+  --app-border:        light-dark(#d7dde6, #2a3a4d);
+  --app-link:          light-dark(#0d6efd, #7db3ff);
+  --app-accent:        light-dark(#0d6efd, #ff9b3d);
+  --app-accent-strong: light-dark(#0b5ed7, #ffb56d);
+  --app-accent-soft:   light-dark(#e8f1ff, #3a2a1b);
+  --app-table-header:    light-dark(#e9eff7, #2a3a4d);
+  --app-table-row-even:  light-dark(#ffffff, #1b2735);
+  --app-table-row-odd:   light-dark(#f5f8fc, #243548);
+
+  /* Shape, elevation, motion */
+  --app-radius:    0.6rem;
+  --app-radius-sm: 0.4rem;
+  --app-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --app-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.10), 0 2px 4px rgba(15, 23, 42, 0.06);
+  --app-motion:    0.2s ease;
 }
 
 html[data-theme="dark"] {
-  --app-bg: #0f141c;
-  --app-surface: #18222f;
-  --app-surface-muted: #1f2c3b;
-  --app-text: #e5edf8;
-  --app-muted: #a8b5c4;
-  --app-border: #2a3a4d;
-  --app-link: #7db3ff;
-  --app-accent: #ff9b3d;
-  --app-accent-strong: #ffb56d;
-  --app-accent-soft: #3a2a1b;
-  --app-table-header: #2a3a4d;
-  --app-table-row-even: #1b2735;
-  --app-table-row-odd: #243548;
+  color-scheme: dark;
+  --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --app-shadow-md: 0 6px 18px rgba(0, 0, 0, 0.55);
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem color-mix(in srgb, var(--app-accent) 70%, transparent);
-}
-
+/* ============================================================
+   Base
+   ============================================================ */
 html {
+  /* Fluid type: smoothly scales 14px -> 17px instead of a hard jump */
+  font-size: clamp(14px, 0.82rem + 0.35vw, 17px);
   position: relative;
   min-height: 100%;
 }
@@ -59,6 +54,29 @@ a {
   color: var(--app-link);
 }
 
+/* Cross-document view transitions: app-like page changes on this MPA */
+@view-transition {
+  navigation: auto;
+}
+
+.btn:focus-visible, .btn:active:focus-visible,
+.btn-link.nav-link:focus-visible,
+.form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem var(--app-bg),
+              0 0 0 0.25rem color-mix(in srgb, var(--app-accent) 70%, transparent);
+}
+
+/* Native theming for checkboxes / radios / range inputs */
+.form-check-input,
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  accent-color: var(--app-accent);
+}
+
+/* ============================================================
+   Theming of Bootstrap surfaces
+   ============================================================ */
 .navbar,
 .footer,
 .card,
@@ -68,8 +86,9 @@ a {
 .form-select,
 .form-check-input,
 .alert,
+.toast,
 .list-group-item {
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition: background-color var(--app-motion), color var(--app-motion), border-color var(--app-motion);
 }
 
 .navbar,
@@ -88,6 +107,11 @@ a {
 .navbar .nav-link,
 .text-dark {
   color: var(--app-text) !important;
+}
+
+.card {
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-sm);
 }
 
 .app-logo {
@@ -121,6 +145,35 @@ html[data-theme="dark"] .navbar .navbar-toggler-icon {
   filter: invert(1) contrast(1.1);
 }
 
+/* Active-page indicator */
+.navbar .nav-link.active {
+  color: var(--app-accent) !important;
+  font-weight: 600;
+  position: relative;
+}
+
+.navbar .nav-item:not(.dropdown) .nav-link.active::after,
+.navbar .dropdown > .nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.1rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--app-accent);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+  background-color: var(--app-accent);
+  color: #fff;
+}
+
+.dropdown-item.disabled {
+  color: var(--app-muted);
+}
+
 .text-muted {
   color: var(--app-muted) !important;
 }
@@ -145,6 +198,9 @@ html[data-theme="dark"] .navbar .navbar-toggler-icon {
   border-color: var(--app-border);
 }
 
+/* ============================================================
+   Tables
+   ============================================================ */
 .table {
   --bs-table-bg: var(--app-table-row-even);
   --bs-table-color: var(--app-text);
@@ -154,10 +210,8 @@ html[data-theme="dark"] .navbar .navbar-toggler-icon {
 }
 
 html[data-theme="dark"] .table {
-  --bs-table-bg: var(--app-table-row-even);
   --bs-table-color: #f4f8ff;
   --bs-table-border-color: #33485f;
-  --bs-table-striped-bg: var(--app-table-row-odd);
   --bs-table-striped-color: #f4f8ff;
 }
 
@@ -181,6 +235,73 @@ html[data-theme="dark"] .table {
   color: var(--bs-table-color) !important;
 }
 
+/* Sticky header on any scroll-wrapped table (long finisher lists) */
+.table-responsive > .table > thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* Opt-in: keep the first column (e.g. Position/Bib) visible while
+   scrolling a wide table sideways. Cell backgrounds are already opaque. */
+.table-sticky-first > thead > tr > :first-child,
+.table-sticky-first > tbody > tr > :first-child {
+  position: sticky;
+  left: 0;
+}
+
+.table-sticky-first > thead > tr > :first-child {
+  z-index: 3;
+}
+
+/* Opt-in: on phones, render rows as stacked cards using each cell's
+   data-label. Add data-label="..." to every <td>. */
+@media (max-width: 575.98px) {
+  .table-stack > thead {
+    display: none;
+  }
+
+  .table-stack,
+  .table-stack > tbody,
+  .table-stack > tbody > tr,
+  .table-stack > tbody > tr > td {
+    display: block;
+    width: 100%;
+  }
+
+  .table-stack > tbody > tr {
+    border: 1px solid var(--app-border) !important;
+    border-radius: var(--app-radius-sm);
+    margin-bottom: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    background-color: var(--app-surface) !important;
+  }
+
+  .table-stack > tbody > tr > td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    border: none !important;
+    text-align: right !important;
+    padding: 0.3rem 0;
+  }
+
+  .table-stack > tbody > tr > td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--app-muted);
+    text-align: left;
+  }
+
+  .table-stack > tbody > tr > td[data-label=""]:empty {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
 .btn-primary {
   background-color: var(--app-accent);
   border-color: var(--app-accent);
@@ -210,6 +331,66 @@ html[data-theme="dark"] .table {
   border-color: var(--app-accent);
 }
 
+/* ============================================================
+   Dashboard stat tiles — intrinsic grid + container-query sizing
+   ============================================================ */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 1rem;
+}
+
+.stat-tile {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1rem 1.25rem;
+  background-color: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-sm);
+  transition: box-shadow var(--app-motion), transform var(--app-motion);
+}
+
+.stat-tile:hover {
+  box-shadow: var(--app-shadow-md);
+  transform: translateY(-2px);
+}
+
+.stat-tile__label {
+  color: var(--app-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-tile__value {
+  font-weight: 700;
+  line-height: 1.1;
+  /* scales with the tile's own width, not the viewport */
+  font-size: clamp(1.75rem, 9cqi, 2.6rem);
+}
+
+/* ============================================================
+   Toasts (central flash messages)
+   ============================================================ */
+.app-toast {
+  background-color: var(--app-surface);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  border-left: 4px solid var(--app-accent);
+  box-shadow: var(--app-shadow-md);
+}
+
+.app-toast.app-toast-success { border-left-color: #2e9e5b; }
+.app-toast.app-toast-danger  { border-left-color: #d1495b; }
+.app-toast.app-toast-warning { border-left-color: #e0a800; }
+.app-toast.app-toast-info    { border-left-color: var(--app-accent); }
+
+/* ============================================================
+   Misc
+   ============================================================ */
 .settings-card {
   max-width: 44rem;
 }
@@ -221,4 +402,23 @@ html[data-theme="dark"] .table {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
+}
+
+/* ============================================================
+   Reduced motion: honour user preference for all transitions
+   and disable view-transition animations.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }

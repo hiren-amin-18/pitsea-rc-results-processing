@@ -1,4 +1,4 @@
-﻿@model IReadOnlyList<RaceResults.Web.Models.VolunteerRole>
+@model IReadOnlyList<RaceResults.Web.Models.VolunteerRole>
 @using RaceResults.Web.Models
 @{
     ViewData["Title"] = "Volunteer Roles";
@@ -18,11 +18,6 @@
     pin a specific volunteer (the auto-allocator honours both).
 </p>
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var ftype = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
-}
 
 <div class="mb-2">
     <a class="small" asp-action="Index" asp-route-eventType="@eventType" asp-route-includeInactive="@(!includeInactive)">

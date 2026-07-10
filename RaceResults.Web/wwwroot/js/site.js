@@ -47,4 +47,11 @@ document.addEventListener("DOMContentLoaded", () => {
 			setTheme(settingsToggle.checked ? "dark" : "light");
 		});
 	}
+
+	// Show any server-rendered flash toasts (Bootstrap), then auto-dismiss.
+	if (window.bootstrap && bootstrap.Toast) {
+		document.querySelectorAll(".toast.app-toast").forEach((el) => {
+			bootstrap.Toast.getOrCreateInstance(el, { autohide: true }).show();
+		});
+	}
 });

@@ -1,4 +1,4 @@
-﻿@model RaceResults.Web.Models.RunnersIndexViewModel
+@model RaceResults.Web.Models.RunnersIndexViewModel
 @{
     ViewData["Title"] = "Runners";
 }
@@ -6,11 +6,6 @@
 <h1>Runners</h1>
 <p class="text-muted">Persistent runners that per-event entrants link to. Editing or merging recalculates affected Champions seasons.</p>
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var feedbackType = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
-}
 
 @if (!Model.Runners.Any())
 {

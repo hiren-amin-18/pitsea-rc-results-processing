@@ -1,4 +1,4 @@
-﻿@model RaceResults.Web.Models.RosterViewModel
+@model RaceResults.Web.Models.RosterViewModel
 @using RaceResults.Web.Models
 @{
     ViewData["Title"] = $"Roster - {Model.Event.EventName}";
@@ -30,11 +30,6 @@
     </div>
 </div>
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var ftype = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
-}
 
 @if (Model.DoubleBookedVolunteerIds.Any())
 {

@@ -1,4 +1,4 @@
-﻿@model RaceResults.Web.Models.ResultsPageViewModel
+@model RaceResults.Web.Models.ResultsPageViewModel
 @using RaceResults.Web.Services
 @{
     ViewData["Title"] = "Results";
@@ -21,11 +21,6 @@
     </div>
 }
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var feedbackType = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
-}
 
 @if (Model.PendingCourseRecords.Any())
 {
@@ -70,8 +65,8 @@ else
         </div>
     }
     <div class="table-responsive" style="overflow-x: clip;">
-        <table class="table table-striped align-middle">
-            <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
+        <table class="table table-striped align-middle table-sticky-first table-stack">
+            <thead>
                 <tr>
                     <th class="text-center">Pos</th>
                     <th class="text-center">Time</th>
@@ -88,21 +83,21 @@ else
             @foreach (var row in Model.Results)
             {
                 <tr class="@(row.IsUnmatched ? "table-warning" : null)">
-                    <td class="text-center">@row.DisplayPosition</td>
-                    <td class="text-center">@row.Time</td>
-                    <td class="text-center">@(row.Duration.HasValue && winnerDuration.HasValue ? RaceTime.FormatGap(row.Duration.Value - winnerDuration.Value) : "")</td>
-                    <td class="text-center">@row.BibNumber</td>
-                    <td>
+                    <td class="text-center" data-label="Pos">@row.DisplayPosition</td>
+                    <td class="text-center" data-label="Time">@row.Time</td>
+                    <td class="text-center" data-label="Gap">@(row.Duration.HasValue && winnerDuration.HasValue ? RaceTime.FormatGap(row.Duration.Value - winnerDuration.Value) : "")</td>
+                    <td class="text-center" data-label="Bib">@row.BibNumber</td>
+                    <td data-label="Name">
                         @row.Name
                         @if (row.IsUnmatched)
                         {
                             <span class="badge bg-warning text-dark ms-1">Unmatched</span>
                         }
                     </td>
-                    <td>@row.Club</td>
-                    <td class="text-center">@row.Gender</td>
-                    <td>@(row.Age?.ToString() ?? "-")</td>
-                    <td class="text-nowrap">
+                    <td data-label="Club">@row.Club</td>
+                    <td class="text-center" data-label="Gender">@row.Gender</td>
+                    <td data-label="Age">@(row.Age?.ToString() ?? "-")</td>
+                    <td class="text-nowrap" data-label="">
                         @if (!Model.IsReadOnly)
                         {
                             <a class="btn btn-sm btn-outline-secondary" asp-action="EditResult" asp-route-position="@row.Position">Edit</a>

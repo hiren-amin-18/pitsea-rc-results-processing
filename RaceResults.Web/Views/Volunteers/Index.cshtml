@@ -1,4 +1,4 @@
-﻿@model IReadOnlyList<RaceResults.Web.Models.VolunteerListItem>
+@model IReadOnlyList<RaceResults.Web.Models.VolunteerListItem>
 @{
     ViewData["Title"] = "Volunteers";
     var showInactive = ViewBag.ShowInactive == true;
@@ -36,11 +36,6 @@
     </p>
 }
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var ftype = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
-}
 
 <div class="mb-2">
     <a class="small" asp-action="Index" asp-route-showInactive="@(!showInactive)">@(showInactive ? "Hide inactive" : "Show inactive")</a>

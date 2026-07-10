@@ -14,11 +14,6 @@
     Listing volunteers who are eligible and not yet assigned at this event; tick several and add them in one go.
 </p>
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var ftype = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@ftype" role="alert">@Html.Raw(feedback)</div>
-}
 
 @if (!candidates.Any())
 {

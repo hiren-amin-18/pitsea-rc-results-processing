@@ -1,4 +1,4 @@
-﻿@model IReadOnlyList<RaceResults.Web.Models.CourseRecordSlot>
+@model IReadOnlyList<RaceResults.Web.Models.CourseRecordSlot>
 @using RaceResults.Web.Models
 @using RaceResults.Web.Services
 @{
@@ -8,11 +8,6 @@
 <h1>Course Records</h1>
 <p class="text-muted">Standing records per event type and category. New records are proposed automatically on the Results page after timings are uploaded; you can also correct a record here.</p>
 
-@if (TempData["FeedbackText"] is string feedback)
-{
-    var feedbackType = TempData["FeedbackType"] as string ?? "info";
-    <div class="alert alert-@feedbackType" role="alert">@Html.Raw(feedback)</div>
-}
 
 @foreach (var typeGroup in Model.GroupBy(s => s.EventType))
 {
