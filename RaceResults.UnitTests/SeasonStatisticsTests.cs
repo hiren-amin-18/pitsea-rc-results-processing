@@ -115,6 +115,72 @@ public class SeasonStatisticsTests : IDisposable
     }
 
     [Fact]
+    public async Task C2CSeasonStats_BuildsSeasonToDateTrend()
+    {
+        await SeedTwoEventSeason();
+
+        var stats = _season.GetC2CSeasonStats(2026);
+
+        Assert.True(stats.HasData);
+        Assert.Equal(2, stats.EventsRun);
+        Assert.Equal(2, stats.EventsScheduled);
+        Assert.Equal(3, stats.UniqueRunners);
+        Assert.Equal(2, stats.EverPresentCount);       // Alice & Bob at both events
+        Assert.Equal(2, stats.Events.Count);
+
+        var april = stats.Events.Single(e => e.EventDate.Month == 4);
+        var june = stats.Events.Single(e => e.EventDate.Month == 6);
+        Assert.Equal(2, april.FirstTimers);            // Alice + Bob debut
+        Assert.Equal(0, april.ReturningRunners);
+        Assert.Equal(1, june.FirstTimers);             // only Carol is new
+        Assert.Equal(2, june.ReturningRunners);        // Alice + Bob return
+        Assert.Equal(2, april.Finishers);
+        Assert.Equal(3, june.Finishers);
+        Assert.Equal(3, june.CumulativeUniqueRunners);
+        Assert.Equal(1200, april.WinnerSeconds);       // Alice 20:00
+        Assert.Equal(1140, june.WinnerSeconds);        // Alice 19:00
+        Assert.False(stats.HasPointsData);             // no audit-log points seeded
+    }
+
+    [Fact]
+    public async Task C2CSeasonStats_AnchorsToCurrentEvent_SeasonToDate()
+    {
+        await SeedTwoEventSeason();
+        // Rewind the "current" event to the April race: June should drop out of the season-to-date view.
+        var aprilId = _raceService.GetEvents().First(e => e.EventDate.Month == 4).Id;
+        _raceService.SetCurrentEvent(aprilId);
+
+        var stats = _season.GetC2CSeasonStats(2026);
+
+        Assert.Equal(1, stats.EventsRun);
+        Assert.Equal(2, stats.EventsScheduled);        // June is scheduled but not yet run
+        Assert.Single(stats.Events);
+        Assert.Equal(2, stats.UniqueRunners);          // only Alice & Bob so far
+    }
+
+    [Fact]
+    public async Task C2CSeasonStats_ExcludesBluebell_AndBuildsAttendanceDistribution()
+    {
+        await SeedTwoEventSeason();
+        // A Bluebell event (different type) with a new runner must not leak into C2C season stats.
+        _raceService.CreateEvent(new CreateEventInput { EventName = "Bluebell", EventDate = new DateTime(2026, 7, 1), EventType = EventType.Bluebell5 });
+        _raceService.SetCurrentEvent(_raceService.GetEvents().First(e => e.EventName == "Bluebell").Id);
+        await Upload(("9", "Dave", "Club C", "Male", "00:30:00"));
+
+        var stats = _season.GetC2CSeasonStats(2026);
+
+        Assert.Equal(2, stats.EventsScheduled);        // C2C only
+        Assert.Equal(2, stats.EventsRun);              // April + June (both before the July cutoff)
+        Assert.Equal(3, stats.UniqueRunners);          // Dave (Bluebell) excluded
+        Assert.DoesNotContain(stats.Events, e => e.EventName == "Bluebell");
+
+        var oneEvent = stats.AttendanceDistribution.Single(b => b.Events == 1);
+        var twoEvents = stats.AttendanceDistribution.Single(b => b.Events == 2);
+        Assert.Equal(1, oneEvent.Runners);             // Carol
+        Assert.Equal(2, twoEvents.Runners);            // Alice, Bob
+    }
+
+    [Fact]
     public async Task RunnerProfile_AggregatesRacesBestPositionAndStreak()
     {
         await SeedTwoEventSeason();

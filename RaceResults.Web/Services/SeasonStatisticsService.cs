@@ -216,6 +216,215 @@ public class SeasonStatisticsService : ISeasonStatisticsService
         };
     }
 
+    public C2CSeasonStats GetC2CSeasonStats(int year)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        var availableYears = db.Events.Select(e => e.EventDate.Year).Distinct().OrderByDescending(y => y).ToList();
+
+        // Every C2C event in the calendar year, chronological.
+        var seasonC2C = db.Events
+            .Where(e => e.EventType == EventType.CrownToCrown && e.EventDate.Year == year)
+            .OrderBy(e => e.EventDate)
+            .ToList();
+
+        // Anchor to the current event: for the live season only include events up to and including
+        // it; a past/complete season (no current event in this year) shows the whole series.
+        var currentEvent = _raceResultsService.GetCurrentEvent();
+        var cutoff = currentEvent is not null && currentEvent.EventDate.Year == year
+            ? currentEvent.EventDate
+            : (DateTime?)null;
+        var events = cutoff.HasValue
+            ? seasonC2C.Where(e => e.EventDate <= cutoff.Value).ToList()
+            : seasonC2C;
+
+        if (events.Count == 0)
+        {
+            return new C2CSeasonStats
+            {
+                Year = year,
+                AvailableYears = availableYears,
+                EventsScheduled = seasonC2C.Count,
+                CurrentEventName = currentEvent?.EventName ?? string.Empty
+            };
+        }
+
+        var eventIds = events.Select(e => e.Id).ToHashSet();
+        var dateByEventId = events.ToDictionary(e => e.Id, e => e.EventDate);
+
+        // Runner-attributed starters (excludes DNS and bib-only entrants without a registry link).
+        var started = db.Entrants
+            .Where(e => eventIds.Contains(e.EventId) && e.Status != FinishStatus.DidNotStart && e.RunnerId.HasValue)
+            .ToList();
+        var startedByEvent = started.GroupBy(e => e.EventId).ToDictionary(g => g.Key, g => g.ToList());
+        var firstEventByRunner = started
+            .GroupBy(e => e.RunnerId!.Value)
+            .ToDictionary(g => g.Key, g => g.Min(x => dateByEventId[x.EventId]));
+
+        // --- Per-event trend series (reuses the same per-event summary as the Race Stats page) ---
+        var points = new List<SeasonEventPoint>();
+        var seen = new HashSet<int>();
+        var totalStarters = 0;
+        var totalFinishers = 0;
+        var totalDnf = 0;
+        var excludedTimeRows = 0;
+
+        foreach (var raceEvent in events)
+        {
+            var summary = _raceResultsService.GetRaceStatisticsSummary(raceEvent.Id);
+            var attributed = startedByEvent.GetValueOrDefault(raceEvent.Id, new List<Entrant>())
+                .Select(e => e.RunnerId!.Value).Distinct().ToList();
+            var firstTimers = attributed.Count(rid => firstEventByRunner[rid] == raceEvent.EventDate);
+            foreach (var rid in attributed)
+            {
+                seen.Add(rid);
+            }
+
+            totalStarters += summary.EntrantCount;
+            totalFinishers += summary.FinisherCount;
+            totalDnf += summary.DnfCount;
+            excludedTimeRows += summary.ExcludedTimeRowCount;
+
+            points.Add(new SeasonEventPoint
+            {
+                EventName = raceEvent.EventName,
+                EventDate = raceEvent.EventDate,
+                Entrants = summary.EntrantCount,
+                Finishers = summary.FinisherCount,
+                FirstTimers = firstTimers,
+                ReturningRunners = attributed.Count - firstTimers,
+                MaleFinishers = summary.MaleFinishers,
+                FemaleFinishers = summary.FemaleFinishers,
+                CumulativeUniqueRunners = seen.Count,
+                DnfRatePercent = summary.EntrantCount == 0 ? 0 : Math.Round(100.0 * summary.DnfCount / summary.EntrantCount, 1),
+                WinnerSeconds = summary.WinnerTime.HasValue ? (int)summary.WinnerTime.Value.TotalSeconds : null,
+                MedianSeconds = summary.MedianTime.HasValue ? (int)summary.MedianTime.Value.TotalSeconds : null
+            });
+        }
+
+        // --- Attendance distribution + ever-present ---
+        var attendanceByRunner = started
+            .GroupBy(e => e.RunnerId!.Value)
+            .Select(g => g.Select(x => x.EventId).Distinct().Count())
+            .ToList();
+        var attendanceDistribution = attendanceByRunner
+            .GroupBy(c => c)
+            .Select(g => new AttendanceBucket { Events = g.Key, Runners = g.Count() })
+            .OrderBy(b => b.Events)
+            .ToList();
+
+        // --- Top clubs by unique runners ---
+        string ClubLabel(string? club) => string.IsNullOrWhiteSpace(club) ? "Unaffiliated" : club!;
+        var topClubs = started
+            .GroupBy(e => ClubLabel(e.Club), StringComparer.OrdinalIgnoreCase)
+            .Select(g => new ClubCount { Club = g.Key, Count = g.Select(x => x.RunnerId!.Value).Distinct().Count() })
+            .OrderByDescending(c => c.Count).ThenBy(c => c.Club).Take(10).ToList();
+
+        var (pointsRaceEventNames, pointsRace) = BuildPointsRace(db, events, year);
+
+        return new C2CSeasonStats
+        {
+            Year = year,
+            AvailableYears = availableYears,
+            HasData = true,
+            CurrentEventName = currentEvent?.EventName ?? string.Empty,
+            EventsRun = events.Count,
+            EventsScheduled = seasonC2C.Count,
+            UniqueRunners = attendanceByRunner.Count,
+            TotalFinishers = totalFinishers,
+            AverageFieldSize = Math.Round((double)totalStarters / events.Count, 1),
+            SeasonDnfRatePercent = totalStarters == 0 ? 0 : Math.Round(100.0 * totalDnf / totalStarters, 1),
+            EverPresentCount = attendanceByRunner.Count(c => c == events.Count),
+            Events = points,
+            AttendanceDistribution = attendanceDistribution,
+            TopClubs = topClubs,
+            HasPointsData = pointsRace.Any(r => r.Total > 0),
+            PointsRaceEventNames = pointsRaceEventNames,
+            PointsRace = pointsRace,
+            ExcludedTimeRows = excludedTimeRows
+        };
+    }
+
+    /// <summary>
+    /// Cumulative Champions points for the top contenders across the in-window (May–Sept) C2C events
+    /// of the season-to-date. Mirrors the per-runner progression logic but for the whole field.
+    /// </summary>
+    private (List<string> EventNames, List<PointsRaceRunner> Runners) BuildPointsRace(
+        RaceResultsDbContext db, List<RaceEvent> events, int year)
+    {
+        var inWindow = events
+            .Where(e => e.EventDate.Month >= ChampionsSeasonStartMonth && e.EventDate.Month <= ChampionsSeasonEndMonth)
+            .OrderBy(e => e.EventDate)
+            .ToList();
+        if (inWindow.Count == 0)
+        {
+            return (new List<string>(), new List<PointsRaceRunner>());
+        }
+
+        // Entrant → runner mapping (and latest display name) for the in-window events.
+        var windowEventIds = inWindow.Select(e => e.Id).ToHashSet();
+        var windowEntrants = db.Entrants
+            .Where(e => windowEventIds.Contains(e.EventId) && e.RunnerId.HasValue)
+            .ToList();
+        var runnerByEntrantId = windowEntrants
+            .GroupBy(e => e.Id)
+            .ToDictionary(g => g.Key, g => g.First().RunnerId!.Value);
+        var nameByRunner = windowEntrants
+            .GroupBy(e => e.RunnerId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.EventId).First().Name);
+
+        var running = new Dictionary<int, int>();
+        var series = new Dictionary<int, int[]>();
+        var allRunnerIds = new HashSet<int>();
+
+        for (var i = 0; i < inWindow.Count; i++)
+        {
+            var raceEvent = inWindow[i];
+            var audits = db.PointsAuditLogs
+                .Where(a => a.EventId == raceEvent.Id && a.SeasonYear == year && a.Action != AuditAction.Voided)
+                .ToList();
+
+            var pointsThisEvent = new Dictionary<int, int>();
+            if (audits.Count > 0)
+            {
+                var latestBatch = audits.Max(a => a.AuditTimestamp);
+                foreach (var a in audits.Where(a => a.AuditTimestamp == latestBatch))
+                {
+                    if (runnerByEntrantId.TryGetValue(a.EntrantId, out var runnerId))
+                    {
+                        pointsThisEvent[runnerId] = pointsThisEvent.GetValueOrDefault(runnerId) + a.PointsAwarded;
+                        allRunnerIds.Add(runnerId);
+                    }
+                }
+            }
+
+            // Carry every known runner forward so each series stays aligned to the event axis.
+            foreach (var runnerId in allRunnerIds)
+            {
+                running[runnerId] = running.GetValueOrDefault(runnerId) + pointsThisEvent.GetValueOrDefault(runnerId);
+                if (!series.TryGetValue(runnerId, out var arr))
+                {
+                    arr = new int[inWindow.Count];
+                    series[runnerId] = arr;
+                }
+
+                arr[i] = running[runnerId];
+            }
+        }
+
+        var runners = series
+            .Select(kv => new PointsRaceRunner
+            {
+                RunnerName = nameByRunner.GetValueOrDefault(kv.Key, "Unknown"),
+                CumulativePoints = kv.Value,
+                Total = kv.Value.Length > 0 ? kv.Value[^1] : 0
+            })
+            .OrderByDescending(r => r.Total).ThenBy(r => r.RunnerName)
+            .Take(8)
+            .ToList();
+
+        return (inWindow.Select(e => e.EventName).ToList(), runners);
+    }
+
     public RunnerSeasonProfile? GetRunnerSeasonProfile(int runnerId, int year)
     {
         using var db = _dbContextFactory.CreateDbContext();

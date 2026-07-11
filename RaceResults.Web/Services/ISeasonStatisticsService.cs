@@ -11,6 +11,12 @@ public interface ISeasonStatisticsService
     /// <summary>Season-wide dashboard for a calendar year, across all event types.</summary>
     SeasonDashboard GetSeasonDashboard(int year);
 
+    /// <summary>
+    /// C2C-only, season-to-date trend statistics for a calendar year, anchored to the current event
+    /// (only events up to and including the current one are included when viewing the live season).
+    /// </summary>
+    C2CSeasonStats GetC2CSeasonStats(int year);
+
     /// <summary>One runner's season profile for a calendar year. Null if the runner does not exist.</summary>
     RunnerSeasonProfile? GetRunnerSeasonProfile(int runnerId, int year);
 }

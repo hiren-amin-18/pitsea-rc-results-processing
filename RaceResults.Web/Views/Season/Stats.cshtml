@@ -1,0 +1,393 @@
+@using System.Text.Json
+@model RaceResults.Web.Models.C2CSeasonStats
+@{
+    ViewData["Title"] = "C2C Season Stats";
+    var clubChartHeight = Math.Max(320, Model.TopClubs.Count * 34);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
+    <h1 class="mb-0">C2C Season Stats - @Model.Year</h1>
+    <div class="d-flex gap-2 align-items-center">
+        @if (Model.AvailableYears.Any())
+        {
+            <select id="seasonYear" class="form-select" style="width:auto;">
+                @foreach (var y in Model.AvailableYears)
+                {
+                    <option value="@y" selected="@(y == Model.Year)">@y</option>
+                }
+            </select>
+        }
+        <a class="btn btn-outline-primary" asp-action="Dashboard" asp-route-year="@Model.Year">Season Statistics</a>
+    </div>
+</div>
+
+<script>
+    document.getElementById('seasonYear')?.addEventListener('change', function (e) {
+        const url = new URL(window.location);
+        url.searchParams.set('year', e.target.value);
+        window.location = url.toString();
+    });
+</script>
+
+@if (!Model.HasData)
+{
+    <div class="alert alert-info mt-3">No Crown to Crown events in @Model.Year yet.</div>
+    return;
+}
+
+<p class="text-muted">
+    Season-to-date across @Model.EventsRun of @Model.EventsScheduled scheduled C2C event(s).
+    @if (!string.IsNullOrEmpty(Model.CurrentEventName))
+    {
+        <span>Current event: <strong>@Model.CurrentEventName</strong>.</span>
+    }
+    All C2C events share one course, so finish times are directly comparable across the season.
+</p>
+
+<div class="row g-3 mt-1">
+    <div class="col-6 col-md-4 col-lg-2"><div class="card h-100"><div class="card-body"><h6 class="text-muted">Events run</h6><p class="display-6 mb-0">@Model.EventsRun<span class="fs-6 text-muted">/@Model.EventsScheduled</span></p></div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="card h-100"><div class="card-body"><h6 class="text-muted">Unique runners</h6><p class="display-6 mb-0">@Model.UniqueRunners</p></div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="card h-100"><div class="card-body"><h6 class="text-muted">Total finishers</h6><p class="display-6 mb-0">@Model.TotalFinishers</p></div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="card h-100"><div class="card-body"><h6 class="text-muted">Avg field size</h6><p class="display-6 mb-0">@Model.AverageFieldSize</p></div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="card h-100"><div class="card-body"><h6 class="text-muted">Season DNF rate</h6><p class="display-6 mb-0">@Model.SeasonDnfRatePercent%</p></div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="card h-100"><div class="card-body"><h6 class="text-muted">Ever-present</h6><p class="display-6 mb-0">@Model.EverPresentCount</p></div></div></div>
+</div>
+
+@if (Model.ExcludedTimeRows > 0)
+{
+    <p class="small text-warning mt-2">@Model.ExcludedTimeRows finisher row(s) excluded from time-based charts (unparseable time).</p>
+}
+
+<div class="row g-3 mt-2">
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <div class="chart-card-head">
+                <h5 class="card-title mb-0">Participation trend</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="participation" title="Expand chart" aria-label="Expand Participation trend chart">⤢ Expand</button>
+            </div>
+            <div style="height: 340px;"><canvas id="participationChart" aria-label="Entrants and finishers per event"></canvas></div>
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <div class="chart-card-head">
+                <h5 class="card-title mb-0">New vs returning runners</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="newReturning" title="Expand chart" aria-label="Expand New vs returning chart">⤢ Expand</button>
+            </div>
+            <div style="height: 340px;"><canvas id="newReturningChart" aria-label="First-timers and returning runners per event"></canvas></div>
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <div class="chart-card-head">
+                <h5 class="card-title mb-0">Cumulative unique runners</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="cumulative" title="Expand chart" aria-label="Expand Cumulative unique runners chart">⤢ Expand</button>
+            </div>
+            <div style="height: 340px;"><canvas id="cumulativeChart" aria-label="Cumulative unique runners across the season"></canvas></div>
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <div class="chart-card-head">
+                <h5 class="card-title mb-0">Gender split trend (finishers)</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="gender" title="Expand chart" aria-label="Expand Gender split trend chart">⤢ Expand</button>
+            </div>
+            <div style="height: 340px;"><canvas id="genderChart" aria-label="Male and female finishers per event"></canvas></div>
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <div class="chart-card-head">
+                <h5 class="card-title mb-0">Winner &amp; median finish time</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="time" title="Expand chart" aria-label="Expand Finish time trend chart">⤢ Expand</button>
+            </div>
+            <div style="height: 340px;"><canvas id="timeChart" aria-label="Winner and median finish time per event"></canvas></div>
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <div class="chart-card-head">
+                <h5 class="card-title mb-0">Attendance distribution</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="attendance" title="Expand chart" aria-label="Expand Attendance distribution chart">⤢ Expand</button>
+            </div>
+            <p class="small text-muted mb-1">How many runners have raced 1, 2, 3… events so far.</p>
+            <div style="height: 300px;"><canvas id="attendanceChart" aria-label="Attendance distribution"></canvas></div>
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <div class="chart-card-head">
+                <h5 class="card-title mb-0">Top clubs (by unique runners)</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="club" title="Expand chart" aria-label="Expand Top clubs chart">⤢ Expand</button>
+            </div>
+            <div style="height: @(clubChartHeight)px;"><canvas id="clubChart" aria-label="Top clubs by unique runners"></canvas></div>
+        </div></div>
+    </div>
+    @if (Model.HasPointsData)
+    {
+        <div class="col-lg-6">
+            <div class="card h-100"><div class="card-body">
+                <div class="chart-card-head">
+                    <h5 class="card-title mb-0">Champions points race (top 8)</h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary chart-expand" data-chart="points" title="Expand chart" aria-label="Expand Champions points race chart">⤢ Expand</button>
+                </div>
+                <p class="small text-muted mb-1">Cumulative points across the May–Sept Champions window.</p>
+                <div style="height: 340px;"><canvas id="pointsChart" aria-label="Champions points race"></canvas></div>
+            </div></div>
+        </div>
+    }
+</div>
+
+<p class="mt-3 text-muted">Season-to-date figures update as each C2C event is processed. Unaffiliated means runners without a club.</p>
+
+<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chartModalTitle">Chart</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div style="height: 72vh;"><canvas id="chartModalCanvas" aria-label="Expanded chart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/chartjs/chart.umd.min.js"></script>
+    <script src="~/lib/chartjs-plugin-datalabels/chartjs-plugin-datalabels.min.js"></script>
+    <script>
+        (() => {
+            if (!window.Chart) {
+                return;
+            }
+
+            if (window.ChartDataLabels) {
+                Chart.register(window.ChartDataLabels);
+            }
+
+            // --- Data (from the server) ---
+            const eventLabels = @Html.Raw(JsonSerializer.Serialize(Model.Events.Select(e => e.EventDate.ToString("dd MMM"))));
+            const entrants = @Html.Raw(JsonSerializer.Serialize(Model.Events.Select(e => e.Entrants)));
+            const finishers = @Html.Raw(JsonSerializer.Serialize(Model.Events.Select(e => e.Finishers)));
+            const firstTimers = @Html.Raw(JsonSerializer.Serialize(Model.Events.Select(e => e.FirstTimers)));
+            const returning = @Html.Raw(JsonSerializer.Serialize(Model.Events.Select(e => e.ReturningRunners)));
+            const maleFinishers = @Html.Raw(JsonSerializer.Serialize(Model.Events.Select(e => e.MaleFinishers)));
+            const femaleFinishers = @Html.Raw(JsonSerializer.Serialize(Model.Events.Select(e => e.FemaleFinishers)));
+            const cumulativeRunners = @Html.Raw(JsonSerializer.Serialize(Model.Events.Select(e => e.CumulativeUniqueRunners)));
+            const winnerSeconds = @Html.Raw(JsonSerializer.Serialize(Model.Events.Select(e => e.WinnerSeconds)));
+            const medianSeconds = @Html.Raw(JsonSerializer.Serialize(Model.Events.Select(e => e.MedianSeconds)));
+
+            const attendanceLabels = @Html.Raw(JsonSerializer.Serialize(Model.AttendanceDistribution.Select(b => b.Events + " event" + (b.Events == 1 ? "" : "s"))));
+            const attendanceValues = @Html.Raw(JsonSerializer.Serialize(Model.AttendanceDistribution.Select(b => b.Runners)));
+
+            const clubLabels = @Html.Raw(JsonSerializer.Serialize(Model.TopClubs.Select(c => c.Club)));
+            const clubValues = @Html.Raw(JsonSerializer.Serialize(Model.TopClubs.Select(c => c.Count)));
+
+            const pointsLabels = @Html.Raw(JsonSerializer.Serialize(Model.PointsRaceEventNames));
+            const pointsRunners = @Html.Raw(JsonSerializer.Serialize(Model.PointsRace.Select(r => new { name = r.RunnerName, data = r.CumulativePoints })));
+
+            const paletteLight = ["#0066ff", "#ff6a00", "#00c2ff", "#ff2ea6", "#7a33ff", "#24cc6b", "#ffbf00", "#ff3b30", "#00b894", "#6c5ce7"];
+            const paletteDark  = ["#4da3ff", "#ff9f43", "#45d6ff", "#ff66c4", "#b084ff", "#42e88f", "#ffd166", "#ff6b6b", "#33d9b2", "#a29bfe"];
+
+            function theme() {
+                const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+                return {
+                    isDark,
+                    text: isDark ? "#eef4ff" : "#18212f",
+                    grid: isDark ? "#2f4359" : "#dbe2ec",
+                    palette: isDark ? paletteDark : paletteLight
+                };
+            }
+
+            const pad = (n) => (n < 10 ? "0" + n : "" + n);
+            const fmtTime = (sec) => (sec === null || sec === undefined) ? "" : Math.floor(sec / 60) + ":" + pad(sec % 60);
+
+            const valueLabels = (t) => ({
+                anchor: "end", align: "end", clamp: true,
+                color: t.text, font: { weight: "600" },
+                formatter: (v) => (v > 0 ? v : "")
+            });
+
+            const trendScales = (t, yTitle) => ({
+                x: { ticks: { color: t.text }, grid: { color: t.grid } },
+                y: { beginAtZero: true, title: { display: !!yTitle, text: yTitle, color: t.text }, ticks: { color: t.text, precision: 0 }, grid: { color: t.grid } }
+            });
+
+            const DEFS = [
+                {
+                    key: "participation", title: "Participation trend",
+                    build: (t) => ({
+                        type: "line",
+                        data: { labels: eventLabels, datasets: [
+                            { label: "Entrants", data: entrants, borderColor: t.palette[0], backgroundColor: "transparent", tension: 0.25, pointRadius: 3, pointHoverRadius: 5 },
+                            { label: "Finishers", data: finishers, borderColor: t.palette[5], backgroundColor: "transparent", tension: 0.25, pointRadius: 3, pointHoverRadius: 5 }
+                        ] },
+                        options: { maintainAspectRatio: false, scales: trendScales(t, "Runners"), plugins: { legend: { labels: { color: t.text } }, datalabels: { display: false } } }
+                    })
+                },
+                {
+                    key: "newReturning", title: "New vs returning runners",
+                    build: (t) => ({
+                        type: "bar",
+                        data: { labels: eventLabels, datasets: [
+                            { label: "Returning", data: returning, backgroundColor: t.palette[0], stack: "s" },
+                            { label: "First-timers", data: firstTimers, backgroundColor: t.palette[1], stack: "s" }
+                        ] },
+                        options: {
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { stacked: true, ticks: { color: t.text }, grid: { color: t.grid } },
+                                y: { stacked: true, beginAtZero: true, ticks: { color: t.text, precision: 0 }, grid: { color: t.grid } }
+                            },
+                            plugins: { legend: { labels: { color: t.text } }, datalabels: { display: false } }
+                        }
+                    })
+                },
+                {
+                    key: "cumulative", title: "Cumulative unique runners",
+                    build: (t) => ({
+                        type: "line",
+                        data: { labels: eventLabels, datasets: [
+                            { label: "Unique runners", data: cumulativeRunners, borderColor: t.palette[4], backgroundColor: t.isDark ? "rgba(176,132,255,0.28)" : "rgba(122,51,255,0.20)", fill: true, tension: 0.25, pointRadius: 3, pointHoverRadius: 5 }
+                        ] },
+                        options: { maintainAspectRatio: false, scales: trendScales(t, "Runners"), plugins: { legend: { display: false }, datalabels: { display: false } } }
+                    })
+                },
+                {
+                    key: "gender", title: "Gender split trend (finishers)",
+                    build: (t) => ({
+                        type: "bar",
+                        data: { labels: eventLabels, datasets: [
+                            { label: "Male", data: maleFinishers, backgroundColor: t.palette[0], stack: "g" },
+                            { label: "Female", data: femaleFinishers, backgroundColor: t.palette[3], stack: "g" }
+                        ] },
+                        options: {
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { stacked: true, ticks: { color: t.text }, grid: { color: t.grid } },
+                                y: { stacked: true, beginAtZero: true, ticks: { color: t.text, precision: 0 }, grid: { color: t.grid } }
+                            },
+                            plugins: { legend: { labels: { color: t.text } }, datalabels: { display: false } }
+                        }
+                    })
+                },
+                {
+                    key: "time", title: "Winner & median finish time",
+                    build: (t) => ({
+                        type: "line",
+                        data: { labels: eventLabels, datasets: [
+                            { label: "Winner", data: winnerSeconds, borderColor: t.palette[7], backgroundColor: "transparent", tension: 0.25, pointRadius: 3, pointHoverRadius: 5, spanGaps: true },
+                            { label: "Median", data: medianSeconds, borderColor: t.palette[2], backgroundColor: "transparent", tension: 0.25, pointRadius: 3, pointHoverRadius: 5, spanGaps: true }
+                        ] },
+                        options: {
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { ticks: { color: t.text }, grid: { color: t.grid } },
+                                y: { title: { display: true, text: "Time (mm:ss)", color: t.text }, ticks: { color: t.text, callback: (v) => fmtTime(v) }, grid: { color: t.grid } }
+                            },
+                            plugins: {
+                                legend: { labels: { color: t.text } },
+                                datalabels: { display: false },
+                                tooltip: { callbacks: { label: (c) => c.dataset.label + ": " + fmtTime(c.parsed.y) } }
+                            }
+                        }
+                    })
+                },
+                {
+                    key: "attendance", title: "Attendance distribution",
+                    build: (t) => ({
+                        type: "bar",
+                        data: { labels: attendanceLabels, datasets: [{ label: "Runners", data: attendanceValues, backgroundColor: attendanceLabels.map((_, i) => t.palette[i % t.palette.length]) }] },
+                        options: {
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { ticks: { color: t.text }, grid: { color: t.grid } },
+                                y: { beginAtZero: true, title: { display: true, text: "Runners", color: t.text }, ticks: { color: t.text, precision: 0 }, grid: { color: t.grid } }
+                            },
+                            plugins: { legend: { display: false }, datalabels: valueLabels(t) }
+                        }
+                    })
+                },
+                {
+                    key: "club", title: "Top clubs (by unique runners)",
+                    build: (t) => ({
+                        type: "bar",
+                        data: { labels: clubLabels, datasets: [{ label: "Runners", data: clubValues, backgroundColor: clubLabels.map((_, i) => t.palette[i % t.palette.length]) }] },
+                        options: {
+                            maintainAspectRatio: false,
+                            indexAxis: "y",
+                            scales: {
+                                x: { beginAtZero: true, ticks: { color: t.text, precision: 0 }, grid: { color: t.grid } },
+                                y: { ticks: { color: t.text, autoSkip: false, font: { size: 11 } }, grid: { color: t.grid } }
+                            },
+                            plugins: { legend: { display: false }, datalabels: valueLabels(t) }
+                        }
+                    })
+                },
+                {
+                    key: "points", title: "Champions points race (top 8)",
+                    build: (t) => ({
+                        type: "line",
+                        data: {
+                            labels: pointsLabels,
+                            datasets: pointsRunners.map((r, i) => ({
+                                label: r.name, data: r.data,
+                                borderColor: t.palette[i % t.palette.length],
+                                backgroundColor: "transparent", tension: 0.2, pointRadius: 2, pointHoverRadius: 5
+                            }))
+                        },
+                        options: { maintainAspectRatio: false, scales: trendScales(t, "Cumulative points"), plugins: { legend: { labels: { color: t.text, boxWidth: 12 } }, datalabels: { display: false } } }
+                    })
+                }
+            ];
+
+            // --- Inline charts ---
+            const inline = {};
+            function renderInline() {
+                const t = theme();
+                DEFS.forEach((d) => {
+                    const el = document.getElementById(d.key + "Chart");
+                    if (!el) return;
+                    if (inline[d.key]) inline[d.key].destroy();
+                    inline[d.key] = new Chart(el, d.build(t));
+                });
+            }
+            renderInline();
+
+            // --- Expand-to-modal ---
+            let modalChart = null;
+            let modalKey = null;
+            const modalEl = document.getElementById("chartModal");
+            const modal = modalEl && window.bootstrap ? new bootstrap.Modal(modalEl) : null;
+
+            function renderModal() {
+                const d = DEFS.find((x) => x.key === modalKey);
+                if (!d) return;
+                if (modalChart) modalChart.destroy();
+                document.getElementById("chartModalTitle").textContent = d.title;
+                modalChart = new Chart(document.getElementById("chartModalCanvas"), d.build(theme()));
+            }
+
+            if (modal) {
+                document.querySelectorAll(".chart-expand").forEach((btn) => {
+                    btn.addEventListener("click", () => { modalKey = btn.dataset.chart; modal.show(); });
+                });
+                modalEl.addEventListener("shown.bs.modal", renderModal);
+                modalEl.addEventListener("hidden.bs.modal", () => {
+                    if (modalChart) { modalChart.destroy(); modalChart = null; }
+                    modalKey = null;
+                });
+            }
+
+            // --- React to the dark-mode toggle without a page reload ---
+            new MutationObserver((muts) => {
+                if (muts.some((m) => m.attributeName === "data-theme")) {
+                    renderInline();
+                    if (modalChart) renderModal();
+                }
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+        })();
+    </script>
+}

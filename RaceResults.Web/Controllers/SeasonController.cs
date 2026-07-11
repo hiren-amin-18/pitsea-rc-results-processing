@@ -39,6 +39,13 @@ public class SeasonController : Controller
     }
 
     [HttpGet]
+    public IActionResult Stats(int? year)
+    {
+        var seasonYear = year ?? _raceResultsService.GetCurrentEvent()?.EventDate.Year ?? DateTime.Today.Year;
+        return View(_season.GetC2CSeasonStats(seasonYear));
+    }
+
+    [HttpGet]
     public IActionResult Runner(int id, int? year)
     {
         var seasonYear = year ?? _raceResultsService.GetCurrentEvent()?.EventDate.Year ?? DateTime.Today.Year;
