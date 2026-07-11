@@ -9,12 +9,10 @@
         string.Equals(routeController, controller, StringComparison.OrdinalIgnoreCase)
         && (actions.Length == 0 || actions.Any(a => string.Equals(routeAction, a, StringComparison.OrdinalIgnoreCase)));
 
-    var onHome = On("Home", "Index");
     var onEvents = On("Events");
     var onRace = On("Race", "Uploads", "Results");
     var onStandings = On("Season", "Dashboard", "Runner", "Review", "ReviewPdf") || On("Champions") || On("CourseRecords");
-    var onRunners = On("Runners");
-    var onVolunteers = On("Volunteers") || On("VolunteerRoles") || On("VolunteerRoster");
+    var onPeople = On("Runners") || On("Volunteers") || On("VolunteerRoles") || On("VolunteerRoster");
     var onStats = On("Race", "Stats", "Top10") || On("VolunteerStats") || On("Season", "Stats");
     var onSettings = On("Home", "Settings");
 
@@ -61,9 +59,6 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark @Active(onHome)" aria-current="@Current(onHome)" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link text-dark @Active(onEvents)" aria-current="@Current(onEvents)" asp-area="" asp-controller="Events" asp-action="Index">Events</a>
                         </li>
                         <li class="nav-item dropdown">
@@ -81,12 +76,12 @@
                                 <li><a class="dropdown-item" asp-area="" asp-controller="CourseRecords" asp-action="Index">Records</a></li>
                             </ul>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark @Active(onRunners)" aria-current="@Current(onRunners)" asp-area="" asp-controller="Runners" asp-action="Index">Runners</a>
-                        </li>
                         <li class="nav-item dropdown">
-                            <a class="nav-link text-dark dropdown-toggle @Active(onVolunteers)" aria-current="@Current(onVolunteers)" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Volunteers</a>
+                            <a class="nav-link text-dark dropdown-toggle @Active(onPeople)" aria-current="@Current(onPeople)" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">People</a>
                             <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" asp-area="" asp-controller="Runners" asp-action="Index">Runners</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">Volunteers</h6></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Volunteers" asp-action="Index">Volunteers</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="VolunteerRoles" asp-action="Index">Roles</a></li>
                                 @if (currentEvent is not null)
@@ -108,9 +103,6 @@
                                 <li><a class="dropdown-item" asp-area="" asp-controller="VolunteerStats" asp-action="Index">Volunteer Stats</a></li>
                             </ul>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark @Active(onSettings)" aria-current="@Current(onSettings)" asp-area="" asp-controller="Home" asp-action="Settings">Settings</a>
-                        </li>
                     </ul>
                     <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
                         @if (currentEvent is not null)
@@ -121,7 +113,8 @@
                         {
                             <span class="small text-muted">No current event</span>
                         }
-                        <button id="theme-toggle-nav" class="btn btn-outline-secondary btn-sm" type="button" aria-label="Toggle dark mode">Dark mode</button>
+                        <a class="btn btn-outline-secondary btn-sm @Active(onSettings)" asp-area="" asp-controller="Home" asp-action="Settings" aria-current="@Current(onSettings)" aria-label="Settings" title="Settings">&#9881;</a>
+                        <button id="theme-toggle-nav" class="btn btn-outline-secondary btn-sm" type="button" aria-label="Toggle dark mode" title="Toggle dark mode"></button>
                     </div>
                 </div>
             </div>

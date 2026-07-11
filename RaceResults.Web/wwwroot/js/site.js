@@ -15,7 +15,11 @@ function applyTheme(theme) {
 	const isDark = theme === "dark";
 	const navToggle = document.getElementById("theme-toggle-nav");
 	if (navToggle) {
-		navToggle.textContent = isDark ? "Light mode" : "Dark mode";
+		// Show the icon for the mode you'd switch TO: sun when dark, moon when light.
+		navToggle.textContent = isDark ? "☀️" : "🌙";
+		const label = isDark ? "Switch to light mode" : "Switch to dark mode";
+		navToggle.setAttribute("aria-label", label);
+		navToggle.setAttribute("title", label);
 		navToggle.setAttribute("aria-pressed", String(isDark));
 	}
 

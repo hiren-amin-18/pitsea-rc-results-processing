@@ -66,7 +66,7 @@ pitsea-rc-results-processing/
 │   │   ├── RunnerIdentity.cs           # Normalised name/club key (US15)
 │   │   └── DatabasePathResolver.cs     # Per-user DB location for installed builds (US25)
 │   ├── Views/                          # Razor views (Bootstrap; dark-mode aware)
-│   │   ├── Shared/_Layout.cshtml       # Navbar (Events, Race, Standings, Runners, Volunteers, Stats) + theme toggle
+│   │   ├── Shared/_Layout.cshtml       # Navbar (Events, Race, Standings, People, Stats) + Settings & theme-toggle icons
 │   │   ├── Home/                       # Dashboard + Settings (backup/restore)
 │   │   ├── Race/                       # Uploads, Results, EditResult, Stats, Top10
 │   │   ├── Events/                     # Index, Create, Edit, GenerateSeason (US31)
