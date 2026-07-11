@@ -314,6 +314,137 @@ public class ChampionsOfChampionsServiceTests : IDisposable
             () => _championsService.CalculateAndSaveEventPointsAsync(1));
     }
 
+    [Fact]
+    public async Task GetLeaderboard_OrdersCategoriesMaleFemaleMaleU18FemaleU18()
+    {
+        // Seed all four categories, deliberately with a non-Male runner first, to prove the
+        // leaderboard imposes a fixed category order rather than following the data order.
+        var rows = new List<string[]> { EntrantHeader };
+        rows.Add(["1", "Alice", "Club", "Female", "25"]);
+        rows.Add(["2", "Bob", "Club", "Male", "25"]);
+        rows.Add(["3", "Charlie", "Club", "Male", "16"]);   // Male U18
+        rows.Add(["4", "Dana", "Club", "Female", "15"]);    // Female U18
+        await _raceResultsService.UploadEntrantsAsync([FormFileHelpers.CreateXlsx("e.xlsx", rows)]);
+
+        var finishRows = new List<string[]> { new[] { "Position", "Bib" }, new[] { "1", "1" }, new[] { "2", "2" }, new[] { "3", "3" }, new[] { "4", "4" } };
+        await _raceResultsService.UploadFinishBibAsync(FormFileHelpers.CreateXlsx("fb.xlsx", finishRows));
+        await _raceResultsService.UploadTimingsAsync(
+            FormFileHelpers.CreateCsv("t.csv", "STARTOFEVENT,x,x\n1,x,00:20:00\n2,x,00:21:00\n3,x,00:22:00\n4,x,00:23:00\n"));
+        await _championsService.CalculateAndSaveEventPointsAsync(1);
+
+        var expected = new[] { "Male", "Female", "Male U18", "Female U18" };
+
+        var leaderboard = await _championsService.GetLeaderboardAsync(2026);
+        Assert.Equal(expected, leaderboard.Select(e => e.Category).Distinct().ToArray());
+
+        var detail = await _championsService.GetLeaderboardDetailAsync(2026);
+        Assert.Equal(expected, detail.Rows.Select(r => r.Entry.Category).Distinct().ToArray());
+    }
+
+    [Fact]
+    public async Task GetLeaderboardDetail_ColumnsAndPerEventPointsReconcileWithSummary()
+    {
+        var (event1Id, event2Id) = await SeedTwoEventSeasonAsync();
+
+        var detail = await _championsService.GetLeaderboardDetailAsync(2026);
+        var summary = await _championsService.GetLeaderboardAsync(2026);
+
+        // Two scored events become two columns, numbered by date, labelled "Round n – Month".
+        Assert.Equal(2, detail.Columns.Count);
+        Assert.Equal("Round 1 – June", detail.Columns[0].Label);
+        Assert.Equal("Round 2 – July", detail.Columns[1].Label);
+        Assert.Equal(event1Id, detail.Columns[0].EventId);
+        Assert.Equal(event2Id, detail.Columns[1].EventId);
+
+        // Every row's per-event points sum to its summary total (AC7).
+        foreach (var row in detail.Rows)
+        {
+            Assert.Equal(row.Entry.TotalPoints, row.PointsByEventId.Values.Sum());
+        }
+
+        // Detail rows match the summary rows one-for-one (same order, same totals).
+        Assert.Equal(summary.Count, detail.Rows.Count);
+        foreach (var (s, d) in summary.Zip(detail.Rows))
+        {
+            Assert.Equal(s.Entrant.Name, d.Entry.Entrant.Name);
+            Assert.Equal(s.TotalPoints, d.Entry.TotalPoints);
+            Assert.Equal(s.Rank, d.Entry.Rank);
+        }
+
+        // Runner3 only ran event 1, so event 2 is blank (null) for them (AC5).
+        var runner3 = detail.Rows.Single(r => r.Entry.Entrant.Name == "Runner3");
+        Assert.Equal(8, runner3.PointsFor(event1Id));
+        Assert.Null(runner3.PointsFor(event2Id));
+    }
+
+    [Fact]
+    public async Task GetLeaderboardDetail_AsOfEventLimitsColumns()
+    {
+        var (event1Id, _) = await SeedTwoEventSeasonAsync();
+
+        // As of the first event, only its column is shown and totals reflect that event alone.
+        var detail = await _championsService.GetLeaderboardDetailAsync(2026, event1Id);
+
+        Assert.Single(detail.Columns);
+        Assert.Equal(event1Id, detail.Columns[0].EventId);
+
+        var runner1 = detail.Rows.Single(r => r.Entry.Entrant.Name == "Runner1");
+        Assert.Equal(10, runner1.Entry.TotalPoints);
+        Assert.Equal(10, runner1.PointsFor(event1Id));
+    }
+
+    /// <summary>
+    /// Seeds two in-season Crown to Crown events with the same runners at different bibs:
+    /// Event 1 (June): Runner1 1st (10), Runner2 2nd (9), Runner3 3rd (8).
+    /// Event 2 (July): Runner1 2nd (9), Runner2 1st (10); Runner3 does not run.
+    /// </summary>
+    private async Task<(int event1Id, int event2Id)> SeedTwoEventSeasonAsync()
+    {
+        // Event 1 is the seeded current event (Id 1), dated 2026-06-10 by the constructor.
+        var rows1 = new List<string[]> { EntrantHeader };
+        rows1.Add(["1", "Runner1", "Club", "Male", "25"]);
+        rows1.Add(["2", "Runner2", "Club", "Male", "25"]);
+        rows1.Add(["3", "Runner3", "Club", "Male", "25"]);
+        await _raceResultsService.UploadEntrantsAsync([FormFileHelpers.CreateXlsx("e1.xlsx", rows1)]);
+
+        var finishRows1 = new List<string[]> { new[] { "Position", "Bib" }, new[] { "1", "1" }, new[] { "2", "2" }, new[] { "3", "3" } };
+        await _raceResultsService.UploadFinishBibAsync(FormFileHelpers.CreateXlsx("fb1.xlsx", finishRows1));
+        await _raceResultsService.UploadTimingsAsync(
+            FormFileHelpers.CreateCsv("t1.csv", "STARTOFEVENT,x,x\n1,x,00:20:00\n2,x,00:21:00\n3,x,00:22:00\n"));
+        await _championsService.CalculateAndSaveEventPointsAsync(1);
+
+        int event2Id;
+        using (var db = _factory.CreateDbContext())
+        {
+            var event1 = await db.Events.FindAsync(1);
+            if (event1 != null) event1.IsCurrent = false;
+
+            var newEvent = new RaceEvent
+            {
+                EventName = "Event 2",
+                EventDate = new DateTime(2026, 7, 15),
+                EventType = EventType.CrownToCrown,
+                IsCurrent = true
+            };
+            db.Events.Add(newEvent);
+            await db.SaveChangesAsync();
+            event2Id = newEvent.Id;
+        }
+
+        var rows2 = new List<string[]> { EntrantHeader };
+        rows2.Add(["10", "Runner1", "Club", "Male", "25"]);
+        rows2.Add(["20", "Runner2", "Club", "Male", "25"]);
+        await _raceResultsService.UploadEntrantsAsync([FormFileHelpers.CreateXlsx("e2.xlsx", rows2)]);
+
+        var finishRows2 = new List<string[]> { new[] { "Position", "Bib" }, new[] { "1", "20" }, new[] { "2", "10" } };
+        await _raceResultsService.UploadFinishBibAsync(FormFileHelpers.CreateXlsx("fb2.xlsx", finishRows2));
+        await _raceResultsService.UploadTimingsAsync(
+            FormFileHelpers.CreateCsv("t2.csv", "STARTOFEVENT,x,x\n1,x,00:21:00\n2,x,00:22:00\n"));
+        await _championsService.CalculateAndSaveEventPointsAsync(event2Id);
+
+        return (1, event2Id);
+    }
+
     private async Task SeedEventWithResults(int eventId, string eventName = "Test Race")
     {
         // Seed basic event with 5 male runners

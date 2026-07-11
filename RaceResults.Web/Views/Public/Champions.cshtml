@@ -7,9 +7,61 @@
 <h2 class="h3">Champions of Champions - @Model.SeasonYear</h2>
 <p class="mb-3"><a href="@Url.Action("Results", "Public", new { token = Model.Token })">← Back to @Model.EventName results</a></p>
 
+<div class="btn-group mb-3" role="group" aria-label="Leaderboard view">
+    <a class="btn btn-sm @(Model.ShowDetail ? "btn-outline-primary" : "btn-primary")"
+       href="@Url.Action("Champions", "Public", new { token = Model.Token })">Summary</a>
+    <a class="btn btn-sm @(Model.ShowDetail ? "btn-primary" : "btn-outline-primary")"
+       href="@Url.Action("Champions", "Public", new { token = Model.Token, detail = true })">Show details</a>
+</div>
+
 @if (!Model.Leaderboard.Any())
 {
     <div class="alert alert-info">No Champions of Champions data for this season yet.</div>
+}
+else if (Model.ShowDetail && Model.Detail != null)
+{
+    var columns = Model.Detail.Columns;
+    foreach (var category in Model.Detail.Rows.GroupBy(r => r.Entry.Category))
+    {
+        <h3 class="h5 mt-4">@category.Key</h3>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+                <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
+                    <tr>
+                        <th style="width:60px;">Rank</th>
+                        <th>Name</th>
+                        <th>Club</th>
+                        @foreach (var column in columns)
+                        {
+                            <th class="text-center" title="@column.EventName (@column.EventDate.ToString("MMMM d, yyyy"))">@column.Label</th>
+                        }
+                        <th class="text-center">Events</th>
+                        <th class="text-end">Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in category.OrderBy(r => r.Entry.Rank))
+                {
+                    var entry = row.Entry;
+                    var bg = entry.Rank switch { 1 => "#ffd700", 2 => "#c0c0c0", 3 => "#cd7f32", _ => "" };
+                    <tr style="@(string.IsNullOrEmpty(bg) ? "" : $"background-color:{bg};color:#000;")">
+                        <td>@entry.Rank@(entry.IsPointsTied ? " †" : "")</td>
+                        <td>@entry.Entrant.Name</td>
+                        <td>@(string.IsNullOrWhiteSpace(entry.Entrant.Club) ? "Unaffiliated" : entry.Entrant.Club)</td>
+                        @foreach (var column in columns)
+                        {
+                            var points = row.PointsFor(column.EventId);
+                            <td class="text-center">@(points?.ToString() ?? "–")</td>
+                        }
+                        <td class="text-center">@entry.RaceCount</td>
+                        <td class="text-end fw-bold">@entry.TotalPoints</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+    <p class="small text-muted mt-2">† tied on points and races completed. Blank / – means no points scored that event.</p>
 }
 else
 {

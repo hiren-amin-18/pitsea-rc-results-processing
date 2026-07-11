@@ -27,4 +27,10 @@ public class PublicChampionsViewModel
     public required string EventName { get; init; }
     public int SeasonYear { get; init; }
     public required IReadOnlyList<ChampionsLeaderboardEntry> Leaderboard { get; init; }
+
+    /// <summary>When true, show the per-event breakdown (US44) instead of the summary.</summary>
+    public bool ShowDetail { get; init; }
+
+    /// <summary>The per-event breakdown, populated only when <see cref="ShowDetail"/> is true.</summary>
+    public ChampionsDetail? Detail { get; init; }
 }

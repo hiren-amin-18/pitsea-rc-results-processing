@@ -9,4 +9,10 @@ public class ChampionsLeaderboardViewModel
     public int CurrentEventId { get; set; }
     public string CurrentEventName { get; set; } = string.Empty;
     public DateTime AsOfDate { get; set; }
+
+    /// <summary>When true, show the per-event breakdown (US44) instead of the summary.</summary>
+    public bool ShowDetail { get; set; }
+
+    /// <summary>The per-event breakdown, populated only when <see cref="ShowDetail"/> is true.</summary>
+    public ChampionsDetail? Detail { get; set; }
 }

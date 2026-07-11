@@ -23,6 +23,12 @@ public interface IChampionsOfChampionsService
     /// <summary>Get current Champions leaderboard for the active season</summary>
     Task<IReadOnlyList<ChampionsLeaderboardEntry>> GetCurrentSeasonLeaderboardAsync(int? asOfEventId = null);
 
+    /// <summary>Get the detailed per-event breakdown of the leaderboard for a season (US44): the same
+    /// ranked rows as the summary, plus one column per scored event with the points scored in each.</summary>
+    /// <param name="seasonYear">The competition season (e.g., 2026)</param>
+    /// <param name="asOfEventId">Optional: only include scored events up to and including this event</param>
+    Task<ChampionsDetail> GetLeaderboardDetailAsync(int seasonYear, int? asOfEventId = null);
+
     /// <summary>Check if a runner is eligible for Champions points (must be in top 10 of their category)</summary>
     Task<bool> IsEligibleForPointsAsync(int entrantId, int eventId, string category);
 

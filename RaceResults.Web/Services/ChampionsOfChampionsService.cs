@@ -144,6 +144,88 @@ public class ChampionsOfChampionsService : IChampionsOfChampionsService
         return await GetLeaderboardAsync(currentSeasonYear, asOfEventId);
     }
 
+    public async Task<ChampionsDetail> GetLeaderboardDetailAsync(int seasonYear, int? asOfEventId = null)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+
+        // The in-season Crown to Crown events that can carry points, in date order, optionally
+        // capped at the "as of" event's date so the columns match the summary's as-of scope.
+        var eventsQuery = db.Events
+            .Where(e => e.EventType == EventType.CrownToCrown
+                     && e.EventDate.Year == seasonYear
+                     && e.EventDate.Month >= SeasonStartMonth
+                     && e.EventDate.Month <= SeasonEndMonth);
+
+        if (asOfEventId.HasValue)
+        {
+            var targetEvent = await db.Events.FirstOrDefaultAsync(e => e.Id == asOfEventId);
+            if (targetEvent != null)
+            {
+                eventsQuery = eventsQuery.Where(e => e.EventDate <= targetEvent.EventDate);
+            }
+        }
+
+        var seasonEvents = await eventsQuery.OrderBy(e => e.EventDate).ToListAsync();
+        var eligibleEventIds = seasonEvents.Select(e => e.Id).ToList();
+
+        var audits = await db.PointsAuditLogs
+            .Where(a => a.SeasonYear == seasonYear
+                     && eligibleEventIds.Contains(a.EventId)
+                     && a.Action != AuditAction.Voided)
+            .Include(a => a.Entrant)
+            .ToListAsync();
+
+        // The latest batch per event only (mirrors AggregateAudits) so a re-scored event isn't double counted.
+        var liveAudits = audits
+            .Where(a => a.Entrant != null)
+            .GroupBy(a => a.EventId)
+            .SelectMany(g =>
+            {
+                var latestBatch = g.Max(x => x.AuditTimestamp);
+                return g.Where(x => x.AuditTimestamp == latestBatch);
+            })
+            .ToList();
+
+        // Columns are only the events that actually awarded points, numbered in date order.
+        var scoredEventIds = liveAudits.Select(a => a.EventId).ToHashSet();
+        var columns = seasonEvents
+            .Where(e => scoredEventIds.Contains(e.Id))
+            .Select((e, i) => new ChampionsDetailColumn
+            {
+                EventId = e.Id,
+                Round = i + 1,
+                Label = $"Round {i + 1} – {e.EventDate:MMMM}",
+                EventName = e.EventName,
+                EventDate = e.EventDate
+            })
+            .ToList();
+
+        // Per runner+category, the points scored in each event. Keyed by the same runner identity
+        // the summary aggregation uses, so the two always line up.
+        var pointsByRunner = liveAudits
+            .GroupBy(a => $"{RunnerKey(a.Entrant!)}|{a.Category}")
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyDictionary<int, int>)g
+                    .GroupBy(x => x.EventId)
+                    .ToDictionary(x => x.Key, x => x.Sum(y => y.PointsAwarded)));
+
+        // Reuse the summary ranking verbatim so rows, order, ties and highlighting match exactly.
+        var rankedEntries = RankAndReturn(AggregateAudits(audits));
+
+        var rows = rankedEntries
+            .Select(entry => new ChampionsDetailRow
+            {
+                Entry = entry,
+                PointsByEventId = pointsByRunner.TryGetValue($"{RunnerKey(entry.Entrant)}|{entry.Category}", out var map)
+                    ? map
+                    : new Dictionary<int, int>()
+            })
+            .ToList();
+
+        return new ChampionsDetail { Columns = columns, Rows = rows };
+    }
+
     public async Task<bool> IsEligibleForPointsAsync(int entrantId, int eventId, string category)
     {
         using var db = _dbContextFactory.CreateDbContext();
@@ -288,12 +370,24 @@ public class ChampionsOfChampionsService : IChampionsOfChampionsService
     private static string RunnerKey(Entrant entrant) =>
         entrant.RunnerId.HasValue ? $"r{entrant.RunnerId.Value}" : $"e{entrant.Id}";
 
+    // The fixed order categories are shown in across the leaderboard and every export.
+    private static readonly string[] CategoryDisplayOrder = { "Male", "Female", "Male U18", "Female U18" };
+
+    /// <summary>Sort index for a category in the canonical display order; unknown categories sort last.</summary>
+    public static int CategoryDisplayRank(string category)
+    {
+        var index = Array.IndexOf(CategoryDisplayOrder, category);
+        return index < 0 ? int.MaxValue : index;
+    }
+
     private static IReadOnlyList<ChampionsLeaderboardEntry> RankAndReturn(
         List<ChampionsLeaderboardEntry> entries)
     {
-        // Group by category, rank within each category
+        // Group by category (in canonical display order), rank within each category
         var rankedByCategory = entries
             .GroupBy(e => e.Category)
+            .OrderBy(g => CategoryDisplayRank(g.Key))
+            .ThenBy(g => g.Key)
             .SelectMany(g =>
             {
                 var sorted = g

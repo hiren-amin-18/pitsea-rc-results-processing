@@ -49,15 +49,77 @@
     });
 </script>
 
+<!-- Summary / Details toggle (US44) -->
+<div class="btn-group mb-3" role="group" aria-label="Leaderboard view">
+    <a class="btn btn-sm @(Model.ShowDetail ? "btn-outline-primary" : "btn-primary")"
+       href="@Url.Action("Leaderboard", new { eventId = Model.CurrentEventId, year = Model.SeasonYear })">Summary</a>
+    <a class="btn btn-sm @(Model.ShowDetail ? "btn-primary" : "btn-outline-primary")"
+       href="@Url.Action("Leaderboard", new { eventId = Model.CurrentEventId, year = Model.SeasonYear, detail = true })">Show details</a>
+</div>
+
 <!-- Tie-Breaking Key -->
 <div class="alert alert-info mb-4">
-    <strong>ℹ️ How Ties Are Broken:</strong> When runners have equal points, they are ranked by number of races completed (more events = higher rank). 
+    <strong>ℹ️ How Ties Are Broken:</strong> When runners have equal points, they are ranked by number of races completed (more events = higher rank).
     <strong style="color: #ff6b6b;">†</strong> indicates runners with tied points.
 </div>
 
 @if (!Model.Leaderboard.Any())
 {
     <div class="alert alert-info">No Champions of Champions data available yet. Results will appear after the first Crown to Crown race is scored.</div>
+}
+else if (Model.ShowDetail && Model.Detail != null)
+{
+    var columns = Model.Detail.Columns;
+    var rowsByCategory = Model.Detail.Rows.GroupBy(r => r.Entry.Category).ToList();
+
+    @foreach (var category in rowsByCategory)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">@category.Key</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead style="position: sticky; top: 0; z-index: 2; background-color: var(--bs-body-bg);">
+                            <tr>
+                                <th style="width: 70px;">Rank</th>
+                                <th>Name</th>
+                                <th>Club</th>
+                                @foreach (var column in columns)
+                                {
+                                    <th class="text-center" title="@column.EventName (@column.EventDate.ToString("MMMM d, yyyy"))">@column.Label</th>
+                                }
+                                <th class="text-center">Events</th>
+                                <th class="text-end">Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in category.OrderBy(r => r.Entry.Rank))
+                            {
+                                var entry = row.Entry;
+                                var highlightClass = entry.HighlightClass ?? string.Empty;
+                                <tr class="@highlightClass">
+                                    <td>
+                                        <strong>@entry.Rank</strong>@if (entry.IsPointsTied) { <span style="color: #ff6b6b; font-weight: bold; margin-left: 4px;">†</span> }
+                                    </td>
+                                    <td><strong>@entry.Entrant.Name</strong></td>
+                                    <td>@(string.IsNullOrEmpty(entry.Entrant.Club) ? "Unaffiliated" : entry.Entrant.Club)</td>
+                                    @foreach (var column in columns)
+                                    {
+                                        var points = row.PointsFor(column.EventId);
+                                        <td class="text-center">@(points?.ToString() ?? "–")</td>
+                                    }
+                                    <td class="text-center"><strong>@entry.RaceCount</strong></td>
+                                    <td class="text-end fw-bold">@entry.TotalPoints</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
 }
 else
 {
@@ -120,11 +182,11 @@ else
 }
 
 <div class="mt-4">
-    <a href="@Url.Action("ExportPdf", new { eventId = Model.CurrentEventId, year = Model.SeasonYear })" class="btn btn-primary">
-        <i class="bi bi-file-pdf"></i> Export to PDF
+    <a href="@Url.Action("ExportPdf", new { eventId = Model.CurrentEventId, year = Model.SeasonYear, detail = Model.ShowDetail })" class="btn btn-primary">
+        <i class="bi bi-file-pdf"></i> Export to PDF@(Model.ShowDetail ? " (detailed)" : "")
     </a>
-    <a href="@Url.Action("ExportCsv", new { eventId = Model.CurrentEventId, year = Model.SeasonYear })" class="btn btn-outline-primary">
-        <i class="bi bi-filetype-csv"></i> Export to CSV
+    <a href="@Url.Action("ExportCsv", new { eventId = Model.CurrentEventId, year = Model.SeasonYear, detail = Model.ShowDetail })" class="btn btn-outline-primary">
+        <i class="bi bi-filetype-csv"></i> Export to CSV@(Model.ShowDetail ? " (detailed)" : "")
     </a>
 </div>
 

@@ -47,7 +47,7 @@ public class PublicController : Controller
     }
 
     [HttpGet("champions/{token}")]
-    public async Task<IActionResult> Champions(string token)
+    public async Task<IActionResult> Champions(string token, bool detail = false)
     {
         var raceEvent = _raceResultsService.GetPublishedEventByToken(token);
         if (raceEvent is null)
@@ -63,7 +63,9 @@ public class PublicController : Controller
             Token = token,
             EventName = raceEvent.EventName,
             SeasonYear = seasonYear,
-            Leaderboard = leaderboard
+            Leaderboard = leaderboard,
+            ShowDetail = detail,
+            Detail = detail ? await _championsService.GetLeaderboardDetailAsync(seasonYear) : null
         };
 
         return View(model);

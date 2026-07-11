@@ -1,6 +1,6 @@
 # User Stories
 
-All user stories are implemented — US01–US25 and US27–US43 (US26 cloud hosting was dropped as not required). Each story file carries a **Status** line (✅ Complete) for tracking. Individual story files are in [`user-stories/`](../user-stories/):
+All user stories are implemented — US01–US25 and US27–US44 (US26 cloud hosting was dropped as not required). Each story file carries a **Status** line (✅ Complete) for tracking. Individual story files are in [`user-stories/`](../user-stories/):
 
 ## Implemented
 
@@ -48,6 +48,7 @@ All user stories are implemented — US01–US25 and US27–US43 (US26 cloud hos
 | [US41](../user-stories/US41-per-role-quick-assign.md) | Per-Role Quick Assign |
 | [US42](../user-stories/US42-no-show-tracking.md) | No-Show Tracking |
 | [US43](../user-stories/US43-volunteer-register-grooming.md) | Volunteer Register Grooming |
+| [US44](../user-stories/US44-champions-detailed-per-event-breakdown.md) | Champions of Champions Detailed Per-Event Breakdown |
 
 ## Story dependencies (for context)
 
@@ -64,3 +65,4 @@ Most stories are independent; these are the non-obvious dependencies the impleme
 - **US31 (Season Calendar Generator)** is independent (it encodes the C2C date rules in the [Domain Conventions](domain-conventions.md)) and pairs with US20 for season turnover
 - **US36–US41 (roster management improvements)** all build on **US28**/**US32**: US36 wires up the update path US28 stubbed; US37/US41 are roster-page ergonomics; US38 filters the US32 draft before the applier; US40 layers volunteer defaults + per-event grid memory under the US32 allocate form without touching the allocator itself
 - **US42 (No-Show Tracking)** corrects **US29** stats/ballot counts and feeds honest season history to **US32**; **US43 (Register Grooming)** consumes US42's flag for its recency and count columns
+- **US44 (Champions Detailed Per-Event Breakdown)** is a presentation-only extension of **US14**: it reuses the existing `PointsAuditLog` per-event awards and the summary aggregation to add a per-event breakdown toggle and detailed exports on both the internal and public (**US21**) Champions views; no schema change

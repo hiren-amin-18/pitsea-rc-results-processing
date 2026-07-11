@@ -28,6 +28,14 @@ The Champions of Champions is a **yearly cumulative leaderboard** that ranks run
   - 2nd place: Silver background
   - 3rd place: Bronze background
 
+**Per-Event Detail View (US44):**
+- A **Summary / Show details** toggle on both the internal leaderboard and the public page (`?detail=1`)
+- Detail view keeps the same rows (ranked by points, same ties and top-3 highlighting) but adds **one column per scored event**, in date order, headed `Round 1 – May`, `Round 2 – June`, … (the event's name/date is available as a column tooltip)
+- Each cell shows the points that runner scored in that event; a **blank / – means no points** (outside the top 10, or did not run)
+- Columns respect the `asOfEventId` scope, so an "as of event N" view only shows rounds up to that event; each row's per-event points reconcile to its Points total
+- Only May–September scoring events appear as columns (Good Friday / Boxing Day never score, so they are not shown)
+- Both the PDF and CSV exports follow the on-screen toggle; the **detailed PDF is A4 landscape** to fit the extra columns
+
 **Edit Handling:**
 - If any past race result is edited (position, runner category, etc.), the entire season's points are **automatically recalculated**
 - Recalculation **appends** a new `Recalculated` batch of audit entries per event — earlier batches are never deleted, preserving the full history of when points were awarded vs recalculated
@@ -68,6 +76,7 @@ The Champions of Champions is a **yearly cumulative leaderboard** that ranks run
 - `CalculateAndSaveEventPointsAsync(eventId)` - Scores top 10 per category for an event; throws if the event is not Crown to Crown or falls outside the May–September window
 - `RecalculateSeasonPointsAsync(seasonYear)` - Re-scores every in-season event, appending `Recalculated` audit batches (called on result edits)
 - `GetLeaderboardAsync(seasonYear, asOfEventId?)` - Retrieves cumulative leaderboard; with `asOfEventId`, aggregates from the audit log including only events up to that event's date
+- `GetLeaderboardDetailAsync(seasonYear, asOfEventId?)` - The per-event breakdown (US44): the same ranked rows plus one column per scored event with the points scored in each; reuses the summary aggregation so rows reconcile
 - `GetCurrentSeasonLeaderboardAsync(asOfEventId?)` - Leaderboard for the season of the current event's date
 - `IsEligibleForPointsAsync(entrantId, eventId, category)` - Checks if runner scored (excludes voided entries)
 
@@ -88,6 +97,10 @@ GET  /Champions/ExportPdf                       → Export current season to PDF
 GET  /Champions/ExportPdf?year=2025             → Export 2025 season to PDF
 GET  /Champions/ExportPdf?year=2025&eventId=5   → Export 2025 as of event 5
 GET  /Champions/ExportCsv?year=2025&eventId=5   → Export the same leaderboard view to CSV
+GET  /Champions/Leaderboard?detail=true         → Per-event breakdown (round columns)
+GET  /Champions/ExportPdf?detail=true            → Detailed PDF (landscape, per-event columns)
+GET  /Champions/ExportCsv?detail=true            → Detailed CSV (per-event columns)
+GET  /public/champions/{token}?detail=true       → Public per-event breakdown
 ```
 
 Results CSV export is at `GET /Race/ExportCsv` (current event).
@@ -116,7 +129,7 @@ Results CSV export is at `GET /Race/ExportCsv` (current event).
 
 ## Test Coverage
 
-- **7 comprehensive unit tests** covering:
+`ChampionsOfChampionsServiceTests` covers:
   - Point calculation accuracy (top 10 allocation)
   - Cumulative scoring across events
   - Category differentiation
@@ -124,3 +137,4 @@ Results CSV export is at `GET /Race/ExportCsv` (current event).
   - Tie-breaking logic
   - Visual highlighting for top 3
   - Tie detection and marking
+  - Per-event breakdown: columns labelled by round, rows reconcile to summary totals, as-of scoping limits columns, blanks where no points (US44)
