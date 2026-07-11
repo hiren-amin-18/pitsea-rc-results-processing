@@ -259,10 +259,17 @@ public class ChampionsController : Controller
                                 var entry = row.Entry;
                                 var bgColor = entry.Rank switch
                                 {
-                                    1 => "#FFD700",
-                                    2 => "#C0C0C0",
-                                    3 => "#CD7F32",
+                                    1 => "#FFF8E1",
+                                    2 => "#F4F4F4",
+                                    3 => "#FBF0E6",
                                     _ => "#FFFFFF"
+                                };
+                                var accentColor = entry.Rank switch
+                                {
+                                    1 => "#D4AF37",
+                                    2 => "#9E9E9E",
+                                    3 => "#CD7F32",
+                                    _ => (string?)null
                                 };
                                 var tiedMarker = entry.IsPointsTied ? " †" : "";
 
@@ -271,7 +278,13 @@ public class ChampionsController : Controller
                                     .Background(bgColor)
                                     .Padding(4);
 
-                                table.Cell().Element(CellStyle).AlignCenter().Text(entry.Rank.ToString());
+                                IContainer RankCellStyle(IContainer c)
+                                {
+                                    c = CellStyle(c);
+                                    return accentColor is null ? c : c.BorderLeft(3f).BorderColor(accentColor);
+                                }
+
+                                table.Cell().Element(RankCellStyle).AlignCenter().Text(entry.Rank.ToString());
                                 table.Cell().Element(CellStyle).Text(entry.Entrant?.Name ?? "-");
                                 table.Cell().Element(CellStyle).Text(entry.Entrant?.Club ?? "-");
                                 foreach (var eventColumn in detail.Columns)
@@ -348,10 +361,17 @@ public class ChampionsController : Controller
                             {
                                 var bgColor = entry.Rank switch
                                 {
-                                    1 => "#FFD700",
-                                    2 => "#C0C0C0",
-                                    3 => "#CD7F32",
+                                    1 => "#FFF8E1",
+                                    2 => "#F4F4F4",
+                                    3 => "#FBF0E6",
                                     _ => "#FFFFFF"
+                                };
+                                var accentColor = entry.Rank switch
+                                {
+                                    1 => "#D4AF37",
+                                    2 => "#9E9E9E",
+                                    3 => "#CD7F32",
+                                    _ => (string?)null
                                 };
                                 var tiedMarker = entry.IsPointsTied ? " †" : "";
 
@@ -360,7 +380,13 @@ public class ChampionsController : Controller
                                     .Background(bgColor)
                                     .Padding(4);
 
-                                table.Cell().Element(CellStyle).AlignCenter().Text(entry.Rank.ToString());
+                                IContainer RankCellStyle(IContainer c)
+                                {
+                                    c = CellStyle(c);
+                                    return accentColor is null ? c : c.BorderLeft(3f).BorderColor(accentColor);
+                                }
+
+                                table.Cell().Element(RankCellStyle).AlignCenter().Text(entry.Rank.ToString());
                                 table.Cell().Element(CellStyle).Text(entry.Entrant?.Name ?? "-");
                                 table.Cell().Element(CellStyle).Text(entry.Entrant?.Club ?? "-");
                                 table.Cell().Element(CellStyle).AlignCenter().Text(entry.RaceCount.ToString() + tiedMarker);
