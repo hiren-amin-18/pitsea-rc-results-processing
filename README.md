@@ -8,7 +8,7 @@ A quick look at the main features (using anonymised demo data). See the full [sc
 
 | Race statistics | Champions leaderboard | Volunteer roster |
 |---|---|---|
-| [![Race statistics](screenshots/03-race-stats.png)](docs/screenshots.md#race-statistics) | [![Champions leaderboard](screenshots/05-champions.png)](docs/screenshots.md#leaderboard) | [![Volunteer roster](screenshots/09-volunteer-roster.png)](docs/screenshots.md#volunteer-roster) |
+| [![Race statistics](screenshots/04-race-stats.png)](docs/screenshots.md#race-statistics) | [![Champions leaderboard](screenshots/06-champions.png)](docs/screenshots.md#leaderboard) | [![Volunteer roster](screenshots/12-volunteer-roster.png)](docs/screenshots.md#volunteer-roster) |
 
 ## Prerequisites
 
