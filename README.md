@@ -58,9 +58,9 @@ dotnet test .\pitsea-rc-results-processing.slnx --collect:"XPlat Code Coverage"
 
 | Project | Tests | Approach |
 |---|---|---|
-| `RaceResults.UnitTests` | 256 | Services tested against isolated SQLite DBs per test |
+| `RaceResults.UnitTests` | 264 | Services tested against isolated SQLite DBs per test |
 | `RaceResults.IntegrationTests` | 26 | Full HTTP stack via `WebApplicationFactory<Program>` with in-memory SQLite |
-| **Total** | **282** | |
+| **Total** | **290** | |
 
 ## Technology Stack
 

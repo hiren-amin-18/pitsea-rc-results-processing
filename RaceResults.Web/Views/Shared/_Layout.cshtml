@@ -11,10 +11,10 @@
     var onHome = On("Home", "Index");
     var onEvents = On("Events");
     var onRace = On("Race", "Uploads", "Results");
-    var onStandings = On("Season") || On("Champions") || On("CourseRecords");
+    var onStandings = On("Season", "Dashboard", "Runner", "Review", "ReviewPdf") || On("Champions") || On("CourseRecords");
     var onRunners = On("Runners");
     var onVolunteers = On("Volunteers") || On("VolunteerRoles") || On("VolunteerRoster");
-    var onStats = On("Race", "Stats", "Top10") || On("VolunteerStats");
+    var onStats = On("Race", "Stats", "Top10") || On("VolunteerStats") || On("Season", "Stats");
     var onSettings = On("Home", "Settings");
 
     string Active(bool on) => on ? "active" : "";
@@ -76,7 +76,6 @@
                             <a class="nav-link text-dark dropdown-toggle @Active(onStandings)" aria-current="@Current(onStandings)" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Standings</a>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Season" asp-action="Dashboard">Season</a></li>
-                                <li><a class="dropdown-item" asp-area="" asp-controller="Season" asp-action="Stats">C2C Season Stats</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Champions" asp-action="Leaderboard">Champions</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="CourseRecords" asp-action="Index">Records</a></li>
                             </ul>
@@ -103,6 +102,7 @@
                             <a class="nav-link text-dark dropdown-toggle @Active(onStats)" aria-current="@Current(onStats)" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Stats</a>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Race" asp-action="Stats">Race Stats</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-controller="Season" asp-action="Stats">C2C Season Stats</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Race" asp-action="Top10">Top 10</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="VolunteerStats" asp-action="Index">Volunteer Stats</a></li>
                             </ul>
