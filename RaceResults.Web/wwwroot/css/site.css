@@ -381,12 +381,29 @@ html[data-theme="dark"] .table {
   border: 1px solid var(--app-border);
   border-left: 4px solid var(--app-accent);
   box-shadow: var(--app-shadow-md);
+  width: auto;
+  max-width: min(90vw, 480px);
+}
+
+.app-toast .toast-body {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .app-toast.app-toast-success { border-left-color: #2e9e5b; }
 .app-toast.app-toast-danger  { border-left-color: #d1495b; }
 .app-toast.app-toast-warning { border-left-color: #e0a800; }
 .app-toast.app-toast-info    { border-left-color: var(--app-accent); }
+
+/* Large flash messages render inline instead of as a corner toast. */
+.app-flash-alert {
+  border-left: 4px solid var(--app-accent);
+}
+.app-flash-alert.app-flash-success { border-left-color: #2e9e5b; }
+.app-flash-alert.app-flash-danger  { border-left-color: #d1495b; }
+.app-flash-alert.app-flash-warning { border-left-color: #e0a800; }
+.app-flash-alert.app-flash-info    { border-left-color: var(--app-accent); }
 
 /* ============================================================
    Misc

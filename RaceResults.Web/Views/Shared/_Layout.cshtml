@@ -1,4 +1,5 @@
-﻿@inject RaceResults.Web.Services.IRaceResultsService RaceResultsService
+﻿@using System.Text.RegularExpressions
+@inject RaceResults.Web.Services.IRaceResultsService RaceResultsService
 @{
     var currentEvent = RaceResultsService.GetCurrentEvent();
 
@@ -126,21 +127,39 @@
             </div>
         </nav>
     </header>
+    @{
+        var flashText = TempData["FeedbackText"] as string;
+        var flashType = TempData["FeedbackType"] as string ?? "info";
+
+        // A "large" flash (long text or several lines) is hard to read in a corner
+        // toast, so render it as a dismissible inline alert at the top of the page.
+        var flashPlain = flashText is null ? "" : Regex.Replace(flashText, "<[^>]+>", " ");
+        var flashLineCount = flashText is null ? 0 : Regex.Matches(flashText, "<br", RegexOptions.IgnoreCase).Count + 1;
+        var flashIsLarge = flashPlain.Length > 200 || flashLineCount >= 4;
+
+        // Scale toast auto-dismiss to length so short "Saved" and longer messages
+        // both get a fair reading window (5s–12s).
+        var flashWords = flashPlain.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
+        var flashDelay = Math.Clamp(flashWords * 350, 5000, 12000);
+    }
     <div class="container-xxl">
         <main role="main" class="pb-3">
+            @if (flashText is not null && flashIsLarge)
+            {
+                <div class="alert alert-@flashType alert-dismissible fade show app-flash-alert app-flash-@flashType" role="alert">
+                    <div>@Html.Raw(flashText)</div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
             @RenderBody()
         </main>
     </div>
 
-    @{
-        var flashText = TempData["FeedbackText"] as string;
-        var flashType = TempData["FeedbackType"] as string ?? "info";
-    }
-    @if (flashText is not null)
+    @if (flashText is not null && !flashIsLarge)
     {
         <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
             <div class="toast app-toast app-toast-@flashType" role="alert" aria-live="assertive" aria-atomic="true"
-                 data-bs-delay="5000">
+                 data-bs-delay="@flashDelay">
                 <div class="d-flex">
                     <div class="toast-body">@Html.Raw(flashText)</div>
                     <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
