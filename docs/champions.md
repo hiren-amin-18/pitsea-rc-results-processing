@@ -23,10 +23,10 @@ The Champions of Champions is a **yearly cumulative leaderboard** that ranks run
 - **Default season** is derived from the current event's date (not the wall clock), so historical data views stay correct across calendar years; a year selector switches seasons
 - **Ranking:** Runners ranked by total points, with ties broken by number of events completed (more events = higher rank)
 - **Tie Indicator:** Runners are marked with † (dagger symbol) only when they are tied on **both** points and race count — i.e. the tie-breaker could not separate them
-- **Top 3 Highlighting:**
-  - 1st place: Gold background
-  - 2nd place: Silver background
-  - 3rd place: Bronze background
+- **Top 3 Highlighting:** each of the top three rows gets a pale medal-coloured tint with a matching accent bar on the rank cell, kept light so the text stays readable
+  - 1st place: gold (pale cream tint, gold accent bar)
+  - 2nd place: silver (pale grey tint, grey accent bar)
+  - 3rd place: bronze (pale warm tint, bronze accent bar)
 
 **Per-Event Detail View (US44):**
 - A **Summary / Show details** toggle on both the internal leaderboard and the public page (`?detail=1`)
