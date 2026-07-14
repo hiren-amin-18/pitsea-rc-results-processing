@@ -21,6 +21,7 @@ public class RaceResultsDbContext : DbContext
     public DbSet<VolunteerAssignment> VolunteerAssignments => Set<VolunteerAssignment>();
     public DbSet<AllocationCandidateRecord> AllocationCandidateRecords => Set<AllocationCandidateRecord>();
     public DbSet<NotDuplicatePair> NotDuplicatePairs => Set<NotDuplicatePair>();
+    public DbSet<Club> Clubs => Set<Club>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -199,6 +200,85 @@ public class RaceResultsDbContext : DbContext
             e.HasOne<Runner>().WithMany().HasForeignKey(x => x.RunnerAId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Runner>().WithMany().HasForeignKey(x => x.RunnerBId).OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<Club>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Name).IsUnique();
+            e.Property(x => x.Name).IsRequired();
+            e.HasData(SeedClubs());
+        });
+    }
+
+    /// <summary>Seeds the canonical club list agreed with the organiser (US45). New clubs added via the
+    /// admin page after this run persist alongside these seeded records; deactivating is preferred over
+    /// deletion so historic entrants continue to match.</summary>
+    private static Club[] SeedClubs()
+    {
+        var names = new[]
+        {
+            "Aberystwyth AC",
+            "Bad Boy Running",
+            "Barking Road Runners",
+            "Barking Running Club",
+            "Basildon Athletics Club",
+            "Basildon CC",
+            "Benfleet Running Club",
+            "Billericay Striders",
+            "Braintree & District Athletic Club",
+            "Brentwood Beagles Athletics Club",
+            "Brentwood Running Club",
+            "Castle Point Joggers",
+            "Castle Point Young Runners",
+            "Chelmsford Athletics",
+            "City of Southend On Sea AC",
+            "Corringham Running Club",
+            "Dagenham 88 Runners",
+            "Daws Heath Harriers",
+            "Dengie 100 Runners",
+            "East Essex Triathlon Club",
+            "East London Runners",
+            "Fordy Runs Running Club",
+            "Harold Wood Running Club",
+            "Havering '90 Joggers",
+            "Havering AC",
+            "Havering Tri",
+            "Hockley Trail Runners",
+            "Hot Steppers",
+            "Ilford AC",
+            "JBR Run and Tri Club",
+            "Kingswood Running Club",
+            "Leigh-on-Sea Striders",
+            "London Heathside",
+            "Lonely Goat RC",
+            "Maldon Soul Runners",
+            "Mid Essex Casuals",
+            "Nuclear Races Striders",
+            "Pewsey Vale Running Club",
+            "Phoenix Striders",
+            "Pitsea Running Club",
+            "Rayleigh Rat Runners",
+            "RED Runners",
+            "Rochford Running Club",
+            "South Woodham Runners",
+            "Springfield Striders RC",
+            "SS Athletics",
+            "St Edmund Pacers",
+            "Thames Hare & Hounds",
+            "Thurrock Harriers",
+            "Thurrock Nomads",
+            "Trail Running Association",
+            "Vegan Runners UK",
+            "Ware Joggers",
+            "Witham Running Club",
+            "Woman of Wickford",
+        };
+        var clubs = new Club[names.Length];
+        for (var i = 0; i < names.Length; i++)
+        {
+            clubs[i] = new Club { Id = i + 1, Name = names[i], IsActive = true };
+        }
+        return clubs;
     }
 
     /// <summary>Seeds the 23 Crown to Crown volunteer roles (US28). Bluebell 5 is seeded by a later story.</summary>

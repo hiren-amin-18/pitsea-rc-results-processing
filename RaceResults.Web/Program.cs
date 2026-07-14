@@ -35,6 +35,8 @@ builder.Services.AddScoped<IRosterAllocator, RosterAllocator>();
 builder.Services.AddScoped<IAllocationGridService, AllocationGridService>();
 builder.Services.AddScoped<IRosterDraftApplier, RosterDraftApplier>();
 builder.Services.AddScoped<IVolunteerRosterImportService, VolunteerRosterImportService>();
+builder.Services.AddScoped<IClubService, ClubService>();
+builder.Services.AddScoped<IOnlineRegistrationGenerator, OnlineRegistrationGenerator>();
 
 QuestPDF.Settings.License = LicenseType.Community;
 

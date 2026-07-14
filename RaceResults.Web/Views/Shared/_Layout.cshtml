@@ -12,7 +12,7 @@
     var onEvents = On("Events");
     var onRace = On("Race", "Uploads", "Results");
     var onStandings = On("Season", "Dashboard", "Runner", "Review", "ReviewPdf") || On("Champions") || On("CourseRecords");
-    var onPeople = On("Runners") || On("Volunteers") || On("VolunteerRoles") || On("VolunteerRoster");
+    var onPeople = On("Runners") || On("Volunteers") || On("VolunteerRoles") || On("VolunteerRoster") || On("Clubs");
     var onStats = On("Race", "Stats", "Top10") || On("VolunteerStats") || On("Season", "Stats");
     var onSettings = On("Home", "Settings");
 
@@ -80,6 +80,7 @@
                             <a class="nav-link text-dark dropdown-toggle @Active(onPeople)" aria-current="@Current(onPeople)" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">People</a>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Runners" asp-action="Index">Runners</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-controller="Clubs" asp-action="Index">Clubs</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><h6 class="dropdown-header">Volunteers</h6></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Volunteers" asp-action="Index">Volunteers</a></li>

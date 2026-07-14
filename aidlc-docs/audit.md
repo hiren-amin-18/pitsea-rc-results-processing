@@ -1,5 +1,16 @@
 # AI-DLC Audit Log
 
+## US45 — Online Registration Spreadsheet Generator
+**Timestamp**: 2026-07-14T00:00:00Z
+**Stage**: Inception (user story) + Construction (Code Generation + Build & Test)
+**Story**: `user-stories/US45-online-registration-spreadsheet-generator.md`
+**Summary**: `aidlc-docs/construction/US45/US45-implementation-summary.md`
+**Build Status**: Success
+**Test Status**: Pass (288 unit + 26 integration = 314; +24 new)
+**Notes**: New `Club` entity + `AddClubs` EF migration seeded with 55 canonical club names from the organiser's list. New `ClubMatcher` (token-Jaccard OR Levenshtein hybrid, with a small `RC` / `AC` / `CC` / `Tri` / `PRC` abbreviation table; thresholds 0.90 snap, 0.55 offer) drives fuzzy matching from raw CSV `Club` values to canonical names. New `OnlineRegistrationGenerator` service parses two CsvHelper-read CSVs (U18 detected by `U18IsDependantOfUser` header), builds a preview (row counts, unresolved clubs, duplicates, unrecognised genders), and generates the .xlsx via ClosedXML with PROPER-cased names, alphabetical sort by Surname/Forename, race number blank, and Age cell coloured `#F2DCDB` (Female U18) / `#DCE6F2` (Male U18) to match the reference file. Preview round-trips as JSON in a hidden form field (mirrors US35 pattern). Wrong-way-round CSV uploads are silently swapped. `add:{name}` resolutions persist to the Clubs table so a re-run doesn't re-prompt (AC10 test). C2C-only; gated in the controller, view, and service. Two new controllers (`ClubsController`, `OnlineRegistrationController`) + three views. Docs updated: README (test counts + intro paragraph), docs/features.md (2 new rows), docs/user-stories.md (US45 entry + dependency note), docs/upload-formats.md (new CSV inputs section).
+
+---
+
 ## US33 — Bluebell 5 Results Processing
 **Timestamp**: 2026-06-20T00:00:00Z
 **Stage**: Construction (Code Generation + Build & Test)

@@ -1,0 +1,133 @@
+@model RaceResults.Web.Models.OnlineRegistrationPreview
+@{
+    var raceEvent = ViewBag.Event as RaceResults.Web.Models.RaceEvent;
+    ViewData["Title"] = $"Preview - {Model.EventName}";
+    var json = System.Text.Json.JsonSerializer.Serialize(Model);
+}
+
+<div class="mb-3">
+    <h1>Preview: Online Registration</h1>
+    <p class="text-muted mb-0">@Model.EventName — @Model.EventDate.ToString("dd MMM yyyy")</p>
+</div>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="alert alert-danger">
+        <strong>Cannot generate:</strong>
+        <ul class="mb-0">@foreach (var e in Model.Errors) { <li>@e</li> }</ul>
+        <p class="mb-0 mt-2"><a asp-action="Index" asp-route-eventId="@Model.EventId">Back to upload</a></p>
+    </div>
+    return;
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="text-muted small">Adults</div><div class="fs-5">@Model.AdultCount</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="text-muted small">U18</div><div class="fs-5">@Model.U18Count</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="text-muted small">Total rows</div><div class="fs-5">@Model.TotalCount</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="text-muted small @(Model.UnresolvedClubs.Count > 0 ? "text-warning" : "")">Unresolved clubs</div>
+            <div class="fs-5">@Model.UnresolvedClubs.Count</div>
+        </div></div>
+    </div>
+</div>
+
+@if (Model.UnrecognisedGenders.Count > 0)
+{
+    <div class="alert alert-danger">
+        <strong>Unrecognised Gender values (fix the CSV and re-upload):</strong>
+        <ul class="mb-0">@foreach (var g in Model.UnrecognisedGenders) { <li>@g</li> }</ul>
+    </div>
+}
+
+@if (Model.Duplicates.Count > 0)
+{
+    <div class="alert alert-warning">
+        <strong>Duplicate entrants (same name + gender across the CSVs):</strong>
+        <ul class="mb-0">@foreach (var d in Model.Duplicates) { <li>@d</li> }</ul>
+        <p class="mb-0 mt-2 small">The generator will include every row — remove one from the CSV first if the duplicate is a genuine mistake.</p>
+    </div>
+}
+
+<form method="post" asp-action="Generate" asp-route-eventId="@Model.EventId">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="EventId" value="@Model.EventId" />
+    <input type="hidden" name="PreviewJson" value="@json" />
+
+    @if (Model.UnresolvedClubs.Count > 0)
+    {
+        <h3 class="mt-4 h5">Resolve club names</h3>
+        <p class="small text-muted mb-2">
+            Each row is a raw <em>Club</em> value from the CSV that didn't match the canonical list confidently.
+            Pick the club it refers to, add it as a new canonical club (persists to the clubs list for next time),
+            or leave the raw text in the output. Every row must be answered before generating.
+        </p>
+        <div class="table-responsive" style="overflow-x: clip;">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">Raw club (from CSV)</th>
+                        <th style="width: 8%;">Rows</th>
+                        <th>Resolution</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var u in Model.UnresolvedClubs)
+                {
+                    var field = $"ClubResolutions[{u.Raw}]";
+                    <tr>
+                        <td><code>@u.Raw</code></td>
+                        <td>@u.OccurrenceCount</td>
+                        <td>
+                            <select name="@field" class="form-select form-select-sm" required>
+                                <option value="" disabled selected>Pick…</option>
+                                @if (u.Suggestions.Any())
+                                {
+                                    <optgroup label="Suggestions">
+                                        @foreach (var s in u.Suggestions)
+                                        {
+                                            <option value="club:@s.ClubId">@s.Name  (~@Math.Round(s.Score * 100)%)</option>
+                                        }
+                                    </optgroup>
+                                }
+                                <option value="add:@u.Raw">Add "@u.Raw" as a new canonical club</option>
+                                <option value="leave">Leave "@u.Raw" as typed</option>
+                            </select>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (Model.ConfidentlyMatchedClubs.Count > 0)
+    {
+        <details class="mt-3">
+            <summary class="small text-muted">@Model.ConfidentlyMatchedClubs.Count club(s) matched confidently (no action needed)</summary>
+            <ul class="small text-muted mt-2">
+                @foreach (var line in Model.ConfidentlyMatchedClubs.OrderBy(l => l, StringComparer.OrdinalIgnoreCase))
+                {
+                    <li>@line</li>
+                }
+            </ul>
+        </details>
+    }
+
+    <div class="mt-4">
+        <button class="btn btn-primary" type="submit" @(Model.CanGenerate ? "" : "disabled")>Generate spreadsheet</button>
+        <a class="btn btn-link" asp-action="Index" asp-route-eventId="@Model.EventId">Cancel</a>
+    </div>
+</form>

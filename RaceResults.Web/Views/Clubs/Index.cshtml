@@ -1,0 +1,83 @@
+@model IReadOnlyList<RaceResults.Web.Models.Club>
+@{
+    ViewData["Title"] = "Clubs";
+    var active = Model.Where(c => c.IsActive).OrderBy(c => c.Name).ToList();
+    var inactive = Model.Where(c => !c.IsActive).OrderBy(c => c.Name).ToList();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Clubs</h1>
+</div>
+
+<p class="small text-muted">
+    Canonical clubs list used by the Online Registration generator (US45). The fuzzy matcher snaps
+    each raw <em>Club</em> value from the registration CSV to one of these names. Deactivate rather
+    than delete — historic entrants that reference a name keep working.
+</p>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title h6">Add a club</h5>
+        <form method="post" asp-action="Add" class="row g-2 align-items-center">
+            @Html.AntiForgeryToken()
+            <div class="col-auto flex-grow-1">
+                <input class="form-control" name="name" placeholder="Club name" required maxlength="120" />
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary" type="submit">Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<h2 class="h5">Active (@active.Count)</h2>
+<table class="table table-striped align-middle">
+    <thead>
+        <tr><th>Name</th><th class="text-end">Actions</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var club in active)
+    {
+        <tr>
+            <td>
+                <form method="post" asp-action="Rename" asp-route-id="@club.Id" class="d-flex gap-2 align-items-center">
+                    @Html.AntiForgeryToken()
+                    <input class="form-control form-control-sm" name="name" value="@club.Name" style="max-width: 32rem;" required maxlength="120" />
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">Rename</button>
+                </form>
+            </td>
+            <td class="text-end">
+                <form method="post" asp-action="Deactivate" asp-route-id="@club.Id"
+                      onsubmit="return confirm('Deactivate this club? It stays in the DB but is hidden from suggestions.');">
+                    @Html.AntiForgeryToken()
+                    <button class="btn btn-sm btn-outline-warning" type="submit">Deactivate</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+@if (inactive.Count > 0)
+{
+    <h2 class="h5 mt-4">Inactive (@inactive.Count)</h2>
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr><th>Name</th><th class="text-end">Actions</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var club in inactive)
+        {
+            <tr class="text-muted">
+                <td>@club.Name</td>
+                <td class="text-end">
+                    <form method="post" asp-action="Reactivate" asp-route-id="@club.Id">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-sm btn-outline-success" type="submit">Reactivate</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

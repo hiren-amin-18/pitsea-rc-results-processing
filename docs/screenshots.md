@@ -98,9 +98,24 @@ The full racing year at a glance — Champions medals per category, runner and v
 ![End-of-season review](../screenshots/17-season-review.png)
 
 ### Event management
-Create, edit, select current, archive, delete, and publish events, with a one-click season calendar generator.
+Create, edit, select current, archive, delete, and publish events, with a one-click season calendar generator. The per-row **Registration** button (Crown to Crown rows only) opens the Online Registration spreadsheet generator (US45); it's hidden on Bluebell 5 events.
 
-![Event management](../screenshots/18-events.png)
+![Event management](../screenshots/21-events-registration-button.png)
+
+### Online Registration spreadsheet — upload
+Per-C2C-event action: upload the two registration-platform CSVs (adults 18+ and U18, U18 identified by the `U18IsDependantOfUser` column) and preview before the spreadsheet is written.
+
+![Online Registration upload](../screenshots/22-online-registration-upload.png)
+
+### Online Registration spreadsheet — preview
+Row counts, an inline row per raw *Club* value that didn't fuzzy-match a canonical name (pick a club, add it as new, or leave the text as typed), a collapsible list of clubs that matched confidently, and a **Generate spreadsheet** button that is only enabled once every unresolved club is answered.
+
+![Online Registration preview](../screenshots/23-online-registration-preview.png)
+
+### Clubs registry
+Canonical clubs list under People → Clubs. Seeded with the club's agreed list, powers the fuzzy matcher on the Online Registration generator, and supports rename + deactivate (never hard-delete, so historic entrants keep matching). Adding a new club from the preview page persists into this list.
+
+![Clubs registry](../screenshots/24-clubs-admin.png)
 
 ### Settings
 Theme toggle, plus database backup and restore.

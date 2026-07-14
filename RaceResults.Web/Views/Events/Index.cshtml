@@ -55,6 +55,10 @@
             <td>@(raceEvent.Id == Model.CurrentEventId ? "Yes" : "No")</td>
             <td class="d-flex gap-2 flex-wrap">
                 <a class="btn btn-sm btn-outline-info" asp-controller="VolunteerRoster" asp-action="Index" asp-route-eventId="@raceEvent.Id">Roster</a>
+                @if (!raceEvent.IsArchived && raceEvent.EventType == EventType.CrownToCrown)
+                {
+                    <a class="btn btn-sm btn-outline-primary" asp-controller="OnlineRegistration" asp-action="Index" asp-route-eventId="@raceEvent.Id" title="Turn the two online-registration CSVs into the Online Registration spreadsheet">Registration</a>
+                }
                 @if (raceEvent.IsArchived)
                 {
                     <a class="btn btn-sm btn-outline-secondary" asp-controller="Race" asp-action="Results" asp-route-eventId="@raceEvent.Id">View</a>
